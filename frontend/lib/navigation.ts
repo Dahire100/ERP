@@ -1,0 +1,83 @@
+import type { UserRole } from "./auth-context"
+
+export interface NavItem {
+  label: string
+  href: string
+  icon?: string
+}
+
+export const navigationByRole: Record<UserRole, NavItem[]> = {
+  admin: [
+    { label: "Dashboard", href: "/dashboard/admin" },
+    { label: "My Profile", href: "/dashboard/admin/profile" },
+    { label: "System Setting", href: "/dashboard/admin/system-setting" },
+    { label: "Human Resource", href: "/dashboard/admin/human-resource" },
+    { label: "Academics", href: "/dashboard/admin/academics" },
+    { label: "Student Info", href: "/dashboard/admin/student-info" },
+    { label: "Examinations", href: "/dashboard/admin/examinations" },
+    { label: "Report", href: "/dashboard/admin/report" },
+    { label: "Front Office", href: "/dashboard/admin/front-office" },
+    { label: "Inventory", href: "/dashboard/admin/inventory" },
+    { label: "Library", href: "/dashboard/admin/library" },
+    { label: "Transport", href: "/dashboard/admin/transport" },
+    { label: "Hostel", href: "/dashboard/admin/hostel" },
+    { label: "Certificate", href: "/dashboard/admin/certificate" },
+    { label: "Consent Letter", href: "/dashboard/admin/consent-letter" },
+    { label: "Digital Notice Board", href: "/dashboard/admin/notice-board" },
+    { label: "Communicate", href: "/dashboard/admin/communicate" },
+    { label: "Front CMS", href: "/dashboard/admin/front-cms" },
+    { label: "Subscription", href: "/dashboard/admin/subscription" },
+  ],
+  teacher: [
+    { label: "Dashboard", href: "/dashboard/teacher" },
+    { label: "My Profile", href: "/dashboard/teacher/profile" },
+    { label: "Student Info", href: "/dashboard/teacher/student-info" },
+    { label: "Attendance", href: "/dashboard/teacher/attendance" },
+    { label: "Academics", href: "/dashboard/teacher/academics" },
+    { label: "Lesson Planner", href: "/dashboard/teacher/lesson-planner" },
+    { label: "H.W. / C.W.", href: "/dashboard/teacher/homework" },
+    { label: "Examinations", href: "/dashboard/teacher/examinations" },
+    { label: "Online Exam", href: "/dashboard/teacher/online-exam" },
+    { label: "Download Center", href: "/dashboard/teacher/download-center" },
+    { label: "Communicate", href: "/dashboard/teacher/communicate" },
+    { label: "Digital Notice Board", href: "/dashboard/teacher/notice-board" },
+  ],
+  student: [
+    { label: "Dashboard", href: "/dashboard/student" },
+    { label: "My Profile", href: "/dashboard/student/profile" },
+    { label: "Academics", href: "/dashboard/student/academics" },
+    { label: "H.W. / C.W.", href: "/dashboard/student/homework" },
+    { label: "Download Center", href: "/dashboard/student/download-center" },
+    { label: "Online Exam", href: "/dashboard/student/online-exam" },
+    { label: "Online Class", href: "/dashboard/student/online-class" },
+    { label: "Examinations", href: "/dashboard/student/examinations" },
+    { label: "Report", href: "/dashboard/student/report" },
+    { label: "Library", href: "/dashboard/student/library" },
+    { label: "Transport", href: "/dashboard/student/transport" },
+    { label: "Hostel", href: "/dashboard/student/hostel" },
+    { label: "Student Wallet", href: "/dashboard/student/wallet" },
+    { label: "Communicate", href: "/dashboard/student/communicate" },
+  ],
+  parent: [
+    { label: "Dashboard", href: "/dashboard/parent" },
+    { label: "My Profile", href: "/dashboard/parent/profile" },
+    { label: "My Child's Profile", href: "/dashboard/parent/child-profile" },
+    { label: "Fees Collection", href: "/dashboard/parent/fees" },
+    { label: "Attendance", href: "/dashboard/parent/attendance" },
+    { label: "H.W. / C.W.", href: "/dashboard/parent/homework" },
+    { label: "Report", href: "/dashboard/parent/report" },
+    { label: "Examinations", href: "/dashboard/parent/examinations" },
+    { label: "Transport", href: "/dashboard/parent/transport" },
+    { label: "Communicate", href: "/dashboard/parent/communicate" },
+    { label: "Consent Letter", href: "/dashboard/parent/consent-letter" },
+    { label: "Digital Notice Board", href: "/dashboard/parent/notice-board" },
+  ],
+  "super-admin": [
+    { label: "Dashboard", href: "/dashboard/super-admin" },
+    { label: "Institute Management", href: "/dashboard/super-admin/institute-management" },
+    { label: "SaaS Plan Management", href: "/dashboard/super-admin/saas-plans" },
+    { label: "Billing & Invoicing", href: "/dashboard/super-admin/billing" },
+    { label: "Support Tickets", href: "/dashboard/super-admin/support-tickets" },
+    { label: "Platform Settings", href: "/dashboard/super-admin/platform-settings" },
+  ],
+}
