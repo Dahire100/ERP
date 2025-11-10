@@ -21,15 +21,8 @@ if (isEmailConfigured) {
     connectionTimeout: 10000,
   });
 
-  // Verify transporter configuration
-  transporter.verify((error, success) => {
-    if (error) {
-      console.error('❌ Email transporter configuration error:', error);
-    } else {
-      console.log('✅ Email server is ready to send messages');
-    }
-  });
-} else {
+  // Don't verify on startup to avoid blocking - verify lazily when sending emails
+  console.log('✅ Email transporter created (verification will happen on first send)');} else {
   console.log('⚠️  Email not configured - EMAIL_USER and EMAIL_PASS environment variables not set');
   console.log('ℹ️  Email notifications will be disabled');
 }
