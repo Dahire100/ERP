@@ -2,32 +2,37 @@
 const nodemailer = require('nodemailer');
 
 // Check if email credentials are configured
-const isEmailConfigured = process.env.EMAIL_USER && process.env.EMAIL_PASS;
-
+const isEmailConfigured = process.env.SMTP_USER && process.env.SMTP_PASS;
 let transporter = null;
 
 // Only create transporter if email is configured
 if (isEmailConfigured) {
   // Create transporter
-  transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    pool: true,
-    maxConnections: 1,
-    maxMessages: 5,
-    connectionTimeout: 10000,
-  });
-
+    try {
+    // Create transporter
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      connectionTimeout: 5000, // 5 second timeout
+      tls: {
+        rejectUnauthorized: false // Allow self-signed certificates
+      }
+    });
+    
+    // Don't verify on startup to avoid blocking - verify lazily when sending emails
+    console.log('✅ Email transporter created (verification will happen on first send)');
+  } catch (error) {
+    console.error('❌ Email transporter configuration error:', error);
+    transporter = null;
+  }
   // Don't verify on startup to avoid blocking - verify lazily when sending emails
   console.log('✅ Email transporter created (verification will happen on first send)'); } else {
-  console.log('⚠️  Email not configured - EMAIL_USER and EMAIL_PASS environment variables not set');
-  console.log('ℹ️  Email notifications will be disabled');
-}
-
-exports.verifyEmailConfig = async () => {
+  console.log('⚠️  Email not configured - SMTP_USER and SMTP_PASS environment variables not set');  console.log('ℹ️  Email notifications will be disabled');nfig = async () => {
   if (!isEmailConfigured) {
     console.log('ℹ️  Email not configured');
     return false;
@@ -52,7 +57,7 @@ exports.sendSuperAdminNotification = async (superAdminEmail, schoolData) => {
   
   try {
     const mailOptions = {
-      from: process.env.EMAIL_FROM || `"Frontier LMS" <${process.env.EMAIL_USER}>`,
+      from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
       to: superAdminEmail,
       subject: '🚨 New School Registration Requires Approval - Frontier LMS',
       html: `
@@ -137,7 +142,7 @@ exports.sendSchoolApprovalEmail = async (toEmail, schoolName, adminEmail, adminP
     console.log('📧 Sending approval email with credentials to:', toEmail);
     
     const mailOptions = {
-      from: process.env.EMAIL_FROM || `"Frontier LMS" <${process.env.EMAIL_USER}>`,
+      from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
       to: toEmail,
       subject: '🎉 School Registration Approved - Frontier LMS',
       html: `
@@ -224,11 +229,11 @@ exports.sendSchoolRegistrationEmail = async (toEmail, schoolName) => {
   
   try {
     const mailOptions = {
-      from: process.env.EMAIL_FROM || `"Frontier LMS" <${process.env.EMAIL_USER}>`,
+      from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
       to: toEmail,
       subject: '📋 School Registration Received - Frontier LMS',
       html: `
-        <!DOCTYPE html>
+        <!DOCTYPE htmlSMTP_FROM
         <html>
         <head>
           <style>
