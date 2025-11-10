@@ -22,7 +22,7 @@ if (isEmailConfigured) {
   });
 
   // Don't verify on startup to avoid blocking - verify lazily when sending emails
-  console.log('✅ Email transporter created (verification will happen on first send)');} else {
+  console.log('✅ Email transporter created (verification will happen on first send)'); } else {
   console.log('⚠️  Email not configured - EMAIL_USER and EMAIL_PASS environment variables not set');
   console.log('ℹ️  Email notifications will be disabled');
 }
