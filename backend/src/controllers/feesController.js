@@ -1,41 +1,41 @@
 // controllers/feesController.js
-const { db } = require('../config/db');
+const StudentFee = require('../models/StudentFee');
+const Student = require('../models/Student');
 
 // Get all fees for a school
-exports.getAllFees = (req, res) => {
+exports.getAllFees = async (req, res) => {
   const { schoolId } = req.user;
   const { status, studentId } = req.query;
 
-  let query = `
-    SELECT sf.*, s.studentId, s.firstName, s.lastName, s.class, s.section 
-    FROM student_fees sf
-    JOIN students s ON sf.studentId = s.id
-    WHERE sf.schoolId = ?
-  `;
-  let params = [schoolId];
+  try {
+    const query = { schoolId };
+    if (status) query.status = status;
 
-  if (status) {
-    query += ` AND sf.status = ?`;
-    params.push(status);
-  }
-  if (studentId) {
-    query += ` AND s.studentId = ?`;
-    params.push(studentId);
-  }
-
-  query += ` ORDER BY sf.dueDate DESC`;
-
-  db.all(query, params, (err, fees) => {
-    if (err) {
-      console.error('Error fetching fees:', err);
-      return res.status(500).json({ error: 'Failed to fetch fees' });
+    if (studentId) {
+      // If filtering by studentId (which is likely the custom ID string, not ObjectId), 
+      // we first need to find the student ObjectId
+      const student = await Student.findOne({ studentId, schoolId });
+      if (student) {
+        query.studentId = student._id;
+      } else {
+        // If student not found, return empty list
+        return res.json([]);
+      }
     }
+
+    const fees = await StudentFee.find(query)
+      .populate('studentId', 'studentId firstName lastName class section')
+      .sort({ dueDate: -1 });
+
     res.json(fees);
-  });
+  } catch (err) {
+    console.error('Error fetching fees:', err);
+    res.status(500).json({ error: 'Failed to fetch fees' });
+  }
 };
 
 // Add fee record
-exports.addFee = (req, res) => {
+exports.addFee = async (req, res) => {
   const { schoolId } = req.user;
   const { studentId, feeType, amount, dueDate } = req.body;
 
@@ -43,35 +43,36 @@ exports.addFee = (req, res) => {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
-  // Verify student belongs to the same school
-  const verifyQuery = `SELECT id FROM students WHERE id = ? AND schoolId = ?`;
-  
-  db.get(verifyQuery, [studentId, schoolId], (err, student) => {
-    if (err || !student) {
+  try {
+    // Verify student belongs to the same school
+    const student = await Student.findOne({ _id: studentId, schoolId });
+    if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    const insertQuery = `
-      INSERT INTO student_fees (studentId, feeType, amount, dueDate, status, schoolId)
-      VALUES (?, ?, ?, ?, 'pending', ?)
-    `;
-
-    db.run(insertQuery, [studentId, feeType, amount, dueDate, schoolId], function(err) {
-      if (err) {
-        console.error('Error adding fee:', err);
-        return res.status(500).json({ error: 'Failed to add fee record' });
-      }
-
-      res.status(201).json({
-        message: 'Fee record added successfully',
-        feeId: this.lastID
-      });
+    const newFee = new StudentFee({
+      studentId,
+      feeType,
+      amount,
+      dueDate,
+      status: 'pending',
+      schoolId
     });
-  });
+
+    await newFee.save();
+
+    res.status(201).json({
+      message: 'Fee record added successfully',
+      feeId: newFee._id
+    });
+  } catch (err) {
+    console.error('Error adding fee:', err);
+    res.status(500).json({ error: 'Failed to add fee record' });
+  }
 };
 
 // Update fee payment status
-exports.updateFeeStatus = (req, res) => {
+exports.updateFeeStatus = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
   const { status, paidDate, transactionId } = req.body;
@@ -80,66 +81,92 @@ exports.updateFeeStatus = (req, res) => {
     return res.status(400).json({ error: 'Status is required' });
   }
 
-  const query = `
-    UPDATE student_fees 
-    SET status = ?, paidDate = ?, transactionId = ?
-    WHERE id = ? AND schoolId = ?
-  `;
+  try {
+    const fee = await StudentFee.findOneAndUpdate(
+      { _id: id, schoolId },
+      {
+        status,
+        paidDate: paidDate || (status === 'paid' ? new Date() : undefined),
+        transactionId
+      },
+      { new: true }
+    );
 
-  db.run(query, [status, paidDate, transactionId, id, schoolId], function(err) {
-    if (err) {
-      console.error('Error updating fee:', err);
-      return res.status(500).json({ error: 'Failed to update fee' });
-    }
-    if (this.changes === 0) {
+    if (!fee) {
       return res.status(404).json({ error: 'Fee record not found' });
     }
     res.json({ message: 'Fee status updated successfully' });
-  });
+  } catch (err) {
+    console.error('Error updating fee:', err);
+    res.status(500).json({ error: 'Failed to update fee' });
+  }
 };
 
 // Delete fee record
-exports.deleteFee = (req, res) => {
+exports.deleteFee = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
 
-  const query = `DELETE FROM student_fees WHERE id = ? AND schoolId = ?`;
-
-  db.run(query, [id, schoolId], function(err) {
-    if (err) {
-      console.error('Error deleting fee:', err);
-      return res.status(500).json({ error: 'Failed to delete fee record' });
-    }
-    if (this.changes === 0) {
+  try {
+    const fee = await StudentFee.findOneAndDelete({ _id: id, schoolId });
+    if (!fee) {
       return res.status(404).json({ error: 'Fee record not found' });
     }
     res.json({ message: 'Fee record deleted successfully' });
-  });
+  } catch (err) {
+    console.error('Error deleting fee:', err);
+    res.status(500).json({ error: 'Failed to delete fee record' });
+  }
 };
 
 // Get fee summary by class
-exports.getFeeSummaryByClass = (req, res) => {
+exports.getFeeSummaryByClass = async (req, res) => {
   const { schoolId } = req.user;
 
-  const query = `
-    SELECT 
-      s.class,
-      s.section,
-      COUNT(sf.id) as totalFees,
-      SUM(CASE WHEN sf.status = 'paid' THEN sf.amount ELSE 0 END) as totalCollected,
-      SUM(CASE WHEN sf.status = 'pending' THEN sf.amount ELSE 0 END) as totalPending
-    FROM students s
-    LEFT JOIN student_fees sf ON s.id = sf.studentId
-    WHERE s.schoolId = ?
-    GROUP BY s.class, s.section
-    ORDER BY s.class, s.section
-  `;
+  try {
+    const summary = await StudentFee.aggregate([
+      { $match: { schoolId: new require('mongoose').Types.ObjectId(schoolId) } },
+      {
+        $lookup: {
+          from: 'students',
+          localField: 'studentId',
+          foreignField: '_id',
+          as: 'student'
+        }
+      },
+      { $unwind: '$student' },
+      {
+        $group: {
+          _id: { class: '$student.class', section: '$student.section' },
+          totalFees: { $sum: 1 },
+          totalCollected: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'paid'] }, '$amount', 0]
+            }
+          },
+          totalPending: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'pending'] }, '$amount', 0]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          class: '$_id.class',
+          section: '$_id.section',
+          totalFees: 1,
+          totalCollected: 1,
+          totalPending: 1,
+          _id: 0
+        }
+      },
+      { $sort: { class: 1, section: 1 } }
+    ]);
 
-  db.all(query, [schoolId], (err, summary) => {
-    if (err) {
-      console.error('Error fetching fee summary:', err);
-      return res.status(500).json({ error: 'Failed to fetch fee summary' });
-    }
     res.json(summary);
-  });
+  } catch (err) {
+    console.error('Error fetching fee summary:', err);
+    res.status(500).json({ error: 'Failed to fetch fee summary' });
+  }
 };

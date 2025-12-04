@@ -7,7 +7,7 @@ import { navigationByRole } from "@/lib/navigation"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { LogOut, Menu, Bell, Search, Settings } from "lucide-react"
+import { LogOut, Menu, Bell, Search, Settings, ChevronDown, ChevronRight } from "lucide-react"
 import { useState } from "react"
 import Link from "next/link"
 
@@ -25,8 +25,8 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
 
   const getRoleGradient = (role: string) => {
     switch (role) {
-      case 'admin':
-      case 'super-admin':
+      case 'school_admin':
+      case 'super_admin':
         return 'from-blue-600 to-purple-600'
       case 'teacher':
         return 'from-purple-600 to-pink-600'
@@ -78,19 +78,54 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
               <p className="text-xs font-semibold text-gray-500 uppercase px-3 mb-2">Navigation</p>
               <nav className="space-y-0.5">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.href
+                  const isActive = pathname === item.href || (item.subItems && item.subItems.some(sub => pathname === sub.href))
+                  const isExpanded = expandedMenu === item.label || isActive
+
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                        isActive
-                          ? `bg-gradient-to-r ${getRoleGradient(user.role)} text-white shadow-sm`
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
+                    <div key={item.href}>
+                      {item.subItems ? (
+                        <>
+                          <button
+                            onClick={() => setExpandedMenu(expandedMenu === item.label ? null : item.label)}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive ? `bg-blue-50 text-blue-700` : 'text-gray-700 hover:bg-gray-100'
+                              }`}
+                          >
+                            <span>{item.label}</span>
+                            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          </button>
+
+                          {isExpanded && (
+                            <div className="pl-4 mt-1 space-y-0.5 animate-in slide-in-from-top-2 duration-200">
+                              {item.subItems.map((subItem) => {
+                                const isSubActive = pathname === subItem.href
+                                return (
+                                  <Link
+                                    key={subItem.href}
+                                    href={subItem.href}
+                                    className={`block px-3 py-2 rounded-lg text-sm transition-all ${isSubActive
+                                      ? `text-blue-700 font-medium bg-blue-50`
+                                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                                      }`}
+                                  >
+                                    {subItem.label}
+                                  </Link>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
+                            ? `bg-gradient-to-r ${getRoleGradient(user.role)} text-white shadow-sm`
+                            : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                        >
+                          {item.label}
+                        </Link>
+                      )}
+                    </div>
                   )
                 })}
               </nav>
@@ -98,17 +133,16 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
           ) : (
             <div className="space-y-2">
               {navItems.map((item) => {
-                const isActive = pathname === item.href
+                const isActive = pathname === item.href || (item.subItems && item.subItems.some(sub => pathname === sub.href))
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     title={item.label}
-                    className={`flex items-center justify-center w-12 h-12 rounded-lg transition-all ${
-                      isActive
-                        ? `bg-gradient-to-r ${getRoleGradient(user.role)} text-white shadow-sm`
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center justify-center w-12 h-12 rounded-lg transition-all ${isActive
+                      ? `bg-gradient-to-r ${getRoleGradient(user.role)} text-white shadow-sm`
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     <span className="text-xs font-bold">{item.label.substring(0, 2).toUpperCase()}</span>
                   </Link>

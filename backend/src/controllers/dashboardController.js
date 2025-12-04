@@ -1,176 +1,205 @@
 // controllers/dashboardController.js
-const { db } = require('../config/db');
+const Student = require('../models/Student');
+const Teacher = require('../models/Teacher');
+const StudentFee = require('../models/StudentFee');
+const School = require('../models/School');
 
 // Get dashboard stats for school admin
-exports.getSchoolAdminStats = (req, res) => {
+exports.getSchoolAdminStats = async (req, res) => {
   const { schoolId } = req.user;
 
-  const queries = {
-    totalStudents: `SELECT COUNT(*) as count FROM students WHERE schoolId = ?`,
-    totalTeachers: `SELECT COUNT(*) as count FROM teachers WHERE schoolId = ?`,
-    pendingFees: `SELECT COUNT(*) as count FROM student_fees WHERE schoolId = ? AND status = 'pending'`,
-    totalRevenue: `SELECT COALESCE(SUM(amount), 0) as total FROM student_fees WHERE schoolId = ? AND status = 'paid' AND strftime('%Y-%m', paidDate) = strftime('%Y-%m', 'now')`
-  };
+  try {
+    const totalStudents = await Student.countDocuments({ schoolId });
+    const totalTeachers = await Teacher.countDocuments({ schoolId });
+    const pendingFees = await StudentFee.countDocuments({ schoolId, status: 'pending' });
 
-  const stats = {};
-  let completedQueries = 0;
+    // Calculate monthly revenue
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
 
-  Object.keys(queries).forEach(key => {
-    db.get(queries[key], [schoolId], (err, result) => {
-      if (err) {
-        console.error(`Error fetching ${key}:`, err);
-        stats[key] = key === 'totalRevenue' ? 0 : 0;
-      } else {
-        stats[key] = key === 'totalRevenue' ? result.total : result.count;
+    const revenueResult = await StudentFee.aggregate([
+      {
+        $match: {
+          schoolId: req.user.schoolId, // Ensure schoolId is ObjectId if stored as such
+          status: 'paid',
+          updatedAt: { $gte: startOfMonth } // Assuming paid date tracks with updatedAt or create a paidDate field
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' }
+        }
       }
+    ]);
 
-      completedQueries++;
-      if (completedQueries === Object.keys(queries).length) {
-        res.json(stats);
-      }
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+
+    res.json({
+      totalStudents,
+      totalTeachers,
+      pendingFees,
+      totalRevenue
     });
-  });
+  } catch (err) {
+    console.error('Error fetching school admin stats:', err);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 };
 
 // Get recent students
-exports.getRecentStudents = (req, res) => {
+exports.getRecentStudents = async (req, res) => {
   const { schoolId } = req.user;
   const limit = parseInt(req.query.limit) || 5;
 
-  const query = `
-    SELECT studentId, firstName, lastName, class, section, admissionDate 
-    FROM students 
-    WHERE schoolId = ? 
-    ORDER BY admissionDate DESC 
-    LIMIT ?
-  `;
+  try {
+    const students = await Student.find({ schoolId })
+      .select('studentId firstName lastName class section admissionDate')
+      .sort({ admissionDate: -1 })
+      .limit(limit);
 
-  db.all(query, [schoolId, limit], (err, students) => {
-    if (err) {
-      console.error('Error fetching recent students:', err);
-      return res.status(500).json({ error: 'Failed to fetch students' });
-    }
     res.json(students);
-  });
+  } catch (err) {
+    console.error('Error fetching recent students:', err);
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
 };
 
 // Get fee summary
-exports.getFeeSummary = (req, res) => {
+exports.getFeeSummary = async (req, res) => {
   const { schoolId } = req.user;
 
-  const query = `
-    SELECT 
-      status,
-      COUNT(*) as count,
-      COALESCE(SUM(amount), 0) as total_amount
-    FROM student_fees 
-    WHERE schoolId = ? 
-    GROUP BY status
-  `;
+  try {
+    const feeSummary = await StudentFee.aggregate([
+      { $match: { schoolId: req.user.schoolId } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          total_amount: { $sum: '$amount' }
+        }
+      },
+      {
+        $project: {
+          status: '$_id',
+          count: 1,
+          total_amount: 1,
+          _id: 0
+        }
+      }
+    ]);
 
-  db.all(query, [schoolId], (err, feeSummary) => {
-    if (err) {
-      console.error('Error fetching fee summary:', err);
-      return res.status(500).json({ error: 'Failed to fetch fee summary' });
-    }
     res.json(feeSummary);
-  });
+  } catch (err) {
+    console.error('Error fetching fee summary:', err);
+    res.status(500).json({ error: 'Failed to fetch fee summary' });
+  }
 };
 
 // Get super admin dashboard stats
-exports.getSuperAdminStats = (req, res) => {
-  const queries = {
-    totalSchools: `SELECT COUNT(*) as count FROM schools WHERE status = 'approved'`,
-    pendingRegistrations: `SELECT COUNT(*) as count FROM schools WHERE status = 'pending'`,
-    totalStudents: `SELECT COUNT(*) as count FROM students`,
-    totalTeachers: `SELECT COUNT(*) as count FROM teachers`
-  };
+exports.getSuperAdminStats = async (req, res) => {
+  try {
+    const totalSchools = await School.countDocuments({ status: 'approved' });
+    const pendingRegistrations = await School.countDocuments({ status: 'pending' });
+    const totalStudents = await Student.countDocuments();
+    const totalTeachers = await Teacher.countDocuments();
 
-  const stats = {};
-  let completedQueries = 0;
-
-  Object.keys(queries).forEach(key => {
-    db.get(queries[key], [], (err, result) => {
-      if (err) {
-        console.error(`Error fetching ${key}:`, err);
-        stats[key] = 0;
-      } else {
-        stats[key] = result.count;
-      }
-
-      completedQueries++;
-      if (completedQueries === Object.keys(queries).length) {
-        res.json(stats);
-      }
+    res.json({
+      totalSchools,
+      pendingRegistrations,
+      totalStudents,
+      totalTeachers
     });
-  });
+  } catch (err) {
+    console.error('Error fetching super admin stats:', err);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 };
 
 // Get dashboard data based on user role
-exports.getDashboardData = (req, res) => {
+exports.getDashboardData = async (req, res) => {
   const userRole = req.user.role;
 
-  switch (userRole) {
-    case 'super_admin':
-      exports.getSuperAdminStats(req, res);
-      break;
-    case 'school_admin':
-      // Get multiple data points for school admin
-      const schoolId = req.user.schoolId;
-      
-      const statsQuery = `
-        SELECT 
-          (SELECT COUNT(*) FROM students WHERE schoolId = ?) as totalStudents,
-          (SELECT COUNT(*) FROM teachers WHERE schoolId = ?) as totalTeachers,
-          (SELECT COUNT(*) FROM student_fees WHERE schoolId = ? AND status = 'pending') as pendingFees,
-          (SELECT COALESCE(SUM(amount), 0) FROM student_fees WHERE schoolId = ? AND status = 'paid' AND strftime('%Y-%m', paidDate) = strftime('%Y-%m', 'now')) as monthlyRevenue
-      `;
+  try {
+    switch (userRole) {
+      case 'super_admin':
+        await exports.getSuperAdminStats(req, res);
+        break;
 
-      db.get(statsQuery, [schoolId, schoolId, schoolId, schoolId], (err, stats) => {
-        if (err) {
-          console.error('Error fetching dashboard stats:', err);
-          return res.status(500).json({ error: 'Failed to fetch dashboard data' });
-        }
+      case 'school_admin':
+        // Get multiple data points for school admin
+        const schoolId = req.user.schoolId;
 
-        // Get recent students
-        db.all(
-          `SELECT studentId, firstName, lastName, class, section FROM students WHERE schoolId = ? ORDER BY id DESC LIMIT 5`,
-          [schoolId],
-          (err, recentStudents) => {
-            if (err) {
-              recentStudents = [];
+        const totalStudents = await Student.countDocuments({ schoolId });
+        const totalTeachers = await Teacher.countDocuments({ schoolId });
+        const pendingFees = await StudentFee.countDocuments({ schoolId, status: 'pending' });
+
+        // Monthly revenue
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const revenueResult = await StudentFee.aggregate([
+          {
+            $match: {
+              schoolId: schoolId,
+              status: 'paid',
+              updatedAt: { $gte: startOfMonth }
             }
-
-            res.json({
-              stats,
-              recentStudents,
-              role: 'school_admin'
-            });
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amount' }
+            }
           }
-        );
-      });
-      break;
+        ]);
 
-    case 'teacher':
-      res.json({
-        message: 'Teacher dashboard data',
-        role: 'teacher',
-        upcomingClasses: [],
-        recentAttendance: []
-      });
-      break;
+        const monthlyRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
-    case 'student':
-      res.json({
-        message: 'Student dashboard data',
-        role: 'student',
-        upcomingExams: [],
-        feeStatus: {},
-        attendance: {}
-      });
-      break;
+        // Recent students
+        const recentStudents = await Student.find({ schoolId })
+          .select('studentId firstName lastName class section')
+          .sort({ _id: -1 })
+          .limit(5);
 
-    default:
-      res.status(403).json({ error: 'Unknown user role' });
+        res.json({
+          stats: {
+            totalStudents,
+            totalTeachers,
+            pendingFees,
+            monthlyRevenue
+          },
+          recentStudents,
+          role: 'school_admin'
+        });
+        break;
+
+      case 'teacher':
+        res.json({
+          message: 'Teacher dashboard data',
+          role: 'teacher',
+          upcomingClasses: [],
+          recentAttendance: []
+        });
+        break;
+
+      case 'student':
+        res.json({
+          message: 'Student dashboard data',
+          role: 'student',
+          upcomingExams: [],
+          feeStatus: {},
+          attendance: {}
+        });
+        break;
+
+      default:
+        res.status(403).json({ error: 'Unknown user role' });
+    }
+  } catch (err) {
+    console.error('Error in getDashboardData:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

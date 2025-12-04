@@ -1,335 +1,544 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { AdvancedTable } from "@/components/super-admin/advanced-table"
-import { StatusBadge } from "@/components/super-admin/status-badge"
-import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
-import FormModal from "@/components/form-modal"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Building2, Users, GraduationCap, TrendingUp } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Building2,
+  Users,
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  ArrowRight,
+  MoreHorizontal,
+  Filter,
+  Download,
+  RefreshCw,
+  ShieldCheck,
+  AlertTriangle
+} from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
+
+interface School {
+  _id: string
+  schoolName: string
+  email: string
+  contactNumber: string
+  address: string
+  city: string
+  state: string
+  country: string
+  pinCode: string
+  principalName: string
+  principalEmail: string
+  principalPhone: string
+  schoolType: string
+  boardType: string
+  establishmentYear: string
+  description: string
+  totalStudents?: string
+  totalTeachers?: string
+  status: 'pending' | 'approved' | 'rejected' | 'active'
+  adminEmail?: string
+  createdAt: string
+  updatedAt: string
+}
 
 export default function InstituteManagement() {
-  const [institutes, setInstitutes] = useState([
-    { 
-      id: "1", 
-      name: "Central High School", 
-      city: "New York", 
-      students: 1234, 
-      teachers: 45,
-      status: "Active",
-      plan: "Premium",
-      email: "admin@centralhigh.edu",
-      phone: "+1 234-567-8901",
-      joinedDate: "2023-01-15",
-      revenue: 5200
-    },
-    { 
-      id: "2", 
-      name: "North Academy", 
-      city: "Boston", 
-      students: 890, 
-      teachers: 32,
-      status: "Active",
-      plan: "Basic",
-      email: "contact@northacademy.edu",
-      phone: "+1 234-567-8902",
-      joinedDate: "2023-03-22",
-      revenue: 2800
-    },
-    { 
-      id: "3", 
-      name: "South Institute", 
-      city: "Miami", 
-      students: 567, 
-      teachers: 28,
-      status: "Inactive",
-      plan: "Enterprise",
-      email: "info@southinstitute.edu",
-      phone: "+1 234-567-8903",
-      joinedDate: "2022-11-08",
-      revenue: 8500
-    },
-    { 
-      id: "4", 
-      name: "East Valley School", 
-      city: "Chicago", 
-      students: 432, 
-      teachers: 22,
-      status: "Active",
-      plan: "Basic",
-      email: "admin@eastvalley.edu",
-      phone: "+1 234-567-8904",
-      joinedDate: "2023-06-10",
-      revenue: 1200
-    },
-    { 
-      id: "5", 
-      name: "West Point Academy", 
-      city: "Seattle", 
-      students: 756, 
-      teachers: 38,
-      status: "Active",
-      plan: "Premium",
-      email: "contact@westpoint.edu",
-      phone: "+1 234-567-8905",
-      joinedDate: "2023-02-18",
-      revenue: 4800
-    },
-  ])
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ 
-    open: false, 
-    id: null 
-  })
+  const [schools, setSchools] = useState<School[]>([])
+  const [filteredSchools, setFilteredSchools] = useState<School[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const [processingId, setProcessingId] = useState<string | null>(null)
 
-  const handleAdd = (data: any) => {
-    const newInstitute = { 
-      id: Date.now().toString(), 
-      ...data,
-      joinedDate: new Date().toISOString().split('T')[0]
-    }
-    setInstitutes([...institutes, newInstitute])
-    setIsModalOpen(false)
-  }
+  // Fetch schools from backend
+  const fetchSchools = async () => {
+    try {
+      setIsLoading(true)
+      const token = localStorage.getItem('token')
 
-  const handleEdit = (id: string, data: any) => {
-    setInstitutes(institutes.map((i) => (i.id === id ? { ...i, ...data } : i)))
-    setIsModalOpen(false)
-    setEditingId(null)
-  }
+      // Using the correct endpoint that returns all schools
+      const response = await fetch('http://localhost:5000/api/schools/all', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
 
-  const handleDelete = (item: any) => {
-    setDeleteConfirm({ open: true, id: item.id })
-  }
-
-  const confirmDelete = () => {
-    if (deleteConfirm.id) {
-      setInstitutes(institutes.filter((i) => i.id !== deleteConfirm.id))
-    }
-    setDeleteConfirm({ open: false, id: null })
-  }
-
-  const handleBulkAction = (action: string, selectedIds: string[]) => {
-    if (action === "delete") {
-      setInstitutes(institutes.filter((i) => !selectedIds.includes(i.id)))
+      if (response.ok) {
+        const data = await response.json()
+        // Handle both array directly or { schools: [...] } format
+        const schoolList = Array.isArray(data) ? data : (data.schools || [])
+        setSchools(schoolList)
+        setFilteredSchools(schoolList)
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to fetch schools:", response.status, response.statusText, errorData);
+        toast.error(`Failed to load institutes: ${errorData.error || response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error fetching schools:', error)
+      toast.error("Network error. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const columns = [
-    { 
-      key: "name", 
-      label: "Institute Name",
-      render: (value: string, row: any) => (
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={`/placeholder.svg`} alt={value} />
-            <AvatarFallback>{value.substring(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-medium">{value}</p>
-            <p className="text-xs text-muted-foreground">{row.email}</p>
-          </div>
-        </div>
-      )
-    },
-    { 
-      key: "city", 
-      label: "Location" 
-    },
-    { 
-      key: "students", 
-      label: "Students",
-      render: (value: number) => (
-        <div className="flex items-center gap-1">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <span>{value.toLocaleString()}</span>
-        </div>
-      )
-    },
-    { 
-      key: "teachers", 
-      label: "Teachers",
-      render: (value: number) => (
-        <div className="flex items-center gap-1">
-          <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          <span>{value}</span>
-        </div>
-      )
-    },
-    { 
-      key: "plan", 
-      label: "Plan",
-      render: (value: string) => (
-        <StatusBadge 
-          status={value} 
-          variant={value === "Enterprise" ? "info" : value === "Premium" ? "success" : "default"}
-        />
-      )
-    },
-    { 
-      key: "status", 
-      label: "Status",
-      render: (value: string) => <StatusBadge status={value} />
-    },
-    { 
-      key: "revenue", 
-      label: "Revenue/mo",
-      render: (value: number) => `₹${value.toLocaleString()}`
-    },
-  ]
+  useEffect(() => {
+    fetchSchools()
+  }, [])
 
-  const formFields = [
-    { name: "name", label: "Institute Name", type: "text" as const, required: true },
-    { name: "email", label: "Email", type: "email" as const, required: true },
-    { name: "phone", label: "Phone", type: "text" as const, required: true },
-    { name: "plan", label: "Plan", type: "select" as const, options: [
-      { value: "Free", label: "Free" },
-      { value: "Basic", label: "Basic" },
-      { value: "Premium", label: "Premium" },
-      { value: "Enterprise", label: "Enterprise" }
-    ], required: true },
-    { name: "status", label: "Status", type: "select" as const, options: [
-      { value: "Active", label: "Active" },
-      { value: "Inactive", label: "Inactive" },
-      { value: "Suspended", label: "Suspended" }
-    ], required: true },
-    { name: "students", label: "Students", type: "number" as const, required: true },
-  ]
+  // Filter logic
+  useEffect(() => {
+    let result = schools
 
-  // Calculate stats
+    // Filter by tab
+    if (activeTab === "pending") {
+      result = result.filter(s => s.status === 'pending')
+    } else if (activeTab === "active") {
+      result = result.filter(s => s.status === 'approved' || s.status === 'active')
+    } else if (activeTab === "rejected") {
+      result = result.filter(s => s.status === 'rejected')
+    }
+
+    // Filter by search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(s =>
+        s.schoolName.toLowerCase().includes(query) ||
+        s.email.toLowerCase().includes(query) ||
+        s.city.toLowerCase().includes(query) ||
+        s.principalName.toLowerCase().includes(query)
+      )
+    }
+
+    setFilteredSchools(result)
+  }, [schools, activeTab, searchQuery])
+
+  const handleApprove = async (schoolId: string) => {
+    try {
+      setProcessingId(schoolId)
+      const token = localStorage.getItem('token')
+
+      const response = await fetch(`http://localhost:5000/api/schools/${schoolId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success("School Approved Successfully", {
+          description: "Login credentials have been sent to the administrator."
+        })
+        fetchSchools()
+      } else {
+        toast.error("Approval Failed", {
+          description: data.error || "Something went wrong."
+        })
+      }
+    } catch (error) {
+      console.error('Error approving school:', error)
+      toast.error("System Error", {
+        description: "Failed to connect to the server."
+      })
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleReject = async (schoolId: string) => {
+    const reason = prompt('Please enter the reason for rejection:')
+    if (!reason) return
+
+    try {
+      setProcessingId(schoolId)
+      const token = localStorage.getItem('token')
+
+      const response = await fetch(`http://localhost:5000/api/schools/${schoolId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+      })
+
+      if (response.ok) {
+        toast.success("School Rejected")
+        fetchSchools()
+      } else {
+        toast.error("Rejection Failed")
+      }
+    } catch (error) {
+      console.error('Error rejecting school:', error)
+      toast.error("System Error")
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  // Stats for the top cards
   const stats = {
-    total: institutes.length,
-    active: institutes.filter(i => i.status === "Active").length,
-    totalStudents: institutes.reduce((sum, i) => sum + i.students, 0),
-    totalRevenue: institutes.reduce((sum, i) => sum + i.revenue, 0)
+    total: schools.length,
+    active: schools.filter(s => s.status === 'approved' || s.status === 'active').length,
+    pending: schools.filter(s => s.status === 'pending').length,
+    rejected: schools.filter(s => s.status === 'rejected').length
   }
+
+  const pendingSchools = schools.filter(s => s.status === 'pending')
 
   return (
     <DashboardLayout title="Institute Management">
-      <div className="space-y-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Institutes</p>
-                  <p className="text-2xl font-bold mt-1">{stats.total}</p>
-                </div>
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Building2 className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Institutes</p>
-                  <p className="text-2xl font-bold mt-1">{stats.active}</p>
-                </div>
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Students</p>
-                  <p className="text-2xl font-bold mt-1">{stats.totalStudents.toLocaleString()}</p>
-                </div>
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold mt-1">₹{stats.totalRevenue.toLocaleString()}</p>
-                </div>
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="space-y-8 max-w-7xl mx-auto pb-10">
+
+        {/* Header Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCard
+            title="Total Institutes"
+            value={stats.total}
+            icon={<Building2 className="h-5 w-5 text-blue-600" />}
+            bg="bg-blue-50"
+            trend="+12% from last month"
+          />
+          <StatsCard
+            title="Active Schools"
+            value={stats.active}
+            icon={<CheckCircle className="h-5 w-5 text-emerald-600" />}
+            bg="bg-emerald-50"
+            trend="98% uptime"
+          />
+          <StatsCard
+            title="Pending Approval"
+            value={stats.pending}
+            icon={<Clock className="h-5 w-5 text-amber-600" />}
+            bg="bg-amber-50"
+            trend="Action required"
+            highlight={stats.pending > 0}
+          />
+          <StatsCard
+            title="Rejected"
+            value={stats.rejected}
+            icon={<XCircle className="h-5 w-5 text-red-600" />}
+            bg="bg-red-50"
+            trend="Due to policy violations"
+          />
         </div>
 
-        {/* Action Bar */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold">All Institutes</h2>
-            <p className="text-sm text-muted-foreground">Manage and monitor all educational institutions</p>
+        {/* Pending Approvals Section - Only shows if there are pending schools */}
+        {pendingSchools.length > 0 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Pending Approvals
+                <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-700 hover:bg-amber-100">
+                  {pendingSchools.length} Requires Action
+                </Badge>
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {pendingSchools.map((school) => (
+                <Card key={school._id} className="border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-all">
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-4">
+                        <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                          <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold">
+                            {school.schoolName.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold text-lg text-gray-900">{school.schoolName}</h3>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {school.city}, {school.state}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                            <Mail className="h-3.5 w-3.5" />
+                            {school.email}
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                        Pending Review
+                      </Badge>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-4 text-sm bg-gray-50 p-3 rounded-lg">
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wider">Principal</span>
+                        <span className="font-medium text-gray-900">{school.principalName}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wider">Established</span>
+                        <span className="font-medium text-gray-900">{school.establishmentYear}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wider">Type</span>
+                        <span className="font-medium text-gray-900">{school.schoolType} ({school.boardType})</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wider">Applied</span>
+                        <span className="font-medium text-gray-900">{new Date(school.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-5">
+                      <Button
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                        onClick={() => handleApprove(school._id)}
+                        disabled={processingId === school._id}
+                      >
+                        {processingId === school._id ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                        )}
+                        Approve & Onboard
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => handleReject(school._id)}
+                        disabled={processingId === school._id}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Reject
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-          <Button
-            onClick={() => {
-              setEditingId(null)
-              setIsModalOpen(true)
-            }}
-          >
-            <Building2 className="h-4 w-4 mr-2" />
-            Add New Institute
-          </Button>
+        )}
+
+        {/* Main Content Area */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-xl font-semibold text-gray-900">All Institutes</h2>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search institutes..."
+                  className="pl-9 bg-white"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Button variant="outline" size="icon">
+                <Filter className="h-4 w-4 text-gray-600" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={fetchSchools}>
+                <RefreshCw className={`h-4 w-4 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+
+          <Card className="border-none shadow-sm bg-white/50 backdrop-blur-sm">
+            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="px-6 pt-6 border-b">
+                <TabsList className="bg-transparent p-0 h-auto space-x-6">
+                  <TabTrigger value="all" label="All Institutes" count={stats.total} />
+                  <TabTrigger value="active" label="Active" count={stats.active} activeColor="text-emerald-600" />
+                  <TabTrigger value="pending" label="Pending" count={stats.pending} activeColor="text-amber-600" />
+                  <TabTrigger value="rejected" label="Rejected" count={stats.rejected} activeColor="text-red-600" />
+                </TabsList>
+              </div>
+
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                    <RefreshCw className="h-8 w-8 animate-spin mb-2 text-blue-500" />
+                    <p>Loading institutes...</p>
+                  </div>
+                ) : filteredSchools.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                    <div className="bg-gray-100 p-4 rounded-full mb-4">
+                      <Building2 className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900">No institutes found</h3>
+                    <p className="text-sm max-w-sm text-center mt-1">
+                      {searchQuery ? `No results matching "${searchQuery}"` : "Get started by registering a new school."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-gray-50/50 text-gray-500 font-medium border-b">
+                        <tr>
+                          <th className="px-6 py-4">Institute Name</th>
+                          <th className="px-6 py-4">Location</th>
+                          <th className="px-6 py-4">Principal</th>
+                          <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4">Joined</th>
+                          <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredSchools.map((school) => (
+                          <tr key={school._id} className="hover:bg-gray-50/50 transition-colors group">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9 border border-gray-200">
+                                  <AvatarFallback className="bg-gray-100 text-gray-600 text-xs font-medium">
+                                    {school.schoolName.substring(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-gray-900">{school.schoolName}</p>
+                                  <p className="text-xs text-gray-500">{school.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-600">
+                              {school.city}, {school.state}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col">
+                                <span className="text-gray-900">{school.principalName}</span>
+                                <span className="text-xs text-gray-500">{school.principalPhone}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <StatusBadge status={school.status} />
+                            </td>
+                            <td className="px-6 py-4 text-gray-500">
+                              {new Date(school.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem>View Details</DropdownMenuItem>
+                                  <DropdownMenuItem>Edit Information</DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {school.status === 'pending' && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleApprove(school._id)} className="text-emerald-600">
+                                        Approve Registration
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleReject(school._id)} className="text-red-600">
+                                        Reject Registration
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {school.status === 'approved' && (
+                                    <DropdownMenuItem className="text-red-600">Suspend Access</DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Tabs>
+          </Card>
         </div>
-
-        {/* Advanced Table */}
-        <AdvancedTable
-          columns={columns}
-          data={institutes}
-          searchable={true}
-          searchPlaceholder="Search by name, city, or email..."
-          filterable={true}
-          filterOptions={[
-            { key: "status", label: "Status", options: ["Active", "Inactive"] },
-            { key: "plan", label: "Plan", options: ["Basic", "Premium", "Enterprise"] }
-          ]}
-          selectable={true}
-          onEdit={(item) => {
-            setEditingId(item.id)
-            setIsModalOpen(true)
-          }}
-          onDelete={handleDelete}
-          onBulkAction={handleBulkAction}
-          pageSize={10}
-          emptyMessage="No institutes found. Add your first institute to get started."
-        />
-
-        {/* Edit/Add Modal */}
-        <FormModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false)
-            setEditingId(null)
-          }}
-          onSubmit={(data) => (editingId ? handleEdit(editingId, data) : handleAdd(data))}
-          fields={formFields}
-          title={editingId ? "Edit Institute" : "Add New Institute"}
-          initialData={editingId ? institutes.find((i) => i.id === editingId) : {}}
-        />
-
-        {/* Delete Confirmation */}
-        <ConfirmationDialog
-          open={deleteConfirm.open}
-          onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
-          title="Delete Institute"
-          description="Are you sure you want to delete this institute? This action cannot be undone and will remove all associated data."
-          onConfirm={confirmDelete}
-          confirmText="Delete"
-          variant="destructive"
-        />
       </div>
     </DashboardLayout>
+  )
+}
+
+// Helper Components
+
+function StatsCard({ title, value, icon, bg, trend, highlight = false }: any) {
+  return (
+    <Card className={`border-none shadow-sm transition-all hover:shadow-md ${highlight ? 'ring-2 ring-amber-500 ring-offset-2' : ''}`}>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`p-2 rounded-lg ${bg}`}>
+            {icon}
+          </div>
+          <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+            {trend}
+          </span>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <h3 className="text-2xl font-bold text-gray-900 mt-1">{value}</h3>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function TabTrigger({ value, label, count, activeColor = "text-blue-600" }: any) {
+  return (
+    <TabsTrigger
+      value={value}
+      className={`
+        relative pb-4 rounded-none border-b-2 border-transparent 
+        data-[state=active]:border-blue-600 data-[state=active]:bg-transparent 
+        data-[state=active]:shadow-none px-0 font-medium text-gray-500 
+        hover:text-gray-700 transition-all
+        data-[state=active]:${activeColor}
+      `}
+    >
+      {label}
+      <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
+        {count}
+      </span>
+    </TabsTrigger>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles = {
+    pending: "bg-amber-50 text-amber-700 border-amber-200",
+    approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    rejected: "bg-red-50 text-red-700 border-red-200",
+    suspended: "bg-gray-100 text-gray-700 border-gray-200"
+  }
+
+  const icons = {
+    pending: <Clock className="h-3 w-3 mr-1" />,
+    approved: <CheckCircle className="h-3 w-3 mr-1" />,
+    active: <ShieldCheck className="h-3 w-3 mr-1" />,
+    rejected: <XCircle className="h-3 w-3 mr-1" />,
+    suspended: <AlertTriangle className="h-3 w-3 mr-1" />
+  }
+
+  const key = status.toLowerCase() as keyof typeof styles
+
+  return (
+    <Badge variant="outline" className={`${styles[key] || styles.suspended} font-normal`}>
+      {icons[key]}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
   )
 }

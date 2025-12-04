@@ -4,10 +4,11 @@ export interface NavItem {
   label: string
   href: string
   icon?: string
+  subItems?: NavItem[]
 }
 
 export const navigationByRole: Record<UserRole, NavItem[]> = {
-  admin: [
+  school_admin: [
     { label: "Dashboard", href: "/dashboard/admin" },
     { label: "My Profile", href: "/dashboard/admin/profile" },
     { label: "System Setting", href: "/dashboard/admin/system-setting" },
@@ -16,7 +17,46 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Student Info", href: "/dashboard/admin/student-info" },
     { label: "Examinations", href: "/dashboard/admin/examinations" },
     { label: "Report", href: "/dashboard/admin/report" },
-    { label: "Front Office", href: "/dashboard/admin/front-office" },
+    {
+      label: "Front Office",
+      href: "/dashboard/admin/front-office",
+      subItems: [
+        { label: "Admission Enquiry", href: "/dashboard/admin/front-office/admission-enquiry" },
+        { label: "Visitors Book", href: "/dashboard/admin/front-office/visitors-book" },
+        { label: "Postal Exchange", href: "/dashboard/admin/front-office/postal-exchange" },
+        { label: "Complain", href: "/dashboard/admin/front-office/complain" },
+        { label: "Setup Front Office", href: "/dashboard/admin/front-office/setup" },
+        { label: "Gate Pass", href: "/dashboard/admin/front-office/gate-pass" },
+        { label: "Entrance Examination Form", href: "/dashboard/admin/front-office/entrance-exam" },
+      ]
+    },
+    {
+      label: "Fees Collection",
+      href: "/dashboard/admin/fees-collection",
+      subItems: [
+        { label: "Collect Fee", href: "/dashboard/admin/fees-collection/collect-fee" },
+        { label: "Payment Receipt", href: "/dashboard/admin/fees-collection/payment-receipt" },
+        { label: "Online Admission Fee", href: "/dashboard/admin/fees-collection/online-admission-fee" },
+        { label: "Demand Notice", href: "/dashboard/admin/fees-collection/demand-notice" },
+        { label: "Fees Carry Forward", href: "/dashboard/admin/fees-collection/fees-carry-forward" },
+        { label: "Fee Discount", href: "/dashboard/admin/fees-collection/fee-discount" },
+        { label: "Fee Master", href: "/dashboard/admin/fees-collection/fee-master" },
+        { label: "Fees Group", href: "/dashboard/admin/fees-collection/fees-group" },
+        { label: "Fees Types", href: "/dashboard/admin/fees-collection/fees-types" },
+        { label: "Fee Follow Up", href: "/dashboard/admin/fees-collection/fee-follow-up" },
+        { label: "Cheques", href: "/dashboard/admin/fees-collection/cheques" },
+        { label: "Fees Reports", href: "/dashboard/admin/fees-collection/fees-reports" },
+      ]
+    },
+    {
+      label: "Income",
+      href: "/dashboard/admin/income",
+      subItems: [
+        { label: "Add Income", href: "/dashboard/admin/income/add-income" },
+        { label: "Search Income", href: "/dashboard/admin/income/search-income" },
+        { label: "Income Head", href: "/dashboard/admin/income/income-head" },
+      ]
+    },
     { label: "Inventory", href: "/dashboard/admin/inventory" },
     { label: "Library", href: "/dashboard/admin/library" },
     { label: "Transport", href: "/dashboard/admin/transport" },
@@ -72,7 +112,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Consent Letter", href: "/dashboard/parent/consent-letter" },
     { label: "Digital Notice Board", href: "/dashboard/parent/notice-board" },
   ],
-  "super-admin": [
+  "super_admin": [
     { label: "Dashboard", href: "/dashboard/super-admin" },
     { label: "Institute Management", href: "/dashboard/super-admin/institute-management" },
     { label: "SaaS Plan Management", href: "/dashboard/super-admin/saas-plans" },

@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { initDB } = require('./src/config/db');
-const { generateDummyData } = require('./src/config/initDummyData');
+const { seedDatabase } = require('./src/config/seed');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,6 +17,7 @@ initDB();
 
 // Import routes
 const authRoutes = require('./src/routes/auth');
+const otpRoutes = require('./src/routes/otp');
 const schoolRegistrationRoutes = require('./src/routes/schoolRegistration');
 const studentRoutes = require('./src/routes/students');
 const teacherRoutes = require('./src/routes/teachers');
@@ -28,6 +29,7 @@ const dashboardRoutes = require('./src/routes/dashboard');
 
 // Use routes
 app.use('/api/auth', authRoutes);
+app.use('/api/otp', otpRoutes);
 app.use('/api/schools', schoolRegistrationRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
@@ -39,12 +41,14 @@ app.use('/api/dashboard', dashboardRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'Frontiar ERP Backend is running',
+  res.json({
+    status: 'OK',
+    message: 'Frontier ERP Backend is running',
     timestamp: new Date().toISOString(),
     routes: [
       '/api/auth/login',
+      '/api/otp/send-otp',
+      '/api/otp/verify-otp',
       '/api/schools/register',
       '/api/students',
       '/api/teachers',
@@ -57,25 +61,25 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Generate dummy data after a delay
+// Seed database after a delay
 setTimeout(() => {
-  generateDummyData();
+  seedDatabase();
 }, 2000);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 SQLite database initialized`);
+  console.log(`🍃 MongoDB initialized`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`👤 Super Admin: superadmin@frontierlms.com / admin123`);
-  console.log(`🏫 Demo School Admin: admin@frontier.edu / admin123`);
   console.log('\n📋 Available API Routes:');
-  console.log('   POST /api/auth/login');
-  console.log('   POST /api/schools/register');
-  console.log('   GET  /api/students');
-  console.log('   GET  /api/teachers');
-  console.log('   GET  /api/fees');
-  console.log('   GET  /api/transport');
-  console.log('   GET  /api/attendance');
-  console.log('   GET  /api/exams');
-  console.log('   GET  /api/dashboard');
+  console.log('   POST /api/otp/send-otp - Send OTP for login');
+  console.log('   POST /api/otp/verify-otp - Verify OTP and login');
+  console.log('   POST /api/schools/register - Register new school');
+  console.log('   GET  /api/students - Get students');
+  console.log('   GET  /api/teachers - Get teachers');
+  console.log('   GET  /api/fees - Get fees');
+  console.log('   GET  /api/transport - Get transport routes');
+  console.log('   GET  /api/attendance - Get attendance');
+  console.log('   GET  /api/exams - Get exams');
+  console.log('   GET  /api/dashboard - Get dashboard data');
+  console.log('\n🔐 OTP-based authentication enabled');
 });

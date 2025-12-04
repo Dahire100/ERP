@@ -1,0 +1,39 @@
+const mongoose = require('mongoose');
+
+const userSchema = new mongoose.Schema({
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
+    },
+    passwordHash: {
+        type: String,
+        required: true
+    },
+    role: {
+        type: String,
+        enum: ['super_admin', 'school_admin', 'teacher', 'parent', 'student'],
+        required: true
+    },
+    firstName: String,
+    lastName: String,
+    phone: String,
+    schoolId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'School'
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    canChangePassword: {
+        type: Boolean,
+        default: true
+    },
+    lastLogin: Date
+}, {
+    timestamps: true
+});
+
+module.exports = mongoose.model('User', userSchema);

@@ -7,11 +7,15 @@ const {
   approveRegistration,
   rejectRegistration,
   getPendingRegistrations,
-  getAllRegistrations
+  getAllRegistrations,
+  autoApproveSchool,
+  autoRejectSchool,
+  getActiveSchools
 } = require('../controllers/schoolRegistrationController');
 
 // Public route for school registration
 router.post('/register', registerSchool);
+router.get('/active', getActiveSchools);
 
 // Protected routes for super admin
 router.use(authenticateToken);
@@ -21,5 +25,9 @@ router.get('/pending', getPendingRegistrations);
 router.get('/all', getAllRegistrations);
 router.post('/approve', approveRegistration);
 router.post('/reject', rejectRegistration);
+
+// New auto-approve and auto-reject routes
+router.post('/:schoolId/approve', autoApproveSchool);
+router.post('/:schoolId/reject', autoRejectSchool);
 
 module.exports = router;

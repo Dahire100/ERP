@@ -1,23 +1,22 @@
 // controllers/transportController.js
-const { db } = require('../config/db');
+const TransportRoute = require('../models/TransportRoute');
+const Student = require('../models/Student');
 
 // Get all transport routes
-exports.getTransportRoutes = (req, res) => {
+exports.getTransportRoutes = async (req, res) => {
   const { schoolId } = req.user;
 
-  const query = `SELECT * FROM transport_routes WHERE schoolId = ? ORDER BY routeName`;
-
-  db.all(query, [schoolId], (err, routes) => {
-    if (err) {
-      console.error('Error fetching transport routes:', err);
-      return res.status(500).json({ error: 'Failed to fetch transport routes' });
-    }
+  try {
+    const routes = await TransportRoute.find({ schoolId }).sort({ routeName: 1 });
     res.json(routes);
-  });
+  } catch (err) {
+    console.error('Error fetching transport routes:', err);
+    res.status(500).json({ error: 'Failed to fetch transport routes' });
+  }
 };
 
 // Add transport route
-exports.addTransportRoute = (req, res) => {
+exports.addTransportRoute = async (req, res) => {
   const { schoolId } = req.user;
   const { routeName, busNumber, driverName, driverPhone, fee } = req.body;
 
@@ -25,97 +24,103 @@ exports.addTransportRoute = (req, res) => {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
-  const query = `
-    INSERT INTO transport_routes (routeName, busNumber, driverName, driverPhone, fee, schoolId)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
+  try {
+    const newRoute = new TransportRoute({
+      routeName,
+      vehicleNumber: busNumber, // Mapping busNumber to vehicleNumber as per schema
+      driverName,
+      driverPhone,
+      routeCharge: fee, // Mapping fee to routeCharge as per schema
+      schoolId
+    });
 
-  db.run(query, [routeName, busNumber, driverName, driverPhone, fee, schoolId], function(err) {
-    if (err) {
-      console.error('Error adding transport route:', err);
-      return res.status(500).json({ error: 'Failed to add transport route' });
-    }
+    await newRoute.save();
 
     res.status(201).json({
       message: 'Transport route added successfully',
-      routeId: this.lastID
+      routeId: newRoute._id
     });
-  });
+  } catch (err) {
+    console.error('Error adding transport route:', err);
+    res.status(500).json({ error: 'Failed to add transport route' });
+  }
 };
 
 // Update transport route
-exports.updateTransportRoute = (req, res) => {
+exports.updateTransportRoute = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
   const updates = req.body;
 
+  // Map frontend fields to schema fields
+  const fieldMapping = {
+    'busNumber': 'vehicleNumber',
+    'fee': 'routeCharge'
+  };
+
   const allowedFields = ['routeName', 'busNumber', 'driverName', 'driverPhone', 'fee'];
-  const setClause = [];
-  const values = [];
+  const updateData = {};
 
   allowedFields.forEach(field => {
     if (updates[field] !== undefined) {
-      setClause.push(`${field} = ?`);
-      values.push(updates[field]);
+      const schemaField = fieldMapping[field] || field;
+      updateData[schemaField] = updates[field];
     }
   });
 
-  if (setClause.length === 0) {
+  if (Object.keys(updateData).length === 0) {
     return res.status(400).json({ error: 'No valid fields to update' });
   }
 
-  values.push(id, schoolId);
+  try {
+    const route = await TransportRoute.findOneAndUpdate(
+      { _id: id, schoolId },
+      { $set: updateData },
+      { new: true }
+    );
 
-  const query = `UPDATE transport_routes SET ${setClause.join(', ')} WHERE id = ? AND schoolId = ?`;
-
-  db.run(query, values, function(err) {
-    if (err) {
-      console.error('Error updating transport route:', err);
-      return res.status(500).json({ error: 'Failed to update transport route' });
-    }
-    if (this.changes === 0) {
+    if (!route) {
       return res.status(404).json({ error: 'Transport route not found' });
     }
     res.json({ message: 'Transport route updated successfully' });
-  });
+  } catch (err) {
+    console.error('Error updating transport route:', err);
+    res.status(500).json({ error: 'Failed to update transport route' });
+  }
 };
 
 // Delete transport route
-exports.deleteTransportRoute = (req, res) => {
+exports.deleteTransportRoute = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
 
-  const query = `DELETE FROM transport_routes WHERE id = ? AND schoolId = ?`;
-
-  db.run(query, [id, schoolId], function(err) {
-    if (err) {
-      console.error('Error deleting transport route:', err);
-      return res.status(500).json({ error: 'Failed to delete transport route' });
-    }
-    if (this.changes === 0) {
+  try {
+    const route = await TransportRoute.findOneAndDelete({ _id: id, schoolId });
+    if (!route) {
       return res.status(404).json({ error: 'Transport route not found' });
     }
     res.json({ message: 'Transport route deleted successfully' });
-  });
+  } catch (err) {
+    console.error('Error deleting transport route:', err);
+    res.status(500).json({ error: 'Failed to delete transport route' });
+  }
 };
 
 // Get students by transport route
-exports.getStudentsByRoute = (req, res) => {
+exports.getStudentsByRoute = async (req, res) => {
   const { schoolId } = req.user;
   const { route } = req.params;
 
-  const query = `
-    SELECT s.studentId, s.firstName, s.lastName, s.class, s.section, s.phone, s.parentPhone
-    FROM students s
-    WHERE s.schoolId = ? AND s.transportRoute = ?
-    ORDER BY s.class, s.section, s.firstName
-  `;
+  try {
+    // Assuming 'transportRoute' in Student model stores the route name or ID
+    // The original code used route name matching
+    const students = await Student.find({ schoolId, transportRoute: route })
+      .select('studentId firstName lastName class section phone parentPhone')
+      .sort({ class: 1, section: 1, firstName: 1 });
 
-  db.all(query, [schoolId, route], (err, students) => {
-    if (err) {
-      console.error('Error fetching students by route:', err);
-      return res.status(500).json({ error: 'Failed to fetch students' });
-    }
     res.json(students);
-  });
+  } catch (err) {
+    console.error('Error fetching students by route:', err);
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
 };

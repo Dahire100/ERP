@@ -11,8 +11,15 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      // Fixed: Proper template literal syntax
-      router.push(`/dashboard/${user.role}`)
+      const roleRoutes: Record<string, string> = {
+        super_admin: "/dashboard/super-admin",
+        school_admin: "/dashboard/admin",
+        teacher: "/dashboard/teacher",
+        student: "/dashboard/student",
+        parent: "/dashboard/parent",
+      }
+      const targetPath = roleRoutes[user.role] || `/dashboard/${user.role}`
+      router.push(targetPath)
     }
   }, [user, isLoading, router])
 

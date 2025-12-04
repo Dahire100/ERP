@@ -1,115 +1,119 @@
 // controllers/examsController.js
-const { db } = require('../config/db');
+const Exam = require('../models/Exam');
+const ExamResult = require('../models/ExamResult');
+const Student = require('../models/Student');
 
 // Get all exams
-exports.getAllExams = (req, res) => {
+exports.getAllExams = async (req, res) => {
   const { schoolId } = req.user;
   const { class: studentClass } = req.query;
 
-  let query = `SELECT * FROM exams WHERE schoolId = ?`;
-  let params = [schoolId];
+  try {
+    const query = { schoolId };
+    if (studentClass) query.class = studentClass;
 
-  if (studentClass) {
-    query += ` AND class = ?`;
-    params.push(studentClass);
-  }
-
-  query += ` ORDER BY examDate DESC`;
-
-  db.all(query, params, (err, exams) => {
-    if (err) {
-      console.error('Error fetching exams:', err);
-      return res.status(500).json({ error: 'Failed to fetch exams' });
-    }
+    const exams = await Exam.find(query).sort({ date: -1 });
     res.json(exams);
-  });
+  } catch (err) {
+    console.error('Error fetching exams:', err);
+    res.status(500).json({ error: 'Failed to fetch exams' });
+  }
 };
 
 // Add exam
-exports.addExam = (req, res) => {
+exports.addExam = async (req, res) => {
   const { schoolId } = req.user;
-  const { examName, class: studentClass, subject, examDate, totalMarks } = req.body;
+  const { examName, class: studentClass, subject, examDate, totalMarks, startTime, endTime } = req.body;
 
   if (!examName || !studentClass || !subject || !examDate || !totalMarks) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
-  const query = `
-    INSERT INTO exams (examName, class, subject, examDate, totalMarks, schoolId)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
+  try {
+    const newExam = new Exam({
+      examName,
+      class: studentClass,
+      subject,
+      date: examDate,
+      startTime: startTime || '09:00', // Default if not provided
+      endTime: endTime || '12:00', // Default if not provided
+      totalMarks,
+      schoolId
+    });
 
-  db.run(query, [examName, studentClass, subject, examDate, totalMarks, schoolId], function(err) {
-    if (err) {
-      console.error('Error adding exam:', err);
-      return res.status(500).json({ error: 'Failed to add exam' });
-    }
+    await newExam.save();
 
     res.status(201).json({
       message: 'Exam added successfully',
-      examId: this.lastID
+      examId: newExam._id
     });
-  });
+  } catch (err) {
+    console.error('Error adding exam:', err);
+    res.status(500).json({ error: 'Failed to add exam' });
+  }
 };
 
 // Update exam
-exports.updateExam = (req, res) => {
+exports.updateExam = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
   const updates = req.body;
 
-  const allowedFields = ['examName', 'class', 'subject', 'examDate', 'totalMarks'];
-  const setClause = [];
-  const values = [];
+  const allowedFields = ['examName', 'class', 'subject', 'examDate', 'totalMarks', 'startTime', 'endTime'];
+  const updateData = {};
 
   allowedFields.forEach(field => {
     if (updates[field] !== undefined) {
-      setClause.push(`${field} = ?`);
-      values.push(updates[field]);
+      // Map examDate to date for schema
+      const schemaField = field === 'examDate' ? 'date' : field;
+      updateData[schemaField] = updates[field];
     }
   });
 
-  if (setClause.length === 0) {
+  if (Object.keys(updateData).length === 0) {
     return res.status(400).json({ error: 'No valid fields to update' });
   }
 
-  values.push(id, schoolId);
+  try {
+    const exam = await Exam.findOneAndUpdate(
+      { _id: id, schoolId },
+      { $set: updateData },
+      { new: true }
+    );
 
-  const query = `UPDATE exams SET ${setClause.join(', ')} WHERE id = ? AND schoolId = ?`;
-
-  db.run(query, values, function(err) {
-    if (err) {
-      console.error('Error updating exam:', err);
-      return res.status(500).json({ error: 'Failed to update exam' });
-    }
-    if (this.changes === 0) {
+    if (!exam) {
       return res.status(404).json({ error: 'Exam not found' });
     }
     res.json({ message: 'Exam updated successfully' });
-  });
+  } catch (err) {
+    console.error('Error updating exam:', err);
+    res.status(500).json({ error: 'Failed to update exam' });
+  }
 };
 
 // Delete exam
-exports.deleteExam = (req, res) => {
+exports.deleteExam = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
 
-  const query = `DELETE FROM exams WHERE id = ? AND schoolId = ?`;
-
-  db.run(query, [id, schoolId], function(err) {
-    if (err) {
-      console.error('Error deleting exam:', err);
-      return res.status(500).json({ error: 'Failed to delete exam' });
-    }
-    if (this.changes === 0) {
+  try {
+    const exam = await Exam.findOneAndDelete({ _id: id, schoolId });
+    if (!exam) {
       return res.status(404).json({ error: 'Exam not found' });
     }
+
+    // Also delete associated results
+    await ExamResult.deleteMany({ examId: id, schoolId });
+
     res.json({ message: 'Exam deleted successfully' });
-  });
+  } catch (err) {
+    console.error('Error deleting exam:', err);
+    res.status(500).json({ error: 'Failed to delete exam' });
+  }
 };
 
 // Add exam result
-exports.addResult = (req, res) => {
+exports.addResult = async (req, res) => {
   const { schoolId } = req.user;
   const { examId, studentId, marksObtained, grade, remarks } = req.body;
 
@@ -117,76 +121,88 @@ exports.addResult = (req, res) => {
     return res.status(400).json({ error: 'Exam ID, Student ID, and marks are required' });
   }
 
-  // Verify exam and student belong to the same school
-  const verifyQuery = `
-    SELECT 1 FROM exams e 
-    JOIN students s ON e.class = s.class 
-    WHERE e.id = ? AND s.id = ? AND e.schoolId = ? AND s.schoolId = ?
-  `;
+  try {
+    // Verify exam and student belong to the same school
+    const exam = await Exam.findOne({ _id: examId, schoolId });
+    const student = await Student.findOne({ _id: studentId, schoolId });
 
-  db.get(verifyQuery, [examId, studentId, schoolId, schoolId], (err, result) => {
-    if (err || !result) {
+    if (!exam || !student) {
       return res.status(400).json({ error: 'Invalid exam or student' });
     }
 
-    const insertQuery = `
-      INSERT OR REPLACE INTO results (studentId, examId, marksObtained, grade, remarks, schoolId)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
+    // Check if student class matches exam class
+    if (exam.class !== student.class) {
+      return res.status(400).json({ error: 'Student class does not match exam class' });
+    }
 
-    db.run(insertQuery, [studentId, examId, marksObtained, grade, remarks, schoolId], function(err) {
-      if (err) {
-        console.error('Error adding result:', err);
-        return res.status(500).json({ error: 'Failed to add result' });
-      }
+    // Update or insert result
+    await ExamResult.findOneAndUpdate(
+      { examId, studentId, schoolId },
+      { marksObtained, grade, remarks },
+      { upsert: true, new: true }
+    );
 
-      res.json({ message: 'Result added successfully' });
-    });
-  });
+    res.json({ message: 'Result added successfully' });
+  } catch (err) {
+    console.error('Error adding result:', err);
+    res.status(500).json({ error: 'Failed to add result' });
+  }
 };
 
 // Get exam results
-exports.getExamResults = (req, res) => {
+exports.getExamResults = async (req, res) => {
   const { schoolId } = req.user;
   const { examId } = req.params;
 
-  const query = `
-    SELECT r.*, s.studentId, s.firstName, s.lastName, s.class, s.section,
-           e.examName, e.subject, e.totalMarks
-    FROM results r
-    JOIN students s ON r.studentId = s.id
-    JOIN exams e ON r.examId = e.id
-    WHERE r.schoolId = ? AND r.examId = ?
-    ORDER BY s.rollNumber
-  `;
+  try {
+    const results = await ExamResult.find({ schoolId, examId })
+      .populate('studentId', 'studentId firstName lastName class section rollNumber')
+      .populate('examId', 'examName subject totalMarks')
+      .sort({ 'studentId.rollNumber': 1 });
 
-  db.all(query, [schoolId, examId], (err, results) => {
-    if (err) {
-      console.error('Error fetching results:', err);
-      return res.status(500).json({ error: 'Failed to fetch results' });
-    }
-    res.json(results);
-  });
+    // Transform data to match expected format
+    const formattedResults = results.map(r => ({
+      ...r.toObject(),
+      studentId: r.studentId._id, // Keep original ID field
+      firstName: r.studentId.firstName,
+      lastName: r.studentId.lastName,
+      class: r.studentId.class,
+      section: r.studentId.section,
+      rollNumber: r.studentId.rollNumber,
+      examName: r.examId.examName,
+      subject: r.examId.subject,
+      totalMarks: r.examId.totalMarks
+    }));
+
+    res.json(formattedResults);
+  } catch (err) {
+    console.error('Error fetching results:', err);
+    res.status(500).json({ error: 'Failed to fetch results' });
+  }
 };
 
 // Get student results
-exports.getStudentResults = (req, res) => {
+exports.getStudentResults = async (req, res) => {
   const { schoolId } = req.user;
   const { studentId } = req.params;
 
-  const query = `
-    SELECT r.*, e.examName, e.subject, e.examDate, e.totalMarks
-    FROM results r
-    JOIN exams e ON r.examId = e.id
-    WHERE r.schoolId = ? AND r.studentId = ?
-    ORDER BY e.examDate DESC
-  `;
+  try {
+    const results = await ExamResult.find({ schoolId, studentId })
+      .populate('examId', 'examName subject date totalMarks')
+      .sort({ 'examId.date': -1 });
 
-  db.all(query, [schoolId, studentId], (err, results) => {
-    if (err) {
-      console.error('Error fetching student results:', err);
-      return res.status(500).json({ error: 'Failed to fetch student results' });
-    }
-    res.json(results);
-  });
+    // Transform data
+    const formattedResults = results.map(r => ({
+      ...r.toObject(),
+      examName: r.examId.examName,
+      subject: r.examId.subject,
+      examDate: r.examId.date,
+      totalMarks: r.examId.totalMarks
+    }));
+
+    res.json(formattedResults);
+  } catch (err) {
+    console.error('Error fetching student results:', err);
+    res.status(500).json({ error: 'Failed to fetch student results' });
+  }
 };

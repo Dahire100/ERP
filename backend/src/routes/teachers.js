@@ -2,25 +2,25 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, requireSchoolAdmin } = require('../middleware/auth');
-const { db } = require('../config/db');
+const Teacher = require('../models/Teacher');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
 // Get all teachers
-const getAllTeachers = (req, res) => {
+const getAllTeachers = async (req, res) => {
   const { schoolId } = req.user;
 
-  const query = `SELECT * FROM teachers WHERE schoolId = ? ORDER BY firstName, lastName`;
-
-  db.all(query, [schoolId], (err, teachers) => {
-    if (err) {
-      console.error('Error fetching teachers:', err);
-      return res.status(500).json({ error: 'Failed to fetch teachers' });
-    }
+  try {
+    const teachers = await Teacher.find({ schoolId }).sort({ firstName: 1, lastName: 1 });
     res.json(teachers);
-  });
+  } catch (err) {
+    console.error('Error fetching teachers:', err);
+    res.status(500).json({ error: 'Failed to fetch teachers' });
+  }
 };
 
 // Add teacher
-const addTeacher = (req, res) => {
+const addTeacher = async (req, res) => {
   const { schoolId } = req.user;
   const {
     firstName, lastName, email, phone, qualification, subjects,
@@ -31,105 +31,99 @@ const addTeacher = (req, res) => {
     return res.status(400).json({ error: 'First name, last name, email, and subjects are required' });
   }
 
-  const teacherId = `TCH${schoolId.toString().padStart(3, '0')}${Date.now().toString().slice(-4)}`;
+  const teacherId = `TCH${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
 
-  const query = `
-    INSERT INTO teachers (
+  try {
+    const newTeacher = new Teacher({
       teacherId, firstName, lastName, email, phone, qualification, subjects,
       joiningDate, address, salary, schoolId
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+    });
 
-  db.run(query, [
-    teacherId, firstName, lastName, email, phone, qualification, subjects,
-    joiningDate, address, salary, schoolId
-  ], function(err) {
-    if (err) {
-      console.error('Error adding teacher:', err);
-      return res.status(500).json({ error: 'Failed to add teacher' });
-    }
+    await newTeacher.save();
 
     // Create user account for teacher
-    const userQuery = `
-      INSERT INTO users (email, passwordHash, role, firstName, lastName, schoolId, isActive)
-      VALUES (?, ?, 'teacher', ?, ?, ?, 1)
-    `;
-    
     const teacherPassword = 'teacher123';
-    const hashedPassword = require('bcryptjs').hashSync(teacherPassword, 10);
+    const hashedPassword = bcrypt.hashSync(teacherPassword, 10);
 
-    db.run(userQuery, [email, hashedPassword, firstName, lastName, schoolId]);
+    await User.create({
+      email,
+      passwordHash: hashedPassword,
+      role: 'teacher',
+      firstName,
+      lastName,
+      schoolId,
+      isActive: true
+    });
 
     res.status(201).json({
       message: 'Teacher added successfully',
       teacher: {
-        id: this.lastID,
+        id: newTeacher._id,
         teacherId,
         name: `${firstName} ${lastName}`,
         email
       }
     });
-  });
+  } catch (err) {
+    console.error('Error adding teacher:', err);
+    res.status(500).json({ error: 'Failed to add teacher' });
+  }
 };
 
 // Update teacher
-const updateTeacher = (req, res) => {
+const updateTeacher = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
   const updates = req.body;
 
   const allowedFields = [
-    'firstName', 'lastName', 'email', 'phone', 'qualification', 
+    'firstName', 'lastName', 'email', 'phone', 'qualification',
     'subjects', 'joiningDate', 'address', 'salary'
   ];
 
-  const setClause = [];
-  const values = [];
-
+  const updateData = {};
   allowedFields.forEach(field => {
     if (updates[field] !== undefined) {
-      setClause.push(`${field} = ?`);
-      values.push(updates[field]);
+      updateData[field] = updates[field];
     }
   });
 
-  if (setClause.length === 0) {
+  if (Object.keys(updateData).length === 0) {
     return res.status(400).json({ error: 'No valid fields to update' });
   }
 
-  values.push(id, schoolId);
+  try {
+    const teacher = await Teacher.findOneAndUpdate(
+      { _id: id, schoolId },
+      { $set: updateData },
+      { new: true }
+    );
 
-  const query = `UPDATE teachers SET ${setClause.join(', ')} WHERE id = ? AND schoolId = ?`;
-
-  db.run(query, values, function(err) {
-    if (err) {
-      console.error('Error updating teacher:', err);
-      return res.status(500).json({ error: 'Failed to update teacher' });
-    }
-    if (this.changes === 0) {
+    if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
     res.json({ message: 'Teacher updated successfully' });
-  });
+  } catch (err) {
+    console.error('Error updating teacher:', err);
+    res.status(500).json({ error: 'Failed to update teacher' });
+  }
 };
 
 // Delete teacher
-const deleteTeacher = (req, res) => {
+const deleteTeacher = async (req, res) => {
   const { schoolId } = req.user;
   const { id } = req.params;
 
-  const query = `DELETE FROM teachers WHERE id = ? AND schoolId = ?`;
-
-  db.run(query, [id, schoolId], function(err) {
-    if (err) {
-      console.error('Error deleting teacher:', err);
-      return res.status(500).json({ error: 'Failed to delete teacher' });
-    }
-    if (this.changes === 0) {
+  try {
+    const teacher = await Teacher.findOneAndDelete({ _id: id, schoolId });
+    if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
     res.json({ message: 'Teacher deleted successfully' });
-  });
+  } catch (err) {
+    console.error('Error deleting teacher:', err);
+    res.status(500).json({ error: 'Failed to delete teacher' });
+  }
 };
 
 router.use(authenticateToken);
