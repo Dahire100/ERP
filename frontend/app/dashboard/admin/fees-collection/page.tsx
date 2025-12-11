@@ -15,15 +15,17 @@ import {
     PhoneCall,
     CreditCard,
     BarChart,
-    ArrowRight
+    ArrowRight,
+    Home,
+    Search
 } from "lucide-react"
 import Link from "next/link"
 
 export default function FeesCollection() {
     const modules = [
         {
-            title: "Collect Fee",
-            description: "Collect fees from students",
+            title: "Fee Collection",
+            description: "Collect and record payments",
             icon: <Banknote className="h-8 w-8 text-green-600" />,
             href: "/dashboard/admin/fees-collection/collect-fee",
             color: "bg-green-50 border-green-100"
@@ -71,6 +73,13 @@ export default function FeesCollection() {
             color: "bg-indigo-50 border-indigo-100"
         },
         {
+            title: "Fee Installments",
+            description: "Plan and manage installment schedules",
+            icon: <ArrowRightCircle className="h-8 w-8 text-orange-600" />,
+            href: "/dashboard/admin/fees-collection/fee-installments",
+            color: "bg-orange-50 border-orange-100"
+        },
+        {
             title: "Fees Group",
             description: "Create and manage fee groups",
             icon: <Users className="h-8 w-8 text-teal-600" />,
@@ -92,6 +101,41 @@ export default function FeesCollection() {
             color: "bg-yellow-50 border-yellow-100"
         },
         {
+            title: "Student Wise Fees",
+            description: "Review fee ledger per student",
+            icon: <Users className="h-8 w-8 text-blue-600" />,
+            href: "/dashboard/admin/fees-collection/student-wise-fees",
+            color: "bg-blue-50 border-blue-100"
+        },
+        {
+            title: "Transport Fees",
+            description: "Assign and monitor transport dues",
+            icon: <Globe className="h-8 w-8 text-cyan-600" />,
+            href: "/dashboard/admin/fees-collection/transport-fees",
+            color: "bg-cyan-50 border-cyan-100"
+        },
+        {
+            title: "Hostel Fees",
+            description: "Manage hostel fee schedules",
+            icon: <Home className="h-8 w-8 text-purple-600" />,
+            href: "/dashboard/admin/fees-collection/hostel-fees",
+            color: "bg-purple-50 border-purple-100"
+        },
+        {
+            title: "Concessions / Waivers",
+            description: "Approve waivers and concessions",
+            icon: <Percent className="h-8 w-8 text-emerald-600" />,
+            href: "/dashboard/admin/fees-collection/concessions-waivers",
+            color: "bg-emerald-50 border-emerald-100"
+        },
+        {
+            title: "Previous Year Balance",
+            description: "Bring forward prior year balances",
+            icon: <ArrowRight className="h-8 w-8 text-orange-700" />,
+            href: "/dashboard/admin/fees-collection/previous-year-balance",
+            color: "bg-orange-50 border-orange-100"
+        },
+        {
             title: "Cheques",
             description: "Manage cheque payments and status",
             icon: <CreditCard className="h-8 w-8 text-slate-600" />,
@@ -99,8 +143,29 @@ export default function FeesCollection() {
             color: "bg-slate-50 border-slate-100"
         },
         {
+            title: "Cheque Bounce Management",
+            description: "Record bounced cheques & penalties",
+            icon: <AlertCircle className="h-8 w-8 text-red-600" />,
+            href: "/dashboard/admin/fees-collection/cheque-bounce",
+            color: "bg-red-50 border-red-100"
+        },
+        {
+            title: "Due Fee Report",
+            description: "Instant list of pending dues",
+            icon: <Search className="h-8 w-8 text-indigo-600" />,
+            href: "/dashboard/admin/fees-collection/due-fee-report",
+            color: "bg-indigo-50 border-indigo-100"
+        },
+        {
+            title: "Defaulters List",
+            description: "Track chronic non-payers",
+            icon: <AlertCircle className="h-8 w-8 text-amber-600" />,
+            href: "/dashboard/admin/fees-collection/defaulters-list",
+            color: "bg-amber-50 border-amber-100"
+        },
+        {
             title: "Fees Reports",
-            description: "View and generate fee collection reports",
+            description: "Daily, monthly, and class-wise analytics",
             icon: <BarChart className="h-8 w-8 text-emerald-600" />,
             href: "/dashboard/admin/fees-collection/fees-reports",
             color: "bg-emerald-50 border-emerald-100"

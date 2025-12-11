@@ -95,7 +95,9 @@ export default function SchoolLoginPage() {
             }
 
             const redirectRoute = roleRoutes[data.user.role] || "/dashboard/admin"
-            router.push(redirectRoute)
+            
+            // Use window.location for hard navigation
+            window.location.href = redirectRoute
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Login failed")
         } finally {

@@ -1,0 +1,64 @@
+// routes/studentPortal.js
+const express = require('express');
+const router = express.Router();
+const studentPortalController = require('../controllers/studentPortalController');
+const { verifyToken } = require('../middleware/auth');
+const { verifyRole } = require('../middleware/roleAuth');
+
+// Dashboard
+router.get('/dashboard', verifyToken, verifyRole(['student']), studentPortalController.getStudentDashboard);
+
+// Profile
+router.get('/profile', verifyToken, verifyRole(['student']), studentPortalController.getStudentProfile);
+router.put('/profile', verifyToken, verifyRole(['student']), studentPortalController.updateStudentProfile);
+
+// Attendance
+router.get('/attendance', verifyToken, verifyRole(['student']), studentPortalController.getStudentAttendance);
+
+// Homework
+router.get('/homework', verifyToken, verifyRole(['student']), studentPortalController.getStudentHomework);
+router.post('/homework/:homeworkId/submit', verifyToken, verifyRole(['student']), studentPortalController.submitHomework);
+
+// Assignments
+router.get('/assignments', verifyToken, verifyRole(['student']), studentPortalController.getStudentAssignments);
+router.post('/assignments/:assignmentId/submit', verifyToken, verifyRole(['student']), studentPortalController.submitAssignment);
+
+// Exams
+router.get('/exams', verifyToken, verifyRole(['student']), studentPortalController.getStudentExams);
+router.get('/results', verifyToken, verifyRole(['student']), studentPortalController.getStudentResults);
+
+// Fees
+router.get('/fees', verifyToken, verifyRole(['student']), studentPortalController.getStudentFees);
+
+// Timetable
+router.get('/timetable', verifyToken, verifyRole(['student']), studentPortalController.getStudentTimetable);
+
+// Online Classes
+router.get('/online-classes', verifyToken, verifyRole(['student']), studentPortalController.getStudentOnlineClasses);
+
+// Leave Requests
+router.get('/leave-requests', verifyToken, verifyRole(['student']), studentPortalController.getStudentLeaveRequests);
+
+// Progress Reports
+router.get('/progress', verifyToken, verifyRole(['student']), studentPortalController.getStudentProgress);
+
+// Notices
+router.get('/notices', verifyToken, verifyRole(['student']), studentPortalController.getStudentNotices);
+
+// Complaints
+router.post('/complaints', verifyToken, verifyRole(['student']), studentPortalController.submitComplaint);
+router.get('/complaints', verifyToken, verifyRole(['student']), studentPortalController.getStudentComplaints);
+
+// Certificates
+router.get('/certificates', verifyToken, verifyRole(['student']), studentPortalController.getStudentCertificates);
+
+// Events
+router.get('/events', verifyToken, verifyRole(['student']), studentPortalController.getSchoolEvents);
+router.post('/events/:eventId/register', verifyToken, verifyRole(['student']), studentPortalController.registerForEvent);
+
+// Quizzes
+router.get('/quizzes', verifyToken, verifyRole(['student']), studentPortalController.getStudentQuizzes);
+router.get('/quizzes/:quizId/start', verifyToken, verifyRole(['student']), studentPortalController.startQuiz);
+router.post('/quizzes/:quizId/submit', verifyToken, verifyRole(['student']), studentPortalController.submitQuiz);
+
+module.exports = router;

@@ -76,10 +76,18 @@ export default function InstituteManagement() {
       setIsLoading(true)
       const token = localStorage.getItem('token')
 
+      if (!token) {
+        toast.error("Please login to continue")
+        // Redirect to login
+        window.location.href = '/login'
+        return
+      }
+
       // Using the correct endpoint that returns all schools
       const response = await fetch('http://localhost:5000/api/schools/all', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       })
 
@@ -89,6 +97,16 @@ export default function InstituteManagement() {
         const schoolList = Array.isArray(data) ? data : (data.schools || [])
         setSchools(schoolList)
         setFilteredSchools(schoolList)
+      } else if (response.status === 401 || response.status === 403) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Authentication failed:", response.status, errorData);
+        toast.error("Session expired. Please login again.");
+        // Clear invalid token and redirect
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1500)
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error("Failed to fetch schools:", response.status, response.statusText, errorData);
@@ -96,7 +114,7 @@ export default function InstituteManagement() {
       }
     } catch (error) {
       console.error('Error fetching schools:', error)
-      toast.error("Network error. Please try again.")
+      toast.error("Network error. Please check your connection and try again.")
     } finally {
       setIsLoading(false)
     }

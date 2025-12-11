@@ -7,7 +7,9 @@ import { StatusBadge } from "@/components/super-admin/status-badge"
 import { AdvancedTable } from "@/components/super-admin/advanced-table"
 import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Book, BookOpen, Users, AlertCircle, Plus } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Book, BookOpen, Users, AlertCircle, Plus, ClipboardList, RotateCcw, CheckSquare, History, Bookmark } from "lucide-react"
+import Link from "next/link"
 import FormModal from "@/components/form-modal"
 
 interface LibraryBook {
@@ -169,6 +171,31 @@ export default function Library() {
   return (
     <DashboardLayout title="Library">
       <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { title: "Book Catalog", description: "Manage all books", icon: <Book className="h-6 w-6 text-indigo-600" />, href: "/dashboard/admin/library/book-catalog" },
+            { title: "Book Issue", description: "Issue books to students", icon: <ClipboardList className="h-6 w-6 text-green-600" />, href: "/dashboard/admin/library/book-issue" },
+            { title: "Book Return", description: "Process returns", icon: <RotateCcw className="h-6 w-6 text-orange-600" />, href: "/dashboard/admin/library/book-return" },
+            { title: "Book Availability", description: "Check availability", icon: <CheckSquare className="h-6 w-6 text-emerald-600" />, href: "/dashboard/admin/library/book-availability" },
+            { title: "Student History", description: "Borrow history per student", icon: <History className="h-6 w-6 text-amber-600" />, href: "/dashboard/admin/library/student-history" },
+            { title: "Book Reservation", description: "Reserve titles", icon: <Bookmark className="h-6 w-6 text-purple-600" />, href: "/dashboard/admin/library/book-reservation" },
+          ].map((module, idx) => (
+            <Link key={idx} href={module.href}>
+              <Card className="border hover:shadow-md transition-all h-full">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2 bg-gray-50 rounded-lg">{module.icon}</div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardTitle className="text-base">{module.title}</CardTitle>
+                  <CardDescription>{module.description}</CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-semibold">Library Management</h2>

@@ -54,3 +54,6 @@ exports.requireSchoolAdmin = (req, res, next) => {
   }
   next();
 };
+
+// Alias for consistency with newer routes
+exports.verifyToken = exports.authenticateToken;

@@ -32,6 +32,20 @@ export default function Income() {
             icon: <Wallet className="h-8 w-8 text-purple-600" />,
             href: "/dashboard/admin/income/income-head",
             color: "bg-purple-50 border-purple-100"
+        },
+        {
+            title: "Income List",
+            description: "View all income entries",
+            icon: <Search className="h-8 w-8 text-amber-600" />,
+            href: "/dashboard/admin/income/income-list",
+            color: "bg-amber-50 border-amber-100"
+        },
+        {
+            title: "Income Report",
+            description: "Summaries and totals",
+            icon: <ArrowRight className="h-8 w-8 text-indigo-600" />,
+            href: "/dashboard/admin/income/income-report",
+            color: "bg-indigo-50 border-indigo-100"
         }
     ]
 

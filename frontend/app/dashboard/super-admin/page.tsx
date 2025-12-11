@@ -1,6 +1,7 @@
 "use client"
 
 import DashboardLayout from "@/components/dashboard-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -25,6 +26,14 @@ import {
 import Link from "next/link"
 
 export default function SuperAdminDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={["super_admin"]}>
+      <SuperAdminDashboardContent />
+    </ProtectedRoute>
+  )
+}
+
+function SuperAdminDashboardContent() {
   // Mock data with trends
   const stats = [
     {

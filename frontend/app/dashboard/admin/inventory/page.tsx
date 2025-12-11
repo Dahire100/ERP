@@ -7,7 +7,9 @@ import { StatusBadge } from "@/components/super-admin/status-badge"
 import { AdvancedTable } from "@/components/super-admin/advanced-table"
 import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Package, TrendingDown, AlertTriangle, CheckCircle, Plus } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Package, TrendingDown, AlertTriangle, CheckCircle, Plus, ClipboardList, ArrowUpDown, Factory, BarChart2 } from "lucide-react"
+import Link from "next/link"
 import FormModal from "@/components/form-modal"
 
 interface InventoryItem {
@@ -163,6 +165,29 @@ export default function Inventory() {
   return (
     <DashboardLayout title="Inventory">
       <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { title: "Item Master", description: "Catalog items", icon: <ClipboardList className="h-6 w-6 text-indigo-600" />, href: "/dashboard/admin/inventory/item-master" },
+            { title: "Stock In/Out", description: "Record movements", icon: <ArrowUpDown className="h-6 w-6 text-emerald-600" />, href: "/dashboard/admin/inventory/stock-in-out" },
+            { title: "Vendor Management", description: "Suppliers & contacts", icon: <Factory className="h-6 w-6 text-orange-600" />, href: "/dashboard/admin/inventory/vendor-management" },
+            { title: "Stock Reports", description: "View stock analytics", icon: <BarChart2 className="h-6 w-6 text-purple-600" />, href: "/dashboard/admin/inventory/stock-reports" },
+          ].map((module, idx) => (
+            <Link key={idx} href={module.href}>
+              <Card className="border hover:shadow-md transition-all h-full">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="p-2 bg-gray-50 rounded-lg">{module.icon}</div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardTitle className="text-base">{module.title}</CardTitle>
+                  <CardDescription>{module.description}</CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-semibold">Inventory Management</h2>
