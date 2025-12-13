@@ -11,8 +11,13 @@ import { Users } from "lucide-react"
 import { toast } from "sonner"
 
 const sample = [
+<<<<<<< HEAD
   { id: 1, name: "Rohit Sharma", purpose: "Admission Enquiry", contact: "9876543210", inTime: "10:15", outTime: "10:45", createdBy: "Demo" },
   { id: 2, name: "Meena Rao", purpose: "Meet Teacher", contact: "9998887777", inTime: "11:00", outTime: "11:20", createdBy: "Super" }
+=======
+  { id: 1, name: "Rohit Sharma", purpose: "Admission Enquiry", contact: "9876543210", inTime: "10:15", outTime: "10:45" },
+  { id: 2, name: "Meena Rao", purpose: "Meet Teacher", contact: "9998887777", inTime: "11:00", outTime: "11:20" }
+>>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
 ]
 
 export default function VisitorLog() {
@@ -25,7 +30,11 @@ export default function VisitorLog() {
       toast.error("Name, purpose, contact, and in time are required")
       return
     }
+<<<<<<< HEAD
     setRows([...rows, { id: Date.now(), ...form, createdBy: "Admin" }])
+=======
+    setRows([...rows, { id: Date.now(), ...form }])
+>>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
     toast.success("Visitor added")
     setForm({ name: "", purpose: "", contact: "", inTime: "", outTime: "" })
   }
@@ -84,10 +93,15 @@ export default function VisitorLog() {
                       <TableHead className="font-bold text-gray-700 uppercase">Name</TableHead>
                       <TableHead className="font-bold text-gray-700 uppercase">Purpose</TableHead>
                       <TableHead className="font-bold text-gray-700 uppercase">Contact</TableHead>
+<<<<<<< HEAD
                       <TableHead className="font-bold text-gray-700 uppercase">In Time</TableHead>
                       <TableHead className="font-bold text-gray-700 uppercase">Out Time</TableHead>
                       <TableHead className="font-bold text-gray-700 uppercase">Created By</TableHead>
                       <TableHead className="font-bold text-gray-700 uppercase">Action</TableHead>
+=======
+                      <TableHead className="font-bold text-gray-700 uppercase">In</TableHead>
+                      <TableHead className="font-bold text-gray-700 uppercase">Out</TableHead>
+>>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -98,6 +112,7 @@ export default function VisitorLog() {
                         <TableCell>{row.contact}</TableCell>
                         <TableCell>{row.inTime}</TableCell>
                         <TableCell>{row.outTime || "-"}</TableCell>
+<<<<<<< HEAD
                         {/* @ts-ignore */}
                         <TableCell>{row.createdBy || "Admin"}</TableCell>
                         <TableCell>
@@ -105,6 +120,8 @@ export default function VisitorLog() {
                             Action <span className="ml-2">▼</span>
                           </Button>
                         </TableCell>
+=======
+>>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
                       </TableRow>
                     ))}
                   </TableBody>

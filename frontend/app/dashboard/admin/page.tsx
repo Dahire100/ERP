@@ -9,9 +9,15 @@ import { MiniChart } from "@/components/super-admin/mini-chart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
+<<<<<<< HEAD
   Users,
   BookOpen,
   IndianRupee,
+=======
+  Users, 
+  BookOpen, 
+  IndianRupee, 
+>>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
   GraduationCap,
   TrendingUp,
   TrendingDown,
@@ -27,8 +33,12 @@ import {
   MessageSquare,
   CheckCircle,
   Clock,
+<<<<<<< HEAD
   PieChart,
   Shield
+=======
+  PieChart
+>>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
 } from "lucide-react"
 import {
   Select,
