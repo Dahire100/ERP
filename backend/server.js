@@ -27,6 +27,30 @@ const attendanceRoutes = require('./src/routes/attendance');
 const examsRoutes = require('./src/routes/exams');
 const dashboardRoutes = require('./src/routes/dashboard');
 
+// Admin portal routes
+const classRoutes = require('./src/routes/classes');
+const subjectRoutes = require('./src/routes/subjects');
+const homeworkRoutes = require('./src/routes/homework');
+const noticeRoutes = require('./src/routes/notices');
+const expenseRoutes = require('./src/routes/expenses');
+const incomeRoutes = require('./src/routes/income');
+const timetableRoutes = require('./src/routes/timetable');
+const libraryRoutes = require('./src/routes/library');
+const hostelRoutes = require('./src/routes/hostel');
+
+// Teacher & Parent portal routes
+const teacherPortalRoutes = require('./src/routes/teacher');
+const parentPortalRoutes = require('./src/routes/parent');
+const communicationRoutes = require('./src/routes/communication');
+const onlineClassRoutes = require('./src/routes/onlineClass');
+const leaveRoutes = require('./src/routes/leave');
+
+// Student portal routes
+const studentPortalRoutes = require('./src/routes/studentPortal');
+
+// Certificate routes
+const certificateRoutes = require('./src/routes/certificates');
+
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/otp', otpRoutes);
@@ -38,6 +62,28 @@ app.use('/api/transport', transportRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/exams', examsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Admin portal routes
+app.use('/api/classes', classRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/homework', homeworkRoutes);
+app.use('/api/notices', noticeRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/income', incomeRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/library', libraryRoutes);
+app.use('/api/hostel', hostelRoutes);
+app.use('/api/certificates', certificateRoutes);
+
+// Teacher & Parent portal routes
+app.use('/api/teacher', teacherPortalRoutes);
+app.use('/api/parent', parentPortalRoutes);
+app.use('/api/messages', communicationRoutes);
+app.use('/api/online-classes', onlineClassRoutes);
+app.use('/api/leave-requests', leaveRoutes);
+
+// Student portal routes
+app.use('/api/student', studentPortalRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -56,7 +102,22 @@ app.get('/api/health', (req, res) => {
       '/api/transport',
       '/api/attendance',
       '/api/exams',
-      '/api/dashboard'
+      '/api/dashboard',
+      '/api/classes',
+      '/api/subjects',
+      '/api/homework',
+      '/api/notices',
+      '/api/expenses',
+      '/api/income',
+      '/api/timetable',
+      '/api/library',
+      '/api/hostel',
+      '/api/teacher',
+      '/api/parent',
+      '/api/messages',
+      '/api/online-classes',
+      '/api/leave-requests',
+      '/api/student'
     ]
   });
 });
@@ -70,16 +131,20 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🍃 MongoDB initialized`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log('\n📋 Available API Routes:');
+  console.log('\n📋 Core API Routes:');
   console.log('   POST /api/otp/send-otp - Send OTP for login');
   console.log('   POST /api/otp/verify-otp - Verify OTP and login');
   console.log('   POST /api/schools/register - Register new school');
-  console.log('   GET  /api/students - Get students');
-  console.log('   GET  /api/teachers - Get teachers');
-  console.log('   GET  /api/fees - Get fees');
-  console.log('   GET  /api/transport - Get transport routes');
-  console.log('   GET  /api/attendance - Get attendance');
-  console.log('   GET  /api/exams - Get exams');
   console.log('   GET  /api/dashboard - Get dashboard data');
+  console.log('\n📚 Admin Portal Routes:');
+  console.log('   GET  /api/classes - Class management');
+  console.log('   GET  /api/subjects - Subject management');
+  console.log('   GET  /api/homework - Homework management');
+  console.log('   GET  /api/notices - Notice board');
+  console.log('   GET  /api/expenses - Expense tracking');
+  console.log('   GET  /api/income - Income tracking');
+  console.log('   GET  /api/timetable - Timetable management');
+  console.log('   GET  /api/library - Library management');
+  console.log('   GET  /api/hostel - Hostel management');
   console.log('\n🔐 OTP-based authentication enabled');
 });

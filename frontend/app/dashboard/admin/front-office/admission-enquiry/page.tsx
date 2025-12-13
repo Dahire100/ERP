@@ -23,6 +23,12 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
     Table,
     TableBody,
     TableCell,
@@ -31,7 +37,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, Search, Trash2, Upload, Download, Calendar } from "lucide-react"
+import { Plus, Search, Trash2, Upload, Download, Calendar, FileText, Receipt } from "lucide-react"
 import { toast } from "sonner"
 
 interface EnquiryData {
@@ -47,6 +53,8 @@ interface EnquiryData {
     nextFollowUpDate: string
     status: string
     createdBy: string
+    lastClassPercentage?: string
+    aadharNumber?: string
 }
 
 export default function AdmissionEnquiry() {
@@ -71,7 +79,9 @@ export default function AdmissionEnquiry() {
             lastFollowUpDate: "",
             nextFollowUpDate: "",
             status: "Active",
-            createdBy: "Demo"
+            createdBy: "Demo",
+            lastClassPercentage: "20",
+            aadharNumber: "1234567891"
         },
         {
             id: 2,
@@ -85,7 +95,9 @@ export default function AdmissionEnquiry() {
             lastFollowUpDate: "",
             nextFollowUpDate: "",
             status: "Active",
-            createdBy: "Demo"
+            createdBy: "Demo",
+            lastClassPercentage: "2nd",
+            aadharNumber: "1215588422"
         }
     ])
 
@@ -142,7 +154,9 @@ export default function AdmissionEnquiry() {
             lastFollowUpDate: "",
             nextFollowUpDate: "",
             status: "Active",
-            createdBy: "Admin"
+            createdBy: "Admin",
+            lastClassPercentage: formData.lastClassPercentage,
+            aadharNumber: formData.aadharNumber
         }
 
         setEnquiries([...enquiries, newEnquiry])
@@ -555,6 +569,9 @@ export default function AdmissionEnquiry() {
                                         <TableHead>NEXT FOLLOW UP DATE</TableHead>
                                         <TableHead>STATUS</TableHead>
                                         <TableHead>CREATED BY</TableHead>
+                                        <TableHead>LAST CLASS PERCENTAGE</TableHead>
+                                        <TableHead>AADHAR NUMBER</TableHead>
+                                        <TableHead>ACTION</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -574,12 +591,30 @@ export default function AdmissionEnquiry() {
                                             <TableCell>{enquiry.enquiryDate}</TableCell>
                                             <TableCell>{enquiry.lastFollowUpDate || "-"}</TableCell>
                                             <TableCell>{enquiry.nextFollowUpDate || "-"}</TableCell>
-                                            <TableCell>
-                                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                                                    {enquiry.status}
-                                                </span>
-                                            </TableCell>
+                                            <TableCell>{enquiry.status}</TableCell>
                                             <TableCell>{enquiry.createdBy}</TableCell>
+                                            <TableCell>{enquiry.lastClassPercentage || "-"}</TableCell>
+                                            <TableCell>{enquiry.aadharNumber || "-"}</TableCell>
+                                            <TableCell>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538]">
+                                                            Action <span className="ml-2">▼</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem>
+                                                            <Receipt className="h-4 w-4 mr-2" /> Payment Receipt
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem>
+                                                            <FileText className="h-4 w-4 mr-2" /> Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-red-600">
+                                                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>

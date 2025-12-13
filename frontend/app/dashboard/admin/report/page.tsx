@@ -198,7 +198,9 @@ export default function Report() {
               { value: "Academic Report", label: "Academic Report" },
               { value: "Attendance Report", label: "Attendance Report" },
               { value: "Fee Report", label: "Fee Report" },
-              { value: "Performance Report", label: "Performance Report" }
+              { value: "Performance Report", label: "Performance Report" },
+              { value: "Topic Report", label: "Topic Report" },
+              { value: "Lesson Planner Report", label: "Lesson Planner Report" }
             ], required: true },
             { name: "class", label: "Class", type: "text" as const, required: true },
             { name: "generatedDate", label: "Generated Date", type: "date" as const, required: true },

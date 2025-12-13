@@ -4,13 +4,11 @@ import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
   Users,
-  BookOpen,
-  Send,
-  Inbox,
+  PhoneCall,
+  Mail,
   MessageSquare,
-  Settings,
-  CreditCard,
-  FileText,
+  ClipboardList,
+  BookOpen,
   ArrowRight
 } from "lucide-react"
 import Link from "next/link"
@@ -18,53 +16,53 @@ import Link from "next/link"
 export default function FrontOffice() {
   const modules = [
     {
-      title: "Admission Enquiry",
-      description: "Manage student admission enquiries and follow-ups",
-      icon: <Users className="h-8 w-8 text-blue-600" />,
-      href: "/dashboard/admin/front-office/admission-enquiry",
-      color: "bg-blue-50 border-blue-100"
-    },
-    {
-      title: "Visitors Book",
-      description: "Track visitors entering and leaving the campus",
-      icon: <BookOpen className="h-8 w-8 text-emerald-600" />,
-      href: "/dashboard/admin/front-office/visitors-book",
+      title: "Visitor Log",
+      description: "Track visitors entering and leaving campus",
+      icon: <Users className="h-8 w-8 text-emerald-600" />,
+      href: "/dashboard/admin/front-office/visitor-log",
       color: "bg-emerald-50 border-emerald-100"
     },
     {
-      title: "Postal Exchange",
-      description: "Manage incoming and outgoing postal mail",
-      icon: <Send className="h-8 w-8 text-purple-600" />,
-      href: "/dashboard/admin/front-office/postal-exchange",
-      color: "bg-purple-50 border-purple-100"
+      title: "Enquiry Management",
+      description: "Manage admission and general enquiries",
+      icon: <ClipboardList className="h-8 w-8 text-blue-600" />,
+      href: "/dashboard/admin/front-office/enquiry-management",
+      color: "bg-blue-50 border-blue-100"
     },
     {
-      title: "Complain",
-      description: "Manage complaints from students, parents, and staff",
+      title: "Phone Call Log",
+      description: "Log inbound/outbound calls",
+      icon: <PhoneCall className="h-8 w-8 text-orange-600" />,
+      href: "/dashboard/admin/front-office/phone-call-log",
+      color: "bg-orange-50 border-orange-100"
+    },
+    {
+      title: "Complaint Register",
+      description: "Register and track complaints",
       icon: <MessageSquare className="h-8 w-8 text-red-600" />,
-      href: "/dashboard/admin/front-office/complain",
+      href: "/dashboard/admin/front-office/complaint-register",
       color: "bg-red-50 border-red-100"
     },
     {
-      title: "Setup Front Office",
-      description: "Configure front office settings and categories",
-      icon: <Settings className="h-8 w-8 text-gray-600" />,
-      href: "/dashboard/admin/front-office/setup",
-      color: "bg-gray-50 border-gray-100"
+      title: "Postal Receive/Dispatch",
+      description: "Manage incoming and outgoing mail",
+      icon: <Mail className="h-8 w-8 text-purple-600" />,
+      href: "/dashboard/admin/front-office/postal-receive-dispatch",
+      color: "bg-purple-50 border-purple-100"
     },
     {
-      title: "Gate Pass",
-      description: "Issue and manage gate passes for students/staff",
-      icon: <CreditCard className="h-8 w-8 text-indigo-600" />,
-      href: "/dashboard/admin/front-office/gate-pass",
-      color: "bg-indigo-50 border-indigo-100"
-    },
-    {
-      title: "Entrance Exam Form",
-      description: "Manage entrance examination forms and applications",
-      icon: <FileText className="h-8 w-8 text-cyan-600" />,
-      href: "/dashboard/admin/front-office/entrance-exam",
+      title: "Legacy Visitors Book",
+      description: "Existing visitors book (optional)",
+      icon: <BookOpen className="h-8 w-8 text-cyan-600" />,
+      href: "/dashboard/admin/front-office/visitors-book",
       color: "bg-cyan-50 border-cyan-100"
+    },
+    {
+      title: "Legacy Admission Enquiry",
+      description: "Existing admission enquiry screen",
+      icon: <ClipboardList className="h-8 w-8 text-amber-600" />,
+      href: "/dashboard/admin/front-office/admission-enquiry",
+      color: "bg-amber-50 border-amber-100"
     }
   ]
 

@@ -1,6 +1,7 @@
 "use client"
 
 import DashboardLayout from "@/components/dashboard-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,10 +16,23 @@ import {
   BookOpen, 
   TrendingUp,
   Award,
-  Clock
+  Clock,
+  CreditCard,
+  FileText,
+  BookOpenCheck,
+  GraduationCap,
+  Laptop
 } from "lucide-react"
 
 export default function ParentDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={["parent"]}>
+      <ParentDashboardContent />
+    </ProtectedRoute>
+  )
+}
+
+function ParentDashboardContent() {
   const children = [
     { 
       id: 1,
@@ -56,6 +70,18 @@ export default function ParentDashboard() {
   const totalFees = fees.reduce((sum, fee) => sum + fee.amount, 0)
   const paidFees = fees.filter(f => f.status === "Paid").reduce((sum, fee) => sum + fee.amount, 0)
   const pendingFees = totalFees - paidFees
+
+  const quickLinks = [
+    { title: "Fee Payments", icon: CreditCard, href: "/dashboard/parent/fees" },
+    { title: "Fee Receipts", icon: FileText, href: "/dashboard/parent/fees" },
+    { title: "Exam Schedule", icon: Calendar, href: "/dashboard/parent/examinations" },
+    { title: "Result Card", icon: GraduationCap, href: "/dashboard/parent/report" },
+    { title: "Homework", icon: BookOpenCheck, href: "/dashboard/parent/homework" },
+    { title: "Attendance", icon: Clock, href: "/dashboard/parent/attendance" },
+    { title: "Notices", icon: Bell, href: "/dashboard/parent/notice-board" },
+    { title: "Messages", icon: MessageSquare, href: "/dashboard/parent/communicate" },
+    { title: "Online Class Links", icon: Laptop, href: "/dashboard/parent/transport" },
+  ]
 
   return (
     <DashboardLayout title="Parent Dashboard">
@@ -263,27 +289,17 @@ export default function ParentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Button className="w-full justify-start h-auto py-4" variant="outline">
-                <div className="flex flex-col items-start gap-1">
-                  <MessageSquare className="h-5 w-5 mb-1" />
-                  <span className="font-semibold">Message Teachers</span>
-                  <span className="text-xs text-muted-foreground">Send messages</span>
-                </div>
-              </Button>
-              <Button className="w-full justify-start h-auto py-4" variant="outline">
-                <div className="flex flex-col items-start gap-1">
-                  <BookOpen className="h-5 w-5 mb-1" />
-                  <span className="font-semibold">View Homework</span>
-                  <span className="text-xs text-muted-foreground">Check assignments</span>
-                </div>
-              </Button>
-              <Button className="w-full justify-start h-auto py-4" variant="outline">
-                <div className="flex flex-col items-start gap-1">
-                  <Calendar className="h-5 w-5 mb-1" />
-                  <span className="font-semibold">School Calendar</span>
-                  <span className="text-xs text-muted-foreground">View events</span>
-                </div>
-              </Button>
+              {quickLinks.map((link) => (
+                <Button key={link.title} className="w-full justify-start h-auto py-4" variant="outline" asChild>
+                  <a href={link.href}>
+                    <div className="flex flex-col items-start gap-1">
+                      <link.icon className="h-5 w-5 mb-1" />
+                      <span className="font-semibold">{link.title}</span>
+                      <span className="text-xs text-muted-foreground">{link.title}</span>
+                    </div>
+                  </a>
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>

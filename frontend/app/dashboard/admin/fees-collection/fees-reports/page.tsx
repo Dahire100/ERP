@@ -26,6 +26,27 @@ export default function FeesReports() {
             color: "bg-white border-gray-200"
         },
         {
+            title: "DAILY COLLECTION",
+            description: "Day wise receipts",
+            icon: <BarChart className="h-8 w-8 text-emerald-500" />,
+            href: "/dashboard/admin/fees-collection/fees-reports/daily",
+            color: "bg-white border-gray-200"
+        },
+        {
+            title: "MONTHLY COLLECTION",
+            description: "Month wise summary",
+            icon: <BarChart className="h-8 w-8 text-blue-500" />,
+            href: "/dashboard/admin/fees-collection/fees-reports/monthly",
+            color: "bg-white border-gray-200"
+        },
+        {
+            title: "CLASS-WISE REPORT",
+            description: "Class and section totals",
+            icon: <Users className="h-8 w-8 text-purple-500" />,
+            href: "/dashboard/admin/fees-collection/fees-reports/class-wise",
+            color: "bg-white border-gray-200"
+        },
+        {
             title: "SEARCH DUE FEES",
             description: "Search Due Fees",
             icon: <Search className="h-8 w-8 text-teal-500" />,

@@ -44,6 +44,12 @@ interface ComplainData {
     email: string
     date: string
     assigned: string
+    status: string
+    note: string
+    description: string
+    reply: string
+    replyAttachment: string
+    replyBy: string
 }
 
 export default function Complain() {
@@ -66,7 +72,13 @@ export default function Complain() {
             mobileNumber: "1234456789",
             email: "nikhil@gmail.com",
             date: "05-11-2025",
-            assigned: "Chaitnya Jain"
+            assigned: "Chaitnya Jain",
+            status: "Requested",
+            note: "Check last week consumption",
+            description: "Lunch not enough for children",
+            reply: "",
+            replyAttachment: "",
+            replyBy: ""
         },
         {
             id: 2,
@@ -79,7 +91,13 @@ export default function Complain() {
             mobileNumber: "1234456789",
             email: "nikhil@gmail.com",
             date: "05-11-2025",
-            assigned: "Chaitnya Jain"
+            assigned: "Chaitnya Jain",
+            status: "Pending",
+            note: "Checking details",
+            description: "Staff behavior issue",
+            reply: "",
+            replyAttachment: "",
+            replyBy: ""
         }
     ])
 
@@ -125,7 +143,13 @@ export default function Complain() {
             mobileNumber: formData.mobileNumber,
             email: formData.email,
             date: new Date(formData.date).toLocaleDateString('en-GB'),
-            assigned: formData.assigned
+            assigned: formData.assigned,
+            status: "Requested",
+            note: formData.previousNote,
+            description: formData.description,
+            reply: "",
+            replyAttachment: "",
+            replyBy: ""
         }
 
         setComplains([...complains, newComplain])
@@ -401,7 +425,13 @@ export default function Complain() {
                                         <TableHead className="font-bold text-gray-700">MOBILE NUMBER</TableHead>
                                         <TableHead className="font-bold text-gray-700">EMAIL</TableHead>
                                         <TableHead className="font-bold text-gray-700">DATE</TableHead>
-                                        <TableHead className="font-bold text-gray-700">ASSIGNED</TableHead>
+                                        <TableHead className="font-bold text-gray-700">STATUS</TableHead>
+                                        <TableHead className="font-bold text-gray-700">NOTE</TableHead>
+                                        <TableHead className="font-bold text-gray-700">DESCRIPTION</TableHead>
+                                        <TableHead className="font-bold text-gray-700">REPLY</TableHead>
+                                        <TableHead className="font-bold text-gray-700">REPLY ATTACHMENT</TableHead>
+                                        <TableHead className="font-bold text-gray-700">REPLY BY</TableHead>
+                                        <TableHead className="font-bold text-gray-700">ACTION</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -424,6 +454,17 @@ export default function Complain() {
                                                 <TableCell>{complain.email}</TableCell>
                                                 <TableCell>{complain.date}</TableCell>
                                                 <TableCell>{complain.assigned}</TableCell>
+                                                <TableCell>{complain.status}</TableCell>
+                                                <TableCell>{complain.note}</TableCell>
+                                                <TableCell>{complain.description}</TableCell>
+                                                <TableCell>{complain.reply}</TableCell>
+                                                <TableCell>{complain.replyAttachment}</TableCell>
+                                                <TableCell>{complain.replyBy}</TableCell>
+                                                <TableCell>
+                                                    <Button size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538]">
+                                                        Action <span className="ml-2">▼</span>
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                 </TableBody>

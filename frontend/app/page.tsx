@@ -19,7 +19,9 @@ export default function Home() {
         parent: "/dashboard/parent",
       }
       const targetPath = roleRoutes[user.role] || `/dashboard/${user.role}`
-      router.push(targetPath)
+      
+      // Use window.location for hard navigation
+      window.location.href = targetPath
     }
   }, [user, isLoading, router])
 

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { GraduationCap, Mail, Lock, Building2, ArrowRight, Shield, KeyRound, Search } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { GraduationCap, Mail, Lock, Building2, ArrowRight, Shield, KeyRound, Search, BookOpen, Users, UserCircle, Eye, EyeOff, AlertCircle } from "lucide-react"
 
 interface School {
   _id: string
@@ -15,8 +16,15 @@ interface School {
   state: string
 }
 
+type UserRole = "super_admin" | "school_admin" | "teacher" | "parent" | "student"
+type AuthMethod = "otp" | "password"
+
 export default function LoginPage() {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("password")
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -24,35 +32,78 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false)
   const [devOTP, setDevOTP] = useState("") // For development mode
 
-  // School List State
-  const [schools, setSchools] = useState<School[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isLoadingSchools, setIsLoadingSchools] = useState(true)
-
   const router = useRouter()
 
+  const roles = [
+    { id: "super_admin" as UserRole, name: "Super Admin", icon: Shield, color: "from-purple-600 to-indigo-600", description: "Manage all schools" },
+    { id: "school_admin" as UserRole, name: "School Admin", icon: Building2, color: "from-orange-600 to-red-600", description: "Manage your school" },
+    { id: "teacher" as UserRole, name: "Teacher", icon: BookOpen, color: "from-pink-600 to-purple-600", description: "Manage classes" },
+    { id: "parent" as UserRole, name: "Parent", icon: Users, color: "from-blue-600 to-indigo-600", description: "View child's progress" },
+    { id: "student" as UserRole, name: "Student", icon: UserCircle, color: "from-green-600 to-blue-600", description: "Access courses" },
+  ]
+
+  // Set auth method based on role - All roles now use OTP
   useEffect(() => {
-    const fetchSchools = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/schools/active')
-        if (response.ok) {
-          const data = await response.json()
-          setSchools(data.schools || [])
-        }
-      } catch (error) {
-        console.error("Failed to fetch schools:", error)
-      } finally {
-        setIsLoadingSchools(false)
+    setAuthMethod("otp")
+    // Reset form when role changes
+    setEmail("")
+    setPassword("")
+    setOtp("")
+    setError("")
+    setSuccess("")
+    setOtpSent(false)
+    setDevOTP("")
+  }, [selectedRole])
+
+  // Handle password-based login
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role: selectedRole
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed")
       }
+
+      // Store token and user data
+      localStorage.setItem("token", data.token)
+      localStorage.setItem("user", JSON.stringify(data.user))
+
+      // Redirect based on actual user role from backend
+      const roleRoutes: Record<string, string> = {
+        super_admin: "/dashboard/super-admin",
+        school_admin: "/dashboard/admin",
+        teacher: "/dashboard/teacher",
+        student: "/dashboard/student",
+        parent: "/dashboard/parent",
+      }
+
+      const redirectRoute = roleRoutes[data.user.role] || "/dashboard"
+      console.log("🔀 Password login - Redirecting to:", redirectRoute)
+      
+      // Use window.location for hard navigation
+      window.location.href = redirectRoute
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed")
+    } finally {
+      setIsLoading(false)
     }
-
-    fetchSchools()
-  }, [])
-
-  const filteredSchools = schools.filter(school =>
-    school.schoolName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    school.city.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  }
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +117,10 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          email,
+          role: selectedRole // Pass role to backend for role-specific OTP
+        }),
       })
 
       const data = await response.json()
@@ -101,7 +155,11 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ 
+          email, 
+          otp,
+          role: selectedRole // Pass role for verification
+        }),
       })
 
       const data = await response.json()
@@ -114,7 +172,10 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token)
       localStorage.setItem("user", JSON.stringify(data.user))
 
-      // Redirect based on role
+      // Debug: Log user role
+      console.log("✅ Login successful. User role:", data.user.role)
+
+      // Redirect based on actual user role from backend (not selectedRole)
       const roleRoutes: Record<string, string> = {
         super_admin: "/dashboard/super-admin",
         school_admin: "/dashboard/admin",
@@ -123,8 +184,11 @@ export default function LoginPage() {
         parent: "/dashboard/parent",
       }
 
-      const redirectRoute = roleRoutes[data.user.role] || "/dashboard/admin"
-      router.push(redirectRoute)
+      const redirectRoute = roleRoutes[data.user.role] || "/dashboard"
+      console.log("🔀 OTP login - Redirecting to:", redirectRoute)
+      
+      // Use window.location for hard navigation
+      window.location.href = redirectRoute
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP verification failed")
     } finally {
@@ -143,7 +207,10 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          email,
+          role: selectedRole // Pass role for resend
+        }),
       })
 
       const data = await response.json()
@@ -173,6 +240,83 @@ export default function LoginPage() {
     setDevOTP("")
   }
 
+  const handleBackToRoleSelection = () => {
+    setSelectedRole(null)
+    setEmail("")
+    setPassword("")
+    setOtp("")
+    setError("")
+    setSuccess("")
+    setOtpSent(false)
+    setDevOTP("")
+  }
+
+  // Role Selection View
+  if (!selectedRole) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+
+        <div className="w-full max-w-5xl relative z-10">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl mb-6 shadow-2xl">
+              <GraduationCap className="w-12 h-12 text-white" />
+            </div>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+              Welcome to FrontierLMS
+            </h1>
+            <p className="text-xl text-gray-600">Select your role to continue</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {roles.map((role) => {
+              const Icon = role.icon
+              return (
+                <Card
+                  key={role.id}
+                  className="group cursor-pointer hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-blue-200 bg-white/80 backdrop-blur-sm"
+                  onClick={() => setSelectedRole(role.id)}
+                >
+                  <CardContent className="p-8 text-center">
+                    <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${role.color} rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform`}>
+                      <Icon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{role.name}</h3>
+                    <p className="text-gray-600 mb-6">{role.description}</p>
+                    <Button className={`w-full bg-gradient-to-r ${role.color} hover:opacity-90`}>
+                      Continue as {role.name}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          <div className="mt-12 text-center">
+            <p className="text-gray-600 mb-4">Don't have an account?</p>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50"
+              onClick={() => router.push('/register')}
+            >
+              <Building2 className="w-5 h-5 mr-2" />
+              Register Your School
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const currentRole = roles.find(r => r.id === selectedRole)!
+  const Icon = currentRole.icon
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background elements */}
@@ -182,250 +326,176 @@ export default function LoginPage() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl animate-pulse delay-500"></div>
       </div>
 
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center relative z-10">
-        {/* Left side - School Search & List */}
-        <div className="hidden lg:flex flex-col h-[600px] bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-white/50">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Find Your School
-              </h1>
-            </div>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search for your school..."
-                className="pl-9 bg-white border-gray-200 focus:border-blue-500"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-            {isLoadingSchools ? (
-              <div className="flex justify-center py-10">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            ) : filteredSchools.length > 0 ? (
-              filteredSchools.map((school) => (
-                <div
-                  key={school._id}
-                  onClick={() => router.push(`/school-login/${school._id}`)}
-                  className="group p-4 rounded-xl border border-transparent hover:border-blue-100 hover:bg-blue-50 transition-all cursor-pointer flex items-center space-x-4"
-                >
-                  <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    {school.schoolName.substring(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-700">
-                      {school.schoolName}
-                    </h3>
-                    <p className="text-xs text-gray-500 truncate flex items-center">
-                      <Building2 className="w-3 h-3 mr-1" />
-                      {school.city}, {school.state}
-                    </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all" />
+      <div className="w-full max-w-md mx-auto relative z-10">
+        <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-xl">
+          <CardHeader className="space-y-3 pb-6">
+            {/* Role indicator */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className={`bg-gradient-to-br ${currentRole.color} p-2.5 rounded-xl shadow-lg`}>
+                  <Icon className="w-6 h-6 text-white" />
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-10 text-gray-500">
-                <Building2 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                <p>No schools found matching "{searchQuery}"</p>
-              </div>
-            )}
-          </div>
-
-          <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
-            <p className="text-xs text-gray-500">
-              Don't see your school? <button onClick={() => router.push('/register')} className="text-blue-600 hover:underline">Register here</button>
-            </p>
-          </div>
-        </div>
-
-        {/* Right side - Login Form */}
-        <div className="w-full max-w-md mx-auto">
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-xl">
-            <CardHeader className="space-y-3 pb-6">
-              {/* Mobile logo */}
-              <div className="flex lg:hidden items-center justify-center space-x-3 mb-4">
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg">
-                  <GraduationCap className="w-8 h-8 text-white" />
-                </div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  FrontierLMS
-                </h1>
-              </div>
-
-              <CardTitle className="text-2xl lg:text-3xl font-bold text-gray-900">
-                {otpSent ? "Enter OTP" : "Welcome Back"}
-              </CardTitle>
-              <CardDescription className="text-base text-gray-600">
-                {otpSent
-                  ? "Enter the 6-digit code sent to your email"
-                  : "Sign in with OTP verification"}
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-6">
-              {!otpSent ? (
-                // Email Form
-                <form onSubmit={handleSendOTP} className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                      <Mail className="w-4 h-4 text-gray-500" />
-                      <span>Email Address</span>
-                    </label>
-                    <Input
-                      type="email"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                      {error}
-                    </div>
-                  )}
-
-                  {success && (
-                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-                      {success}
-                    </div>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center justify-center space-x-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Sending OTP...</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center space-x-2">
-                        <span>Send OTP</span>
-                        <ArrowRight className="w-5 h-5" />
-                      </span>
-                    )}
-                  </Button>
-                </form>
-              ) : (
-                // OTP Verification Form
-                <form onSubmit={handleVerifyOTP} className="space-y-5">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                    <p className="font-medium mb-1">OTP sent to:</p>
-                    <p className="text-blue-900">{email}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                      <KeyRound className="w-4 h-4 text-gray-500" />
-                      <span>Enter OTP</span>
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="Enter 6-digit OTP"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      required
-                      maxLength={6}
-                      className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-center text-2xl tracking-widest font-mono"
-                    />
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                      {error}
-                    </div>
-                  )}
-
-                  {success && (
-                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-                      {success}
-                    </div>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-                    disabled={isLoading || otp.length !== 6}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center justify-center space-x-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Verifying...</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center space-x-2">
-                        <Lock className="w-5 h-5" />
-                        <span>Verify & Login</span>
-                      </span>
-                    )}
-                  </Button>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <button
-                      type="button"
-                      onClick={handleBackToEmail}
-                      className="text-gray-600 hover:text-gray-900 font-medium"
-                    >
-                      ← Change Email
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResendOTP}
-                      disabled={isLoading}
-                      className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                    >
-                      Resend OTP
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-3 text-gray-500 font-medium">New to FrontierLMS?</span>
+                <div>
+                  <h2 className="text-sm font-medium text-gray-500">{currentRole.name}</h2>
+                  <p className="text-xs text-gray-400">{currentRole.description}</p>
                 </div>
               </div>
-
               <Button
-                type="button"
-                variant="outline"
-                className="w-full h-12 border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 text-blue-700 font-semibold transition-all duration-200"
-                onClick={() => router.push('/register')}
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToRoleSelection}
+                className="text-gray-500 hover:text-gray-700"
               >
-                <Building2 className="w-5 h-5 mr-2" />
-                Register Your School
+                Change
               </Button>
+            </div>
 
-              <div className="text-center pt-2">
-                <p className="text-xs text-gray-500">
-                  🔒 Secure OTP-based authentication • Valid for 10 minutes
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            <CardTitle className="text-2xl lg:text-3xl font-bold text-gray-900">
+              {otpSent ? "Enter OTP" : "Welcome Back"}
+            </CardTitle>
+            <CardDescription className="text-base text-gray-600">
+              {otpSent
+                ? "Enter the 6-digit code sent to your email"
+                : "Sign in with OTP verification"}
+            </CardDescription>
+          </CardHeader>
 
-          <p className="text-center text-sm text-gray-600 mt-6">
-            Protected by industry-standard encryption
-          </p>
-        </div>
+          <CardContent className="space-y-6">
+            {!otpSent ? (
+              // OTP request form (for all roles)
+              <form onSubmit={handleSendOTP} className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                    <Mail className="w-4 h-4 text-gray-500" />
+                    <span>Email Address</span>
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                    {success}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className={`w-full h-12 bg-gradient-to-r ${currentRole.color} hover:opacity-90 text-white font-semibold shadow-lg`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Sending OTP...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center space-x-2">
+                      <span>Send OTP</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </span>
+                  )}
+                </Button>
+              </form>
+            ) : (
+              // OTP Verification Form
+              <form onSubmit={handleVerifyOTP} className="space-y-5">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                  <p className="font-medium mb-1">OTP sent to:</p>
+                  <p className="text-blue-900">{email}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                    <KeyRound className="w-4 h-4 text-gray-500" />
+                    <span>Enter OTP</span>
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Enter 6-digit OTP"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    maxLength={6}
+                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-center text-2xl tracking-widest font-mono"
+                  />
+                </div>
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                    {success}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className={`w-full h-12 bg-gradient-to-r ${currentRole.color} hover:opacity-90 text-white font-semibold shadow-lg`}
+                  disabled={isLoading || otp.length !== 6}
+                >
+                  {isLoading ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Verifying...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center space-x-2">
+                      <Lock className="w-5 h-5" />
+                      <span>Verify & Login</span>
+                    </span>
+                  )}
+                </Button>
+
+                <div className="flex items-center justify-between text-sm">
+                  <button
+                    type="button"
+                    onClick={handleBackToEmail}
+                    className="text-gray-600 hover:text-gray-900 font-medium"
+                  >
+                    ← Change Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendOTP}
+                    disabled={isLoading}
+                    className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                  >
+                    Resend OTP
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="text-center pt-4">
+              <p className="text-xs text-gray-500">
+                🔒 Secure OTP-based authentication • Valid for 10 minutes
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-sm text-gray-600 mt-6">
+          Protected by industry-standard encryption
+        </p>
       </div>
     </div>
   )

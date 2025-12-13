@@ -3,14 +3,15 @@
 import { useState } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { MiniChart } from "@/components/super-admin/mini-chart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { 
-  Users, 
-  BookOpen, 
-  IndianRupee, 
+import {
+  Users,
+  BookOpen,
+  IndianRupee,
   GraduationCap,
   TrendingUp,
   TrendingDown,
@@ -23,9 +24,13 @@ import {
   Home,
   Library,
   Award,
-  MessageSquare
+  MessageSquare,
+  CheckCircle,
+  Clock,
+  PieChart,
+  Shield
 } from "lucide-react"
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -34,29 +39,37 @@ import {
 } from "@/components/ui/select"
 
 export default function AdminDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={["school_admin"]}>
+      <AdminDashboardContent />
+    </ProtectedRoute>
+  )
+}
+
+function AdminDashboardContent() {
   const [timePeriod, setTimePeriod] = useState("month")
 
   const stats = [
-    { 
-      title: "Total Students", 
-      value: "1,234", 
-      icon: Users, 
+    {
+      title: "Total Students",
+      value: "1,234",
+      icon: Users,
       trend: { value: 12, isPositive: true },
       iconColor: "text-blue-600",
       iconBgColor: "bg-blue-100"
     },
-    { 
-      title: "Total Teachers", 
-      value: "45", 
-      icon: GraduationCap, 
+    {
+      title: "Total Teachers",
+      value: "45",
+      icon: GraduationCap,
       trend: { value: 3, isPositive: true },
       iconColor: "text-green-600",
       iconBgColor: "bg-green-100"
     },
-    { 
-      title: "Total Classes", 
-      value: "32", 
-      icon: BookOpen, 
+    {
+      title: "Total Classes",
+      value: "32",
+      icon: BookOpen,
       trend: { value: 0, isPositive: true },
       iconColor: "text-purple-600",
       iconBgColor: "bg-purple-100"
@@ -166,6 +179,23 @@ export default function AdminDashboard() {
         { label: "View All", link: "/dashboard/admin/library" }
       ]
     },
+    {
+      title: "Disciplinary",
+      description: "Manage student behavior and discipline",
+      icon: Shield,
+      iconBg: "bg-pink-100",
+      iconColor: "text-pink-600",
+      stats: [
+        { label: "Complaints", value: "12", color: "text-red-600" },
+        { label: "Resolved", value: "8", color: "text-green-600" },
+        { label: "Pending", value: "4", color: "text-orange-600" }
+      ],
+      link: "/dashboard/admin/disciplinary",
+      actions: [
+        { label: "Complaints", link: "/dashboard/admin/disciplinary/student-complaints" },
+        { label: "Reports", link: "/dashboard/admin/disciplinary/disciplinary-report" }
+      ]
+    },
   ]
 
   const recentActivity = [
@@ -173,6 +203,16 @@ export default function AdminDashboard() {
     { action: "Fee payment received", user: "Jane Smith", time: "15 minutes ago", icon: IndianRupee, color: "text-green-600" },
     { action: "Exam scheduled", user: "Admin", time: "1 hour ago", icon: ClipboardList, color: "text-orange-600" },
     { action: "Notice published", user: "Principal", time: "2 hours ago", icon: Bell, color: "text-purple-600" },
+  ]
+
+  const analytics = [
+    { title: "Attendance Analytics", value: "94%", icon: CheckCircle, color: "text-green-600", bg: "bg-green-100", sub: "Overall attendance" },
+    { title: "Fee Summary", value: "₹39.6L", icon: IndianRupee, color: "text-emerald-600", bg: "bg-emerald-100", sub: "Collected this month" },
+    { title: "Pending Fees", value: "₹5.6L", icon: Clock, color: "text-orange-600", bg: "bg-orange-100", sub: "Pending / overdue" },
+    { title: "Exam Summary", value: "4 Active", icon: ClipboardList, color: "text-indigo-600", bg: "bg-indigo-100", sub: "Ongoing / upcoming" },
+    { title: "Homework Pending", value: "38", icon: FileText, color: "text-pink-600", bg: "bg-pink-100", sub: "Submissions pending" },
+    { title: "Notices & Events", value: "12", icon: Bell, color: "text-purple-600", bg: "bg-purple-100", sub: "Live notices/events" },
+    { title: "Quick Links", value: "Go", icon: PieChart, color: "text-blue-600", bg: "bg-blue-100", sub: "Jump to key pages", href: "/dashboard/admin/settings" },
   ]
 
   const quickActions = [
@@ -202,6 +242,29 @@ export default function AdminDashboard() {
               <SelectItem value="year">This Year</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Analytics Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {analytics.map((item) => (
+            <Card key={item.title} className="border">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-gray-800">{item.title}</CardTitle>
+                <div className={`p-2 rounded-lg ${item.bg}`}>
+                  <item.icon className={`h-4 w-4 ${item.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">{item.value}</div>
+                <p className="text-xs text-muted-foreground mt-1">{item.sub}</p>
+                {item.href && (
+                  <Link href={item.href} className="text-xs text-blue-700 hover:underline mt-2 inline-flex items-center gap-1">
+                    Open <ArrowRight className="h-3 w-3" />
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Stats Grid with Trends */}

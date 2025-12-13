@@ -1,13 +1,23 @@
 "use client"
 
+import Link from "next/link"
 import DashboardLayout from "@/components/dashboard-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Users, BookOpen, FileText, Clock, Calendar, Bell, CheckCircle } from "lucide-react"
+import { Users, BookOpen, FileText, Clock, Calendar, Bell, CheckCircle, ListChecks, ClipboardList, MessageSquare, LayoutTemplate } from "lucide-react"
 
 export default function TeacherDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={["teacher"]}>
+      <TeacherDashboardContent />
+    </ProtectedRoute>
+  )
+}
+
+function TeacherDashboardContent() {
   const teacherInfo = {
     name: "Mr. John Teacher",
     employeeId: "TCH-2024-001",
@@ -31,6 +41,16 @@ export default function TeacherDashboard() {
     { id: 1, activity: "Marked attendance for Class 10-A", time: "2 hours ago" },
     { id: 2, activity: "Created new assignment", time: "5 hours ago" },
     { id: 3, activity: "Graded 15 submissions", time: "Yesterday" },
+  ]
+
+  const quickLinks = [
+    { title: "Mark Attendance", icon: CheckCircle, href: "/dashboard/teacher/attendance" },
+    { title: "Homework / Classwork", icon: FileText, href: "/dashboard/teacher/homework" },
+    { title: "Marks Entry", icon: ClipboardList, href: "/dashboard/teacher/examinations" },
+    { title: "Lesson Planner", icon: LayoutTemplate, href: "/dashboard/teacher/lesson-planner" },
+    { title: "Timetable", icon: Calendar, href: "/dashboard/teacher/academics" },
+    { title: "Class Reports", icon: ListChecks, href: "/dashboard/teacher/student-info" },
+    { title: "Communication Tools", icon: MessageSquare, href: "/dashboard/teacher/communicate" },
   ]
 
   const totalStudents = classes.reduce((sum, cls) => sum + cls.students, 0)
@@ -86,6 +106,29 @@ export default function TeacherDashboard() {
             iconBgColor="bg-orange-100"
           />
         </div>
+
+        {/* Quick Links */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5" />
+              Quick Links
+            </CardTitle>
+            <CardDescription>Jump to frequent teacher actions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {quickLinks.map((link) => (
+                <Button key={link.title} variant="outline" className="h-auto py-4 flex flex-col items-start" asChild>
+                  <Link href={link.href}>
+                    <link.icon className="h-4 w-4 mb-2 text-purple-600" />
+                    <span className="text-sm font-semibold text-gray-900">{link.title}</span>
+                  </Link>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* My Classes */}

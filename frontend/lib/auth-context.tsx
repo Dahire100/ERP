@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedUser && token) {
       try {
         const parsedUser = JSON.parse(storedUser)
+        console.log("🔍 Auth Context - Parsed user role:", parsedUser.role)
         // Create full name from firstName and lastName
         const fullName = `${parsedUser.firstName || ''} ${parsedUser.lastName || ''}`.trim() || parsedUser.email
         setUser({

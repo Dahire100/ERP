@@ -1,14 +1,23 @@
 "use client"
 
 import DashboardLayout from "@/components/dashboard-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { BookOpen, FileText, Award, Calendar, Clock, Bell, TrendingUp, CheckCircle } from "lucide-react"
+import { BookOpen, FileText, Award, Calendar, Clock, Bell, TrendingUp, CheckCircle, Laptop, Download, ClipboardList, MessageSquare } from "lucide-react"
 
 export default function StudentDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={["student"]}>
+      <StudentDashboardContent />
+    </ProtectedRoute>
+  )
+}
+
+function StudentDashboardContent() {
   const studentInfo = {
     name: "John Student",
     rollNo: "2024001",
@@ -37,6 +46,17 @@ export default function StudentDashboard() {
   ]
 
   const pendingAssignments = assignments.filter(a => a.status === "Pending").length
+
+  const quickLinks = [
+    { title: "Homework Submission", icon: FileText, href: "/dashboard/student/homework" },
+    { title: "Downloads", icon: Download, href: "/dashboard/student/download-center" },
+    { title: "Attendance", icon: Calendar, href: "/dashboard/student/attendance" },
+    { title: "Notices", icon: Bell, href: "/dashboard/student/communicate" },
+    { title: "Results", icon: Award, href: "/dashboard/student/report" },
+    { title: "Leave Apply", icon: ClipboardList, href: "/dashboard/student/hostel" },
+    { title: "Online Classes", icon: Laptop, href: "/dashboard/student/online-class" },
+    { title: "Messages", icon: MessageSquare, href: "/dashboard/student/communicate" },
+  ]
 
   return (
     <DashboardLayout title="Student Dashboard">
@@ -91,6 +111,29 @@ export default function StudentDashboard() {
             trend={{ value: 2, isPositive: true }}
           />
         </div>
+
+        {/* Quick Links */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Quick Links
+            </CardTitle>
+            <CardDescription>Jump to important actions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {quickLinks.map((link) => (
+                <Button key={link.title} variant="outline" className="h-auto py-4 flex flex-col items-start" asChild>
+                  <a href={link.href}>
+                    <link.icon className="h-4 w-4 mb-2 text-blue-600" />
+                    <span className="text-sm font-semibold text-gray-900">{link.title}</span>
+                  </a>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Courses */}

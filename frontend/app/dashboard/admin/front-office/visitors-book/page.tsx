@@ -35,6 +35,7 @@ interface VisitorData {
     date: string
     inTime: string
     outTime: string
+    createdBy: string
 }
 
 export default function VisitorsBook() {
@@ -51,7 +52,8 @@ export default function VisitorsBook() {
             phone: "09123456789",
             date: "27-10-2025",
             inTime: "09:00 AM",
-            outTime: "11:00 AM"
+            outTime: "11:00 AM",
+            createdBy: "Demo"
         },
         {
             id: 2,
@@ -61,7 +63,8 @@ export default function VisitorsBook() {
             phone: "0153648904",
             date: "27-10-2025",
             inTime: "10:00 AM",
-            outTime: "12:00 PM"
+            outTime: "12:00 PM",
+            createdBy: "Super"
         },
         {
             id: 3,
@@ -71,7 +74,8 @@ export default function VisitorsBook() {
             phone: "",
             date: "21-10-2025",
             inTime: "02:00 PM",
-            outTime: "03:30 PM"
+            outTime: "03:30 PM",
+            createdBy: "Super"
         },
         {
             id: 4,
@@ -81,7 +85,8 @@ export default function VisitorsBook() {
             phone: "9584522907",
             date: "10-09-2025",
             inTime: "11:00 AM",
-            outTime: "12:00 PM"
+            outTime: "12:00 PM",
+            createdBy: "Super"
         },
         {
             id: 5,
@@ -91,7 +96,8 @@ export default function VisitorsBook() {
             phone: "9876543210",
             date: "22-07-2025",
             inTime: "03:00 PM",
-            outTime: "04:00 PM"
+            outTime: "04:00 PM",
+            createdBy: "Demo"
         }
     ])
 
@@ -137,7 +143,8 @@ export default function VisitorsBook() {
             phone: formData.phone,
             date: new Date(formData.date).toLocaleDateString('en-GB'),
             inTime: formData.inTime,
-            outTime: formData.outTime
+            outTime: formData.outTime,
+            createdBy: "Admin"
         }
 
         setVisitors([...visitors, newVisitor])
@@ -381,6 +388,10 @@ export default function VisitorsBook() {
                                             <TableHead>EMAIL</TableHead>
                                             <TableHead>PHONE</TableHead>
                                             <TableHead>DATE</TableHead>
+                                            <TableHead>IN TIME</TableHead>
+                                            <TableHead>OUT TIME</TableHead>
+                                            <TableHead>CREATED BY</TableHead>
+                                            <TableHead>ACTION</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -404,6 +415,14 @@ export default function VisitorsBook() {
                                                     <TableCell>{visitor.email || "-"}</TableCell>
                                                     <TableCell>{visitor.phone || "-"}</TableCell>
                                                     <TableCell>{visitor.date}</TableCell>
+                                                    <TableCell>{visitor.inTime || "-"}</TableCell>
+                                                    <TableCell>{visitor.outTime || "-"}</TableCell>
+                                                    <TableCell>{visitor.createdBy}</TableCell>
+                                                    <TableCell>
+                                                        <Button size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538]">
+                                                            Action <span className="ml-2">▼</span>
+                                                        </Button>
+                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                     </TableBody>

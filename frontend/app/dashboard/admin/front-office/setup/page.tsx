@@ -37,32 +37,57 @@ export default function SetupFrontOffice() {
 
     // Sample data for different tabs
     const [purposes, setPurposes] = useState<SetupItem[]>([
-        { id: 1, name: "Marketing", description: "" },
-        { id: 2, name: "For pre checking", description: "" },
-        { id: 3, name: "Checking", description: "" },
-        { id: 4, name: "Interview for placement at college", description: "" },
-        { id: 5, name: "visit", description: "" },
-        { id: 6, name: "campusvis", description: "" },
-        { id: 7, name: "visiting", description: "" },
+        { id: 1, name: "KV Test", description: "" },
+        { id: 2, name: "Marketing", description: "" },
+        { id: 3, name: "For pre checking", description: "" },
+        { id: 4, name: "Checking", description: "" },
+        { id: 5, name: "Interview for placement at college", description: "" },
+        { id: 6, name: "visit", description: "" },
+        { id: 7, name: "campusvis", description: "" },
+        { id: 8, name: "visiting", description: "" },
+        { id: 9, name: "visit", description: "" },
+        { id: 10, name: "Campus Visit", description: "" },
     ])
 
     const [complainTypes, setComplainTypes] = useState<SetupItem[]>([
-        { id: 1, name: "Staff", description: "" },
-        { id: 2, name: "Student", description: "" },
+        { id: 1, name: "Marking style", description: "" },
+        { id: 2, name: "Operation", description: "" },
+        { id: 3, name: "teach", description: "" },
+        { id: 4, name: "other", description: "" },
+        { id: 5, name: "Staff", description: "" },
+        { id: 6, name: "For Teacher", description: "" },
+        { id: 7, name: "Other", description: "" },
     ])
 
     const [sources, setSources] = useState<SetupItem[]>([
-        { id: 1, name: "Google Ads", description: "" },
-        { id: 2, name: "Facebook", description: "" },
+        { id: 14, name: "walkin enqiry", description: "" },
+        { id: 13, name: "Linkedin", description: "" },
+        { id: 12, name: "website", description: "" },
+        { id: 11, name: "parent", description: "" },
+        { id: 10, name: "Mother-father", description: "" },
+        { id: 9, name: "Friend", description: "" },
+        { id: 8, name: "Maganpura Visit", description: "" },
+        { id: 7, name: "testing", description: "" },
+        { id: 4, name: "phone", description: "" },
+        { id: 3, name: "Physical Visit", description: "" },
     ])
 
     const [references, setReferences] = useState<SetupItem[]>([
-        { id: 1, name: "Staff Referral", description: "" },
+        { id: 9, name: "Student", description: "" },
+        { id: 8, name: "web", description: "" },
+        { id: 7, name: "website", description: "" },
+        { id: 6, name: "Chair Men Sir", description: "" },
+        { id: 5, name: "tests", description: "" },
+        { id: 2, name: "Teacher", description: "" },
+        { id: 1, name: "Parent", description: "" },
     ])
 
     const [statuses, setStatuses] = useState<SetupItem[]>([
-        { id: 1, name: "Active", description: "" },
-        { id: 2, name: "Closed", description: "" },
+        { id: 1, name: "Email Inquiry", description: "" },
+        { id: 2, name: "Student enrolled", description: "" },
+        { id: 3, name: "Enrolled students", description: "" },
+        { id: 4, name: "Counsling schedule", description: "" },
+        { id: 5, name: "Telephone Enquiry", description: "" },
     ])
 
     const [formData, setFormData] = useState({
@@ -232,9 +257,13 @@ export default function SetupFrontOffice() {
                                 <CardContent className="pt-6">
                                     <div className="flex justify-between items-center mb-4">
                                         <div className="flex gap-2">
-                                            <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><Printer className="h-4 w-4" /></Button>
-                                            <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><FileText className="h-4 w-4" /></Button>
-                                            <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><Download className="h-4 w-4" /></Button>
+                                            <Button variant="outline" size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><FileText className="h-4 w-4" /></Button>
+                                            <Button variant="outline" size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><FileText className="h-4 w-4" /></Button>
+                                            <Button variant="outline" size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><FileText className="h-4 w-4" /></Button>
+                                            <Button variant="outline" size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><Printer className="h-4 w-4" /></Button>
+                                            <Button variant="outline" size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538] border-none flex items-center gap-1">
+                                                <MoreHorizontal className="h-4 w-4" /> Column visibility
+                                            </Button>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-gray-500">Search:</span>
@@ -250,6 +279,9 @@ export default function SetupFrontOffice() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="bg-pink-50 hover:bg-pink-50">
+                                                    {(activeTab === "source" || activeTab === "reference") && (
+                                                        <TableHead className="font-bold text-gray-700 uppercase w-16">Id</TableHead>
+                                                    )}
                                                     <TableHead className="font-bold text-gray-700 uppercase">{getTabLabel()}</TableHead>
                                                     <TableHead className="font-bold text-gray-700 text-right uppercase">Action</TableHead>
                                                 </TableRow>
@@ -259,11 +291,14 @@ export default function SetupFrontOffice() {
                                                     .filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
                                                     .map((item) => (
                                                         <TableRow key={item.id}>
+                                                            {(activeTab === "source" || activeTab === "reference") && (
+                                                                <TableCell className="font-medium">{item.id}</TableCell>
+                                                            )}
                                                             <TableCell className="font-medium">{item.name}</TableCell>
                                                             <TableCell className="text-right">
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 h-8 px-2">
+                                                                        <Button variant="ghost" size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538] h-8 px-2">
                                                                             Action <span className="ml-1">▼</span>
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
@@ -291,6 +326,17 @@ export default function SetupFrontOffice() {
                                                 )}
                                             </TableBody>
                                         </Table>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-4">
+                                        <div className="text-sm text-gray-500">
+                                            Showing 1 to {getCurrentData().length} of {getCurrentData().length} entries
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <Button variant="outline" size="sm" disabled>Previous</Button>
+                                            <Button variant="default" size="sm" className="bg-[#1e1e50]">1</Button>
+                                            <Button variant="outline" size="sm">2</Button>
+                                            <Button variant="outline" size="sm">Next</Button>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>
