@@ -57,3 +57,12 @@ exports.requireSchoolAdmin = (req, res, next) => {
 
 // Alias for consistency with newer routes
 exports.verifyToken = exports.authenticateToken;
+
+exports.verifyRole = (roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied. Insufficient permissions.' });
+    }
+    next();
+  };
+};

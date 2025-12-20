@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { User, Mail, Phone, MapPin, Users, Calendar, Edit, Save, Briefcase } from "lucide-react"
+import { toast } from "sonner"
 
 export default function ParentProfile() {
   const [parentInfo, setParentInfo] = useState({
@@ -36,6 +37,7 @@ export default function ParentProfile() {
   const handleSave = () => {
     setParentInfo(editForm)
     setIsEditModalOpen(false)
+    toast.success("Profile Updated", { description: "Your profile information has been successfully updated." })
   }
 
   const handleInputChange = (field: string, value: string) => {

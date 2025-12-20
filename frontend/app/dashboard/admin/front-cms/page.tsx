@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { StatusBadge } from "@/components/super-admin/status-badge"
@@ -21,13 +21,10 @@ interface CMSPage {
 }
 
 export default function FrontCMS() {
-  const [pages, setPages] = useState<CMSPage[]>([
-    { id: "1", title: "Homepage", slug: "home", status: "Published", lastUpdated: "2025-01-15", author: "Admin", views: 1250 },
-    { id: "2", title: "About Us", slug: "about", status: "Published", lastUpdated: "2025-01-10", author: "Admin", views: 850 },
-    { id: "3", title: "Contact", slug: "contact", status: "Draft", lastUpdated: "2025-01-08", author: "Editor", views: 0 },
-    { id: "4", title: "Admissions", slug: "admissions", status: "Published", lastUpdated: "2025-01-12", author: "Admin", views: 2100 },
-    { id: "5", title: "Events", slug: "events", status: "Scheduled", lastUpdated: "2025-01-14", author: "Editor", views: 0 },
-  ])
+
+  const initialPages: CMSPage[] = []
+
+  const [pages, setPages] = useState<CMSPage[]>(initialPages)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
@@ -35,34 +32,119 @@ export default function FrontCMS() {
     id: null
   })
 
-  const handleAdd = (data: any) => {
-    const newPage: CMSPage = { 
-      id: Date.now().toString(), 
-      ...data, 
-      views: 0,
-      lastUpdated: new Date().toISOString().split("T")[0] 
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/cms/pages', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const mappedPages = data.map((item: any) => ({
+            id: item._id,
+            title: item.title,
+            slug: item.slug,
+            status: item.status,
+            lastUpdated: item.updatedAt,
+            author: item.author,
+            views: item.views || 0
+          }));
+          setPages(mappedPages);
+        }
+      } catch (error) {
+        console.error('Error fetching pages:', error);
+      }
+    };
+
+    fetchPages();
+  }, []);
+
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/cms/pages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        const item = await response.json();
+        const newPage: CMSPage = {
+          id: item._id,
+          title: item.title,
+          slug: item.slug,
+          status: item.status,
+          lastUpdated: item.updatedAt,
+          author: item.author,
+          views: item.views || 0
+        };
+        setPages([newPage, ...pages]);
+        setIsModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error adding page:', error);
     }
-    setPages([...pages, newPage])
-    setIsModalOpen(false)
   }
 
-  const handleEdit = (id: string, data: any) => {
-    setPages(
-      pages.map((p) => (p.id === id ? { ...p, ...data, lastUpdated: new Date().toISOString().split("T")[0] } : p)),
-    )
-    setIsModalOpen(false)
-    setEditingId(null)
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/cms/pages/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        const item = await response.json();
+        setPages(
+          pages.map((p) => (p.id === id ? {
+            ...p,
+            title: item.title,
+            slug: item.slug,
+            status: item.status,
+            author: item.author,
+            lastUpdated: item.updatedAt
+          } : p)),
+        );
+        setIsModalOpen(false);
+        setEditingId(null);
+      }
+    } catch (error) {
+      console.error('Error updating page:', error);
+    }
   }
 
   const handleDelete = (item: any) => {
     setDeleteConfirm({ open: true, id: item.id })
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteConfirm.id) {
-      setPages(pages.filter((p) => p.id !== deleteConfirm.id))
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/cms/pages/${deleteConfirm.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          setPages(pages.filter((p) => p.id !== deleteConfirm.id));
+        }
+      } catch (error) {
+        console.error('Error deleting page:', error);
+      }
     }
-    setDeleteConfirm({ open: false, id: null })
+    setDeleteConfirm({ open: false, id: null });
   }
 
   const handleBulkAction = (action: string, selectedIds: string[]) => {
@@ -125,11 +207,13 @@ export default function FrontCMS() {
     { name: "title", label: "Page Title", type: "text" as const, required: true },
     { name: "slug", label: "URL Slug", type: "text" as const, required: true },
     { name: "author", label: "Author", type: "text" as const, required: true },
-    { name: "status", label: "Status", type: "select" as const, options: [
-      { value: "Published", label: "Published" },
-      { value: "Draft", label: "Draft" },
-      { value: "Scheduled", label: "Scheduled" }
-    ], required: true },
+    {
+      name: "status", label: "Status", type: "select" as const, options: [
+        { value: "Published", label: "Published" },
+        { value: "Draft", label: "Draft" },
+        { value: "Scheduled", label: "Scheduled" }
+      ], required: true
+    },
   ]
 
   return (

@@ -1,8 +1,9 @@
-// controllers/dashboardController.js
 const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const StudentFee = require('../models/StudentFee');
 const School = require('../models/School');
+const Class = require('../models/Class');
+const Notice = require('../models/Notice');
 
 // Get dashboard stats for school admin
 exports.getSchoolAdminStats = async (req, res) => {
@@ -135,7 +136,9 @@ exports.getDashboardData = async (req, res) => {
         const totalTeachers = await Teacher.countDocuments({ schoolId });
         const pendingFees = await StudentFee.countDocuments({ schoolId, status: 'pending' });
 
-        // Monthly revenue
+        const totalClasses = await Class.countDocuments({ schoolId });
+
+        // Monthly revenue (Total for current month)
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
@@ -158,20 +161,101 @@ exports.getDashboardData = async (req, res) => {
 
         const monthlyRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
+        // Revenue Trend (Last 6 months)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const revenueTrendRaw = await StudentFee.aggregate([
+          {
+            $match: {
+              schoolId: schoolId,
+              status: 'paid',
+              updatedAt: { $gte: sixMonthsAgo }
+            }
+          },
+          {
+            $group: {
+              _id: { year: { $year: '$updatedAt' }, month: { $month: '$updatedAt' } },
+              total: { $sum: '$amount' }
+            }
+          },
+          { $sort: { '_id.year': 1, '_id.month': 1 } }
+        ]);
+
+        // Format trend data
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const revenueTrend = revenueTrendRaw.map(item => ({
+          month: monthNames[item._id.month - 1],
+          revenue: item.total
+        }));
+
         // Recent students
         const recentStudents = await Student.find({ schoolId })
-          .select('studentId firstName lastName class section')
-          .sort({ _id: -1 })
+          .select('studentId firstName lastName class section admissionDate')
+          .sort({ admissionDate: -1 })
           .limit(5);
+
+        // Recent Activity (Merged)
+        // 1. Fee Payments
+        const recentFees = await StudentFee.find({ schoolId, status: 'paid' })
+          .sort({ updatedAt: -1 })
+          .limit(5)
+          .populate('studentId', 'firstName lastName class');
+
+        // 2. New Admissions (already have recentStudents, but mapped differently)
+        // 3. Notices
+        const recentNotices = await Notice.find({ schoolId })
+          .sort({ publishedDate: -1 })
+          .limit(5)
+          .populate('postedBy', 'firstName lastName');
+
+        const activities = [
+          ...recentFees.map(f => ({
+            type: 'fee',
+            user: f.studentId ? `${f.studentId.firstName} ${f.studentId.lastName}` : 'Unknown Student',
+            action: 'paid fees',
+            target: `₹${f.amount}`,
+            time: f.updatedAt,
+            avatar: f.studentId ? f.studentId.firstName[0] + f.studentId.lastName[0] : 'ST'
+          })),
+          ...recentStudents.map(s => ({
+            type: 'admission',
+            user: 'Admin',
+            action: 'admitted',
+            target: `${s.firstName} ${s.lastName}`,
+            time: s.admissionDate,
+            avatar: 'AD'
+          })),
+          ...recentNotices.map(n => ({
+            type: 'notice',
+            user: n.postedBy ? `${n.postedBy.firstName} ${n.postedBy.lastName}` : 'Admin',
+            action: 'posted notice',
+            target: n.title,
+            time: n.publishedDate,
+            avatar: 'NT'
+          }))
+        ];
+
+        // Sort by time desc and take top 5
+        const recentActivity = activities.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
 
         res.json({
           stats: {
             totalStudents,
             totalTeachers,
+            totalClasses, // Added
             pendingFees,
             monthlyRevenue
           },
+          revenueTrend, // Added
+          recentActivity, // Added
           recentStudents,
+          notices: recentNotices.map(n => ({
+            id: n._id,
+            title: n.title,
+            date: n.publishedDate,
+            type: n.type
+          })),
           role: 'school_admin'
         });
         break;

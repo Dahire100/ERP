@@ -6,323 +6,327 @@ import { StatCard } from "@/components/super-admin/stat-card"
 import { StatusBadge } from "@/components/super-admin/status-badge"
 import { AdvancedTable } from "@/components/super-admin/advanced-table"
 import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Users, UserCheck, UserX, Building, Mail, Phone, Eye, Plus } from "lucide-react"
-import FormModal from "@/components/form-modal"
+import { Users, UserCheck, UserX, Building, Mail, Phone, Plus, GraduationCap, MapPin, BadgeDollarSign, BookOpen } from "lucide-react"
+import FormModal, { FormField } from "@/components/form-modal"
+import { useToast } from "@/components/ui/use-toast"
 
-interface Staff {
+interface Teacher {
   id: string
   name: string
+  firstName: string
+  lastName: string
   email: string
   phone: string
-  position: string
-  department: string
-  status: "Active" | "On Leave" | "Inactive"
+  qualification: string
+  subjects: string[]
   joiningDate: string
-  salary?: string
+  address: string
+  salary: string
+  status: "Active" | "On Leave" | "Inactive"
 }
 
 export default function HumanResource() {
-  const [staff, setStaff] = useState<Staff[]>([])
+  const { toast } = useToast()
+  const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ 
-    open: false, 
-    id: null 
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null)
+  const [deleteData, setDeleteData] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null
   })
 
   useEffect(() => {
-    const saved = localStorage.getItem("staff")
-    if (saved) {
-      setStaff(JSON.parse(saved))
-    } else {
-      const defaultStaff: Staff[] = [
-        {
-          id: "1",
-          name: "Robert Brown",
-          email: "robert@school.com",
-          phone: "+1-555-0101",
-          position: "Principal",
-          department: "Administration",
-          status: "Active",
-          joiningDate: "2020-01-15",
-          salary: "₹85,000"
-        },
-        {
-          id: "2",
-          name: "Sarah Wilson",
-          email: "sarah@school.com",
-          phone: "+1-555-0102",
-          position: "Senior Teacher",
-          department: "Science",
-          status: "Active",
-          joiningDate: "2019-08-20",
-          salary: "₹65,000"
-        },
-        {
-          id: "3",
-          name: "Tom Davis",
-          email: "tom@school.com",
-          phone: "+1-555-0103",
-          position: "Teacher",
-          department: "Mathematics",
-          status: "On Leave",
-          joiningDate: "2021-03-10",
-          salary: "₹55,000"
-        },
-        {
-          id: "4",
-          name: "Emily Johnson",
-          email: "emily@school.com",
-          phone: "+1-555-0104",
-          position: "Teacher",
-          department: "English",
-          status: "Active",
-          joiningDate: "2020-07-01",
-          salary: "₹58,000"
-        },
-        {
-          id: "5",
-          name: "Michael Chen",
-          email: "michael@school.com",
-          phone: "+1-555-0105",
-          position: "Librarian",
-          department: "Library",
-          status: "Active",
-          joiningDate: "2018-09-15",
-          salary: "₹45,000"
-        },
-      ]
-      setStaff(defaultStaff)
-      localStorage.setItem("staff", JSON.stringify(defaultStaff))
-    }
+    fetchTeachers()
   }, [])
 
-  const handleAddStaff = (data: any) => {
-    const newStaff: Staff = {
-      id: Date.now().toString(),
-      ...data,
-    }
-    const updated = [...staff, newStaff]
-    setStaff(updated)
-    localStorage.setItem("staff", JSON.stringify(updated))
-    setIsModalOpen(false)
-  }
-
-  const handleEditStaff = (data: any) => {
-    const updated = staff.map((s) => (s.id === editingStaff?.id ? { ...s, ...data } : s))
-    setStaff(updated)
-    localStorage.setItem("staff", JSON.stringify(updated))
-    setEditingStaff(null)
-    setIsModalOpen(false)
-  }
-
-  const handleDeleteStaff = (id: string) => {
-    const updated = staff.filter((s) => s.id !== id)
-    setStaff(updated)
-    localStorage.setItem("staff", JSON.stringify(updated))
-  }
-
-  const handleDelete = (item: any) => {
-    setDeleteConfirm({ open: true, id: item.id })
-  }
-
-  const confirmDelete = () => {
-    if (deleteConfirm.id) {
-      handleDeleteStaff(deleteConfirm.id)
-    }
-    setDeleteConfirm({ open: false, id: null })
-  }
-
-  const handleBulkAction = (action: string, selectedIds: string[]) => {
-    if (action === "delete") {
-      const updated = staff.filter((s) => !selectedIds.includes(s.id))
-      setStaff(updated)
-      localStorage.setItem("staff", JSON.stringify(updated))
+  const fetchTeachers = async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/teachers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const mappedData = data.map((item: any) => ({
+          id: item._id,
+          name: `${item.firstName} ${item.lastName}`,
+          firstName: item.firstName,
+          lastName: item.lastName,
+          email: item.email,
+          phone: item.phone || "N/A",
+          qualification: item.qualification || "N/A",
+          subjects: item.subjects || [],
+          joiningDate: item.joiningDate || new Date().toISOString(),
+          address: item.address || "N/A",
+          salary: item.salary || "0",
+          status: item.isActive ? "Active" : "Inactive"
+        }));
+        setTeachers(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleOpenModal = (staffMember?: Staff) => {
-    if (staffMember) {
-      setEditingStaff(staffMember)
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/teachers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...data,
+          subjects: typeof data.subjects === 'string' ? data.subjects.split(',').map((s: string) => s.trim()) : data.subjects
+        })
+      });
+
+      if (response.ok) {
+        toast({ title: "Success", description: "Teacher added successfully." });
+        fetchTeachers();
+        setIsModalOpen(false);
+      } else {
+        throw new Error("Failed to add teacher")
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
-    setIsModalOpen(true)
   }
 
-  // Calculate stats
-  const stats = {
-    total: staff.length,
-    active: staff.filter((s) => s.status === "Active").length,
-    onLeave: staff.filter((s) => s.status === "On Leave").length,
-    departments: [...new Set(staff.map(s => s.department))].length
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/teachers/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...data,
+          subjects: typeof data.subjects === 'string' ? data.subjects.split(',').map((s: string) => s.trim()) : data.subjects
+        })
+      });
+
+      if (response.ok) {
+        toast({ title: "Success", description: "Teacher updated successfully." });
+        fetchTeachers();
+        setIsModalOpen(false);
+        setEditingTeacher(null);
+      } else {
+        throw new Error("Failed to update teacher")
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteData.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/teachers/${deleteData.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        toast({ title: "Deleted", description: "Teacher record has been removed." });
+        fetchTeachers();
+      } else {
+        throw new Error("Failed to delete teacher")
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setDeleteData({ open: false, id: null });
+    }
   }
 
   const columns = [
     {
       key: "name",
       label: "Staff Member",
-      render: (value: string, row: Staff) => (
+      sortable: true,
+      render: (value: string, row: Teacher) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-blue-100 text-blue-600">
-              {value.split(' ').map(n => n[0]).join('')}
+          <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+            <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold">
+              {row.firstName[0]}{row.lastName[0]}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{value}</p>
-            <p className="text-xs text-muted-foreground">{row.position}</p>
+            <p className="font-bold text-gray-900">{value}</p>
+            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">{row.qualification}</p>
           </div>
         </div>
       )
     },
     {
       key: "email",
-      label: "Contact",
-      render: (value: string, row: Staff) => (
+      label: "Contact Profile",
+      render: (value: string, row: Teacher) => (
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-sm">
-            <Mail className="h-3 w-3 text-muted-foreground" />
+          <div className="flex items-center gap-2 text-xs font-medium text-gray-700">
+            <Mail className="h-3 w-3 text-indigo-400" />
             <span>{value}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Phone className="h-3 w-3" />
+          <div className="flex items-center gap-2 text-[11px] text-gray-400">
+            <Phone className="h-3 w-3 text-indigo-300" />
             <span>{row.phone}</span>
           </div>
         </div>
       )
     },
     {
-      key: "department",
-      label: "Department",
-      render: (value: string) => (
-        <div className="flex items-center gap-2">
-          <Building className="h-4 w-4 text-muted-foreground" />
-          <span>{value}</span>
+      key: "subjects",
+      label: "Specialization",
+      render: (value: string[]) => (
+        <div className="flex wrap gap-1 max-w-[150px]">
+          {Array.isArray(value) && value.map((s, i) => (
+            <span key={i} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[9px] font-bold uppercase">
+              {s}
+            </span>
+          ))}
         </div>
       )
     },
     {
-      key: "joiningDate",
-      label: "Joining Date",
-      render: (value: string) => new Date(value).toLocaleDateString()
+      key: "salary",
+      label: "Payroll",
+      sortable: true,
+      render: (value: string) => (
+        <div className="flex items-center gap-1.5 ">
+          <BadgeDollarSign className="h-4 w-4 text-emerald-500" />
+          <span className="font-bold text-gray-900">₹{parseInt(value).toLocaleString()}</span>
+        </div>
+      )
     },
     {
       key: "status",
       label: "Status",
+      sortable: true,
       render: (value: string) => <StatusBadge status={value} />
     },
   ]
 
+  const formFields: FormField[] = [
+    { name: "firstName", label: "First Name", type: "text", required: true },
+    { name: "lastName", label: "Last Name", type: "text", required: true },
+    { name: "email", label: "Institutional Email", type: "email", required: true },
+    { name: "phone", label: "Contact Phone", type: "text", required: true },
+    { name: "qualification", label: "Academic Qualification", type: "text", required: true },
+    { name: "subjects", label: "Subjects (Comma separated)", type: "text", required: true },
+    { name: "joiningDate", label: "Appointment Date", type: "date", required: true },
+    { name: "salary", label: "Monthly Salary (₹)", type: "number" as any, required: true },
+    { name: "address", label: "Residential Address", type: "textarea", required: false },
+  ]
+
   return (
-    <DashboardLayout title="Human Resource">
-      <div className="space-y-6">
+    <DashboardLayout title="Human Capital">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-semibold">Staff Management</h2>
-            <p className="text-sm text-muted-foreground">Manage staff members and their information</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Staff Directory</h1>
+            <p className="text-sm text-gray-500">Manage faculty members, credentials, and payroll details</p>
           </div>
-          <Button onClick={() => handleOpenModal()}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Staff
+          <Button
+            onClick={() => {
+              setEditingTeacher(null);
+              setIsModalOpen(true);
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 gap-2"
+          >
+            <Plus className="h-4 w-4" /> Add New Staff
           </Button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Improved Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <StatCard
-            title="Total Staff"
-            value={stats.total.toString()}
+            title="Total Faculty"
+            value={teachers.length.toString()}
             icon={Users}
             iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
+            iconBgColor="bg-blue-50"
+            description="Active workforce"
           />
           <StatCard
-            title="Active"
-            value={stats.active.toString()}
+            title="Present Today"
+            value={teachers.filter(t => t.status === "Active").length.toString()}
             icon={UserCheck}
-            iconColor="text-green-600"
-            iconBgColor="bg-green-100"
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-50"
+            description="At campus"
           />
           <StatCard
             title="On Leave"
-            value={stats.onLeave.toString()}
+            value={teachers.filter(t => t.status === "On Leave").length.toString()}
             icon={UserX}
             iconColor="text-orange-600"
-            iconBgColor="bg-orange-100"
+            iconBgColor="bg-orange-50"
+            description="Approved absence"
           />
           <StatCard
-            title="Departments"
-            value={stats.departments.toString()}
-            icon={Building}
-            iconColor="text-purple-600"
-            iconBgColor="bg-purple-100"
+            title="Monthly Payroll"
+            value={`₹${teachers.reduce((acc, curr) => acc + parseInt(curr.salary || "0"), 0).toLocaleString()}`}
+            icon={BadgeDollarSign}
+            iconColor="text-indigo-600"
+            iconBgColor="bg-indigo-50"
+            description="Total expenditure"
           />
         </div>
 
         {/* Advanced Table */}
         <AdvancedTable
+          title="Faculty Ledger"
           columns={columns}
-          data={staff}
-          searchable={true}
-          searchPlaceholder="Search by name, email, or department..."
-          filterable={true}
-          filterOptions={[
-            { key: "status", label: "Status", options: ["Active", "On Leave", "Inactive"] },
-            { key: "department", label: "Department", options: [...new Set(staff.map(s => s.department))] },
-            { key: "position", label: "Position", options: [...new Set(staff.map(s => s.position))] }
-          ]}
-          selectable={true}
-          onEdit={handleOpenModal}
-          onDelete={handleDelete}
-          onBulkAction={handleBulkAction}
-          pageSize={10}
-          emptyMessage="No staff members found."
+          data={teachers}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search by name, email, or qualification..."
+          pagination
+          onEdit={(row) => {
+            const teacher = teachers.find(t => t.id === row.id);
+            if (teacher) {
+              setEditingTeacher({
+                ...teacher,
+                subjects: Array.isArray(teacher.subjects) ? teacher.subjects.join(', ') : teacher.subjects
+              } as any);
+              setIsModalOpen(true);
+            }
+          }}
+          onDelete={(row) => setDeleteData({ open: true, id: row.id })}
         />
 
-        {/* Form Modal */}
         <FormModal
           isOpen={isModalOpen}
-          title={editingStaff ? "Edit Staff" : "Add New Staff"}
-          fields={[
-            { name: "name", label: "Full Name", type: "text" as const, required: true },
-            { name: "email", label: "Email", type: "email" as const, required: true },
-            { name: "phone", label: "Phone", type: "text" as const, required: true },
-            { name: "position", label: "Position", type: "text" as const, required: true },
-            { name: "department", label: "Department", type: "text" as const, required: true },
-            { name: "joiningDate", label: "Joining Date", type: "date" as const, required: true },
-            { name: "salary", label: "Salary", type: "text" as const, required: false },
-            {
-              name: "status",
-              label: "Status",
-              type: "select" as const,
-              options: [
-                { value: "Active", label: "Active" },
-                { value: "On Leave", label: "On Leave" },
-                { value: "Inactive", label: "Inactive" },
-              ],
-              required: true
-            },
-          ]}
-          initialData={editingStaff || undefined}
-          onSubmit={editingStaff ? handleEditStaff : handleAddStaff}
           onClose={() => {
             setIsModalOpen(false)
-            setEditingStaff(null)
+            setEditingTeacher(null)
           }}
+          title={editingTeacher ? "Update Staff Credentials" : "Register New Faculty"}
+          fields={formFields}
+          initialData={editingTeacher || undefined}
+          onSubmit={(data: any) => editingTeacher ? handleEdit(editingTeacher.id, data) : handleAdd(data)}
         />
 
-        {/* Delete Confirmation */}
         <ConfirmationDialog
-          open={deleteConfirm.open}
-          onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
-          title="Delete Staff Member"
-          description="Are you sure you want to delete this staff member? This action cannot be undone."
+          open={deleteData.open}
+          onOpenChange={(open) => setDeleteData({ open, id: null })}
           onConfirm={confirmDelete}
-          confirmText="Delete"
-          variant="destructive"
+          title="Offboard Staff Member?"
+          description="This will permanently delete the staff record and revoke their system access. This action cannot be reversed."
         />
       </div>
     </DashboardLayout>

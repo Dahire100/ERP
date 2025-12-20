@@ -1,124 +1,307 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Mail } from "lucide-react"
-import { toast } from "sonner"
+  Plus,
+  Mail,
+  Send,
+  Inbox,
+  History,
+  ClipboardList,
+  Timer
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-const sample = [
-  { id: 1, type: "Receive", fromTo: "Parent - Riya", ref: "POST-101", date: "12-06-2025", note: "Documents" },
-  { id: 2, type: "Dispatch", fromTo: "Courier to Vendor", ref: "POST-102", date: "11-06-2025", note: "Payment cheque" }
-]
+interface PostalItem {
+  id: string
+  fromTitle: string
+  toTitle: string
+  referenceNo: string
+  date: string
+  type: 'receive' | 'dispatch'
+  note?: string
+}
 
-export default function PostalReceiveDispatch() {
-  const [rows, setRows] = useState(sample)
-  const [form, setForm] = useState({ type: "", fromTo: "", ref: "", date: "", note: "" })
+export default function PostalReceiveDispatchPage() {
+  const { toast } = useToast()
+  const [records, setRecords] = useState<PostalItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.type || !form.fromTo || !form.ref || !form.date) {
-      toast.error("Type, party, reference and date are required")
-      return
+  useEffect(() => {
+    fetchRecords();
+  }, []);
+
+  const fetchRecords = async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/postal-exchange', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const mappedData = data.map((item: any) => ({
+          id: item._id,
+          fromTitle: item.fromTitle,
+          toTitle: item.toTitle,
+          referenceNo: item.referenceNo,
+          date: new Date(item.date).toLocaleDateString(),
+          type: item.type,
+          note: item.note
+        }));
+        setRecords(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching postal records:', error);
+      toast({ title: "Error", description: "Failed to load postal history.", variant: "destructive" });
+    } finally {
+      setLoading(false)
     }
-    setRows([...rows, { id: Date.now(), ...form }])
-    toast.success("Postal entry saved")
-    setForm({ type: "", fromTo: "", ref: "", date: "", note: "" })
+  };
+
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/postal-exchange', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        toast({ title: "Success", description: "Postal entry recorded." });
+        fetchRecords();
+        setIsModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error adding record:', error);
+      toast({ title: "Error", description: "Failed to save entry.", variant: "destructive" });
+    }
+  };
+
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/postal-exchange/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        toast({ title: "Updated", description: "Entry updated successfully." });
+        fetchRecords();
+        setIsModalOpen(false);
+        setEditingId(null);
+      }
+    } catch (error) {
+      console.error('Error updating record:', error);
+      toast({ title: "Error", description: "Failed to update record.", variant: "destructive" });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/postal-exchange/${deleteConfirm.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        toast({ title: "Deleted", description: "Record removed from registry." });
+        fetchRecords();
+      }
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      toast({ title: "Error", description: "Failed to delete record.", variant: "destructive" });
+    } finally {
+      setDeleteConfirm({ open: false, id: null });
+    }
+  };
+
+  const columns = [
+    {
+      key: "type",
+      label: "Traffic",
+      sortable: true,
+      render: (value: string) => (
+        <div className="flex items-center gap-2">
+          {value === 'receive' ? (
+            <div className="bg-emerald-50 text-emerald-600 p-1.5 rounded-lg border border-emerald-100 italic">
+              <Inbox size={14} />
+            </div>
+          ) : (
+            <div className="bg-blue-50 text-blue-600 p-1.5 rounded-lg border border-blue-100 italic">
+              <Send size={14} />
+            </div>
+          )}
+          <span className="text-xs font-bold uppercase tracking-widest">{value}</span>
+        </div>
+      )
+    },
+    {
+      key: "fromTitle",
+      label: "Sender / Party",
+      sortable: true,
+      render: (value: string, row: PostalItem) => (
+        <div className="flex flex-col">
+          <span className="text-xs font-bold text-gray-900">{value}</span>
+          <span className="text-[10px] text-gray-500 font-medium">To: {row.toTitle}</span>
+        </div>
+      )
+    },
+    {
+      key: "referenceNo",
+      label: "Reference #",
+      sortable: true,
+      render: (value: string) => <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{value}</span>
+    },
+    {
+      key: "date",
+      label: "Recorded On",
+      sortable: true,
+      render: (value: string) => (
+        <span className="text-xs text-gray-600 font-medium flex items-center gap-1.5">
+          <Timer size={12} className="text-gray-400" /> {value}
+        </span>
+      )
+    }
+  ]
+
+  const formFields: FormField[] = [
+    {
+      name: "type",
+      label: "Entry Category",
+      type: "select",
+      options: [
+        { value: "receive", label: "Receive (Incoming)" },
+        { value: "dispatch", label: "Dispatch (Outgoing)" }
+      ],
+      required: true
+    },
+    { name: "fromTitle", label: "From (Sender)", type: "text", required: true, placeholder: "e.g., Parent of Riya, Vendor Name..." },
+    { name: "toTitle", label: "To (Recipient)", type: "text", required: true, placeholder: "e.g., General Office, Accountant..." },
+    { name: "referenceNo", label: "Registry / Tracking No.", type: "text", required: true, placeholder: "REF-00X..." },
+    { name: "date", label: "Transaction Date", type: "date", required: true },
+    { name: "note", label: "Brief Remarks", type: "textarea", required: false, placeholder: "Confidential, Urgent, etc..." },
+  ];
+
+  const stats = {
+    total: records.length,
+    received: records.filter(r => r.type === 'receive').length,
+    dispatched: records.filter(r => r.type === 'dispatch').length,
+    today: records.filter(r => r.date === new Date().toLocaleDateString()).length
   }
 
   return (
-    <DashboardLayout title="Postal Receive / Dispatch">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                <Mail className="h-5 w-5" />
-                Add Entry
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-red-500">Type *</Label>
-                  <Select value={form.type} onValueChange={(val) => setForm({ ...form, type: val })}>
-                    <SelectTrigger className="bg-white border-gray-200">
-                      <SelectValue placeholder="Receive or Dispatch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Receive">Receive</SelectItem>
-                      <SelectItem value="Dispatch">Dispatch</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">From / To *</Label>
-                  <Input value={form.fromTo} onChange={(e) => setForm({ ...form, fromTo: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Reference No *</Label>
-                  <Input value={form.ref} onChange={(e) => setForm({ ...form, ref: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Date *</Label>
-                  <Input value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} placeholder="DD-MM-YYYY" className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Note</Label>
-                  <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-6">Save</Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+    <DashboardLayout title="Postal Gateway">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <Mail className="text-pink-600" size={24} />
+              Inbound / Outbound Mail
+            </h1>
+            <p className="text-sm text-gray-500">Registry for monitoring all physical communication flows</p>
+          </div>
+          <Button
+            onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+            className="bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-100 gap-2 h-11 px-6 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+          >
+            <Plus className="h-4 w-4" /> Log Postal Entry
+          </Button>
         </div>
 
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg text-gray-800">Postal Entries</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-pink-50 hover:bg-pink-50">
-                      <TableHead className="font-bold text-gray-700 uppercase">Type</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">From/To</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Reference</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Date</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Note</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.type}</TableCell>
-                        <TableCell>{row.fromTo}</TableCell>
-                        <TableCell>{row.ref}</TableCell>
-                        <TableCell>{row.date}</TableCell>
-                        <TableCell>{row.note || "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Handled"
+            value={stats.total.toString()}
+            icon={ClipboardList}
+            iconColor="text-blue-600"
+            iconBgColor="bg-blue-50"
+            description="Registry size"
+          />
+          <StatCard
+            title="Total Received"
+            value={stats.received.toString()}
+            icon={Inbox}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-50"
+            description="Incoming flow"
+          />
+          <StatCard
+            title="Total Dispatched"
+            value={stats.dispatched.toString()}
+            icon={Send}
+            iconColor="text-pink-600"
+            iconBgColor="bg-pink-50"
+            description="Outgoing flow"
+          />
+          <StatCard
+            title="Today's Traffic"
+            value={stats.today.toString()}
+            icon={History}
+            iconColor="text-orange-600"
+            iconBgColor="bg-orange-50"
+            description="Captured today"
+          />
         </div>
+
+        <AdvancedTable
+          title="Digital Postal Registry"
+          columns={columns}
+          data={records}
+          loading={loading}
+          searchable
+          searchPlaceholder="Monitor entries by sender, recipient or reference..."
+          pagination
+          onEdit={(row) => {
+            setEditingId(row.id);
+            setIsModalOpen(true);
+          }}
+          onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+        />
+
+        <FormModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingId(null);
+          }}
+          title={editingId ? "Modify Registry Entry" : "New Secure Postal Entry"}
+          fields={formFields}
+          initialData={editingId ? records.find(r => r.id === editingId) : undefined}
+          onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+        />
+
+        <ConfirmationDialog
+          open={deleteConfirm.open}
+          onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+          onConfirm={confirmDelete}
+          title="Delete Registry Archive?"
+          description="This will permanently purge this record from the security archives. This action cannot be undone."
+          variant="destructive"
+        />
       </div>
     </DashboardLayout>
   )

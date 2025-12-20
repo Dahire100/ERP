@@ -1,44 +1,29 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard-layout"
 import { ProtectedRoute } from "@/components/protected-route"
-import { StatCard } from "@/components/super-admin/stat-card"
-import { MiniChart } from "@/components/super-admin/mini-chart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
-<<<<<<< HEAD
   Users,
   BookOpen,
   IndianRupee,
-=======
-  Users, 
-  BookOpen, 
-  IndianRupee, 
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
   GraduationCap,
-  TrendingUp,
-  TrendingDown,
   ArrowRight,
-  Calendar,
   ClipboardList,
   FileText,
   Bell,
-  Bus,
-  Home,
   Library,
-  Award,
-  MessageSquare,
-  CheckCircle,
+  Shield,
   Clock,
-<<<<<<< HEAD
+  CheckCircle,
   PieChart,
-  Shield
-=======
-  PieChart
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
+  Activity,
+  Calendar,
+  Search,
+  MoreHorizontal
 } from "lucide-react"
 import {
   Select,
@@ -47,6 +32,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+
+interface ActivityItem {
+  type: string
+  user: string
+  action: string
+  target: string
+  time: string
+  avatar: string
+}
+
+interface DashboardData {
+  stats: {
+    totalStudents: number
+    totalTeachers: number
+    totalClasses: number
+    monthlyRevenue: number
+    pendingFees: number
+  }
+  revenueTrend: any[]
+  recentActivity: ActivityItem[]
+  recentStudents: any[]
+  notices: any[]
+}
 
 export default function AdminDashboard() {
   return (
@@ -58,328 +69,304 @@ export default function AdminDashboard() {
 
 function AdminDashboardContent() {
   const [timePeriod, setTimePeriod] = useState("month")
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<DashboardData>({
+    stats: {
+      totalStudents: 0,
+      totalTeachers: 0,
+      totalClasses: 0,
+      monthlyRevenue: 0,
+      pendingFees: 0
+    },
+    revenueTrend: [],
+    recentActivity: [],
+    recentStudents: [],
+    notices: []
+  })
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/dashboard`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const result = await res.json();
+        if (result.stats) {
+          setData(result);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const stats = [
     {
       title: "Total Students",
-      value: "1,234",
+      value: data.stats.totalStudents || "0",
+      trend: "Active Learners",
       icon: Users,
-      trend: { value: 12, isPositive: true },
-      iconColor: "text-blue-600",
-      iconBgColor: "bg-blue-100"
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      border: "border-blue-100",
+      gradient: "from-blue-500 to-blue-600"
     },
     {
       title: "Total Teachers",
-      value: "45",
+      value: data.stats.totalTeachers || "0",
+      trend: "Faculty Staff",
       icon: GraduationCap,
-      trend: { value: 3, isPositive: true },
-      iconColor: "text-green-600",
-      iconBgColor: "bg-green-100"
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-100",
+      gradient: "from-emerald-500 to-emerald-600"
     },
     {
       title: "Total Classes",
-      value: "32",
+      value: data.stats.totalClasses || "0",
+      trend: "Academic Groups",
       icon: BookOpen,
-      trend: { value: 0, isPositive: true },
-      iconColor: "text-purple-600",
-      iconBgColor: "bg-purple-100"
-    },
-  ]
-
-  const managementCards = [
-    {
-      title: "Student Management",
-      description: "Manage student records and information",
-      icon: Users,
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
-      stats: [
-        { label: "Active", value: "1,200", color: "text-green-600" },
-        { label: "Inactive", value: "34", color: "text-gray-600" },
-        { label: "New This Month", value: "45", color: "text-blue-600" }
-      ],
-      link: "/dashboard/admin/student-info",
-      actions: [
-        { label: "Add Student", link: "/dashboard/admin/student-info" },
-        { label: "View All", link: "/dashboard/admin/student-info" }
-      ]
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      border: "border-purple-100",
+      gradient: "from-purple-500 to-purple-600"
     },
     {
-      title: "Human Resource",
-      description: "Manage staff and teacher records",
-      icon: GraduationCap,
-      iconBg: "bg-green-100",
-      iconColor: "text-green-600",
-      stats: [
-        { label: "Active", value: "43", color: "text-green-600" },
-        { label: "On Leave", value: "2", color: "text-orange-600" },
-        { label: "Departments", value: "8", color: "text-blue-600" }
-      ],
-      link: "/dashboard/admin/human-resource",
-      actions: [
-        { label: "Add Staff", link: "/dashboard/admin/human-resource" },
-        { label: "View All", link: "/dashboard/admin/human-resource" }
-      ]
-    },
-    {
-      title: "Academics",
-      description: "Manage classes, sections and subjects",
-      icon: BookOpen,
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
-      stats: [
-        { label: "Classes", value: "32", color: "text-purple-600" },
-        { label: "Sections", value: "48", color: "text-blue-600" },
-        { label: "Subjects", value: "24", color: "text-gray-600" }
-      ],
-      link: "/dashboard/admin/academics",
-      actions: [
-        { label: "Add Class", link: "/dashboard/admin/academics" },
-        { label: "View All", link: "/dashboard/admin/academics" }
-      ]
-    },
-    {
-      title: "Fee Management",
-      description: "Track fees and payment collection",
+      title: "Monthly Revenue",
+      value: `₹${(data.stats.monthlyRevenue || 0).toLocaleString()}`,
+      trend: `${data.revenueTrend && data.revenueTrend.length > 1 ? '+Growth' : 'Stable'}`,
       icon: IndianRupee,
-      iconBg: "bg-orange-100",
-      iconColor: "text-orange-600",
-      stats: [
-        { label: "Collected", value: "₹39,63,000", color: "text-green-600" },
-        { label: "Pending", value: "₹5,60,000", color: "text-orange-600" },
-        { label: "Overdue", value: "₹1,20,000", color: "text-red-600" }
-      ],
-      link: "/dashboard/admin/front-office",
-      actions: [
-        { label: "Collect Fee", link: "/dashboard/admin/front-office" },
-        { label: "View All", link: "/dashboard/admin/front-office" }
-      ]
-    },
-    {
-      title: "Examinations",
-      description: "Schedule exams and manage results",
-      icon: ClipboardList,
-      iconBg: "bg-red-100",
-      iconColor: "text-red-600",
-      stats: [
-        { label: "Upcoming", value: "3", color: "text-blue-600" },
-        { label: "Ongoing", value: "1", color: "text-orange-600" },
-        { label: "Completed", value: "12", color: "text-green-600" }
-      ],
-      link: "/dashboard/admin/examinations",
-      actions: [
-        { label: "Schedule Exam", link: "/dashboard/admin/examinations" },
-        { label: "View All", link: "/dashboard/admin/examinations" }
-      ]
-    },
-    {
-      title: "Library",
-      description: "Manage books and library resources",
-      icon: Library,
-      iconBg: "bg-indigo-100",
-      iconColor: "text-indigo-600",
-      stats: [
-        { label: "Total Books", value: "2,450", color: "text-indigo-600" },
-        { label: "Issued", value: "380", color: "text-orange-600" },
-        { label: "Available", value: "2,070", color: "text-green-600" }
-      ],
-      link: "/dashboard/admin/library",
-      actions: [
-        { label: "Add Book", link: "/dashboard/admin/library" },
-        { label: "View All", link: "/dashboard/admin/library" }
-      ]
-    },
-    {
-      title: "Disciplinary",
-      description: "Manage student behavior and discipline",
-      icon: Shield,
-      iconBg: "bg-pink-100",
-      iconColor: "text-pink-600",
-      stats: [
-        { label: "Complaints", value: "12", color: "text-red-600" },
-        { label: "Resolved", value: "8", color: "text-green-600" },
-        { label: "Pending", value: "4", color: "text-orange-600" }
-      ],
-      link: "/dashboard/admin/disciplinary",
-      actions: [
-        { label: "Complaints", link: "/dashboard/admin/disciplinary/student-complaints" },
-        { label: "Reports", link: "/dashboard/admin/disciplinary/disciplinary-report" }
-      ]
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+      border: "border-orange-100",
+      gradient: "from-orange-500 to-orange-600"
     },
   ]
 
-  const recentActivity = [
-    { action: "New student admission", user: "John Doe", time: "5 minutes ago", icon: Users, color: "text-blue-600" },
-    { action: "Fee payment received", user: "Jane Smith", time: "15 minutes ago", icon: IndianRupee, color: "text-green-600" },
-    { action: "Exam scheduled", user: "Admin", time: "1 hour ago", icon: ClipboardList, color: "text-orange-600" },
-    { action: "Notice published", user: "Principal", time: "2 hours ago", icon: Bell, color: "text-purple-600" },
+  const quickLinks = [
+    { label: "Add Student", icon: Users, href: "/dashboard/admin/student-info", color: "bg-blue-100 text-blue-700" },
+    { label: "Collect Fees", icon: IndianRupee, href: "/dashboard/admin/fees-collection", color: "bg-green-100 text-green-700" },
+    { label: "Add Staff", icon: GraduationCap, href: "/dashboard/admin/human-resource", color: "bg-purple-100 text-purple-700" },
+    { label: "Timetable", icon: Clock, href: "/dashboard/admin/academics", color: "bg-orange-100 text-orange-700" },
   ]
 
-  const analytics = [
-    { title: "Attendance Analytics", value: "94%", icon: CheckCircle, color: "text-green-600", bg: "bg-green-100", sub: "Overall attendance" },
-    { title: "Fee Summary", value: "₹39.6L", icon: IndianRupee, color: "text-emerald-600", bg: "bg-emerald-100", sub: "Collected this month" },
-    { title: "Pending Fees", value: "₹5.6L", icon: Clock, color: "text-orange-600", bg: "bg-orange-100", sub: "Pending / overdue" },
-    { title: "Exam Summary", value: "4 Active", icon: ClipboardList, color: "text-indigo-600", bg: "bg-indigo-100", sub: "Ongoing / upcoming" },
-    { title: "Homework Pending", value: "38", icon: FileText, color: "text-pink-600", bg: "bg-pink-100", sub: "Submissions pending" },
-    { title: "Notices & Events", value: "12", icon: Bell, color: "text-purple-600", bg: "bg-purple-100", sub: "Live notices/events" },
-    { title: "Quick Links", value: "Go", icon: PieChart, color: "text-blue-600", bg: "bg-blue-100", sub: "Jump to key pages", href: "/dashboard/admin/settings" },
-  ]
-
-  const quickActions = [
-    { label: "Add Student", icon: Users, link: "/dashboard/admin/student-info" },
-    { label: "Collect Fee", icon: IndianRupee, link: "/dashboard/admin/front-office" },
-    { label: "Schedule Exam", icon: Calendar, link: "/dashboard/admin/examinations" },
-    { label: "Post Notice", icon: Bell, link: "/dashboard/admin/digital-notice-board" },
-  ]
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center">Loading dashboard...</div>;
+  }
 
   return (
     <DashboardLayout title="Admin Dashboard">
-      <div className="space-y-6">
-        {/* Header with Time Period Selector */}
-        <div className="flex justify-between items-center">
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1 h-full overflow-y-auto pb-10">
+
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-semibold">Dashboard Overview</h2>
-            <p className="text-sm text-muted-foreground">Welcome back! Here's what's happening today.</p>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900">Overview</h2>
+            <p className="text-muted-foreground mt-1">Track your institute's performance and metrics.</p>
           </div>
-          <Select value={timePeriod} onValueChange={setTimePeriod}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="year">This Year</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="pl-9 h-10 w-64 rounded-md border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-[#1e1b4b] transition-all"
+              />
+            </div>
+            <Select value={timePeriod} onValueChange={setTimePeriod}>
+              <SelectTrigger className="w-[160px] bg-white">
+                <SelectValue placeholder="Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+                <SelectItem value="year">This Year</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button className="bg-[#1e1b4b] hover:bg-[#1e1b4b]/90 shadow-md">
+              <Activity className="w-4 h-4 mr-2" /> Generate Report
+            </Button>
+          </div>
         </div>
 
-        {/* Analytics Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {analytics.map((item) => (
-            <Card key={item.title} className="border">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-gray-800">{item.title}</CardTitle>
-                <div className={`p-2 rounded-lg ${item.bg}`}>
-                  <item.icon className={`h-4 w-4 ${item.color}`} />
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, index) => (
+            <Card key={index} className={`border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group`}>
+              <CardContent className="p-0">
+                <div className="p-6 flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                    <h3 className="text-2xl font-bold mt-2 text-gray-900">{stat.value}</h3>
+                    <p className={`text-xs mt-1 font-medium ${typeof stat.trend === 'string' && stat.trend.includes('+') ? 'text-green-600' : 'text-gray-500'}`}>
+                      {stat.trend}
+                    </p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${stat.bg} group-hover:scale-110 transition-transform duration-300`}>
+                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{item.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{item.sub}</p>
-                {item.href && (
-                  <Link href={item.href} className="text-xs text-blue-700 hover:underline mt-2 inline-flex items-center gap-1">
-                    Open <ArrowRight className="h-3 w-3" />
-                  </Link>
-                )}
+                <div className={`h-1 w-full bg-gradient-to-r ${stat.gradient}`} />
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Stats Grid with Trends */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {stats.map((stat) => (
-            <StatCard
-              key={stat.title}
-              title={stat.title}
-              value={stat.value}
-              icon={stat.icon}
-              trend={stat.trend}
-              iconColor={stat.iconColor}
-              iconBgColor={stat.iconBgColor}
-            />
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {quickActions.map((action) => (
-                <Link key={action.label} href={action.link}>
-                  <Button variant="outline" className="w-full h-auto flex flex-col items-center gap-2 py-4">
-                    <action.icon className="h-6 w-6" />
-                    <span className="text-sm">{action.label}</span>
-                  </Button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Modules Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { title: "Students", icon: Users, desc: "Manage admissions & details", color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/admin/student-info" },
+                { title: "Academics", icon: BookOpen, desc: "Classes, subjects & timetable", color: "text-purple-600", bg: "bg-purple-50", href: "/dashboard/admin/academics" },
+                { title: "Fees & Accounts", icon: IndianRupee, desc: "Invoices, payments & dues", color: "text-green-600", bg: "bg-green-50", href: "/dashboard/admin/fees-collection" },
+                { title: "Examinations", icon: ClipboardList, desc: "Schedules & result publications", color: "text-orange-600", bg: "bg-orange-50", href: "/dashboard/admin/examinations" },
+                { title: "Human Resource", icon: GraduationCap, desc: "Staff management & payroll", color: "text-pink-600", bg: "bg-pink-50", href: "/dashboard/admin/human-resource" },
+                { title: "Library", icon: Library, desc: "Books issue & return", color: "text-indigo-600", bg: "bg-indigo-50", href: "/dashboard/admin/library" },
+              ].map((item, idx) => (
+                <Link href={item.href} key={idx} className="block group">
+                  <Card className="h-full border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                    <CardContent className="p-6 flex items-start gap-4">
+                      <div className={`p-3.5 rounded-2xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform`}>
+                        <item.icon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 group-hover:text-[#1e1b4b] transition-colors">{item.title}</h3>
+                        <p className="text-sm text-gray-500 mt-1 leading-relaxed">{item.desc}</p>
+                      </div>
+                      <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0">
+                        <ArrowRight className="w-5 h-5 text-gray-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </Link>
               ))}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Management Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {managementCards.map((card) => (
-            <Card key={card.title} className="hover:shadow-lg transition-shadow">
+            {/* Performance Chart */}
+            <Card className="border-none shadow-md bg-white text-gray-900 overflow-hidden relative">
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`${card.iconBg} p-3 rounded-lg`}>
-                      <card.icon className={`h-6 w-6 ${card.iconColor}`} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{card.title}</CardTitle>
-                      <CardDescription>{card.description}</CardDescription>
-                    </div>
+                <CardTitle className="flex justify-between items-center text-gray-800">
+                  <span>Revenue Analysis</span>
+                  <div className="flex bg-gray-100 rounded-lg p-0.5">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs bg-white shadow-sm rounded-md">Revenue</Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-gray-500 hover:text-gray-900">Expenses</Button>
                   </div>
-                </div>
+                </CardTitle>
+                <CardDescription className="text-gray-500">Monthly fee collection trend</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  {card.stats.map((stat) => (
-                    <div key={stat.label} className="text-center">
-                      <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 pt-2">
-                  {card.actions.map((action) => (
-                    <Link key={action.label} href={action.link} className="flex-1">
-                      <Button variant={action.label.includes("Add") ? "default" : "outline"} className="w-full">
-                        {action.label}
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                  ))}
-                </div>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={data.revenueTrend && data.revenueTrend.length > 0 ? data.revenueTrend : [{ month: 'No Data', revenue: 0 }]}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1} />
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} tickFormatter={(value) => `₹${value / 1000}k`} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value) => [`₹${value}`, "Revenue"]}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          </div>
 
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Recent Activity</CardTitle>
-              <Button variant="ghost" size="sm">
-                View All
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start gap-4 pb-4 border-b last:border-0">
-                  <div className={`p-2 bg-muted rounded-lg ${activity.color}`}>
-                    <activity.icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{activity.action}</p>
-                    <p className="text-sm text-muted-foreground">by {activity.user}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{activity.time}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Sidebar / Right Column */}
+          <div className="space-y-8">
+            {/* Quick Actions */}
+            <Card className="border shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3">
+                {quickLinks.map((link, i) => (
+                  <Link href={link.href} key={i}>
+                    <div className={`flex flex-col items-center justify-center p-4 rounded-xl ${link.color} bg-opacity-50 hover:bg-opacity-100 transition-all cursor-pointer h-24 text-center gap-2`}>
+                      <link.icon className="w-6 h-6" />
+                      <span className="text-xs font-bold">{link.label}</span>
+                    </div>
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card className="border shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-bold">Recent Activity</CardTitle>
+                <Button variant="ghost" size="sm" className="h-8 text-xs">View All</Button>
+              </CardHeader>
+              <CardContent className="px-0">
+                {data.recentActivity && data.recentActivity.length > 0 ? (
+                  data.recentActivity.map((activity, i) => (
+                    <div key={i} className="flex gap-3 px-6 py-4 hover:bg-gray-50 transition-colors border-b last:border-0 items-start">
+                      <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{activity.avatar}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm text-gray-900">
+                          <span className="font-semibold">{activity.user}</span> <span className="text-gray-500">{activity.action}</span> <span className="font-medium text-gray-900">{activity.target}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {new Date(activity.time).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-gray-500 text-sm">No recent activity</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Notice Board Preview */}
+            <Card className="border shadow-sm bg-yellow-50/50">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-yellow-600" /> Notice Board
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {data.notices && data.notices.length > 0 ? (
+                  data.notices.map((notice: any, i: number) => (
+                    <div key={i} className="bg-white p-3 rounded-lg border border-yellow-100 shadow-sm">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded capitalize ${notice.type === 'holiday' ? 'text-yellow-700 bg-yellow-100' :
+                          notice.type === 'exam' ? 'text-blue-700 bg-blue-100' :
+                            notice.type === 'urgent' ? 'text-red-700 bg-red-100' :
+                              'text-gray-700 bg-gray-100'
+                          }`}>
+                          {notice.type}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(notice.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-800">{notice.title}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-sm text-muted-foreground py-4">No recent notices</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )

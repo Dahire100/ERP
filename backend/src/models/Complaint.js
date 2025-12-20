@@ -9,12 +9,16 @@ const complaintSchema = new mongoose.Schema({
   },
   complainantId: {
     type: mongoose.Schema.Types.ObjectId,
+    required: false
+  },
+  complainantName: {
+    type: String,
     required: true
   },
   complainantType: {
     type: String,
     required: true,
-    enum: ['student', 'parent', 'teacher', 'staff']
+    enum: ['student', 'parent', 'teacher', 'staff', 'visitor', 'other']
   },
   complaintType: {
     type: String,

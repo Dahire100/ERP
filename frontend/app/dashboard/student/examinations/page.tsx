@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Calendar, Award, Clock, BookOpen } from "lucide-react"
 
+import { toast } from "sonner"
+
 export default function StudentExaminations() {
   const upcomingExams = [
     { id: 1, subject: "Mathematics", date: "2024-11-20", time: "09:00 AM", duration: "3 hours", syllabus: "Chapters 1-5", daysLeft: 5 },
@@ -23,6 +25,14 @@ export default function StudentExaminations() {
   ]
 
   const averagePercentage = recentResults.reduce((sum, r) => sum + r.percentage, 0) / recentResults.length
+
+  const handleDownloadReport = () => {
+    toast.success("Downloading Report Card", { description: "Your report card download has started." })
+  }
+
+  const handleViewSchedule = () => {
+    toast.info("Opening Schedule", { description: "Redirecting to full exam schedule..." })
+  }
 
   return (
     <DashboardLayout title="Examinations">
@@ -142,11 +152,11 @@ export default function StudentExaminations() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex gap-3">
-              <Button className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+              <Button onClick={handleViewSchedule} className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
                 <Calendar className="h-4 w-4 mr-2" />
                 View Full Schedule
               </Button>
-              <Button variant="outline" className="flex-1">
+              <Button onClick={handleDownloadReport} variant="outline" className="flex-1">
                 <Award className="h-4 w-4 mr-2" />
                 Download Report Card
               </Button>

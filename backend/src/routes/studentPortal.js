@@ -61,4 +61,22 @@ router.get('/quizzes', verifyToken, verifyRole(['student']), studentPortalContro
 router.get('/quizzes/:quizId/start', verifyToken, verifyRole(['student']), studentPortalController.startQuiz);
 router.post('/quizzes/:quizId/submit', verifyToken, verifyRole(['student']), studentPortalController.submitQuiz);
 
+// Library History
+router.get('/library/history', verifyToken, verifyRole(['student']), studentPortalController.getLibraryHistory);
+
+// Transport
+router.get('/transport', verifyToken, verifyRole(['student']), studentPortalController.getTransportDetails);
+
+// Hostel
+router.get('/hostel', verifyToken, verifyRole(['student']), studentPortalController.getHostelDetails);
+router.post('/hostel/outpass', verifyToken, verifyRole(['student']), studentPortalController.applyOutpass);
+router.get('/hostel/outpass/history', verifyToken, verifyRole(['student']), studentPortalController.getOutpassHistory);
+
+// Documents
+router.get('/documents', verifyToken, verifyRole(['student']), studentPortalController.getStudentDocuments);
+router.post('/documents', verifyToken, verifyRole(['student']), studentPortalController.uploadStudentDocument);
+
+// Downloads (Study Materials)
+router.get('/downloads', verifyToken, verifyRole(['student']), studentPortalController.getDownloads);
+
 module.exports = router;

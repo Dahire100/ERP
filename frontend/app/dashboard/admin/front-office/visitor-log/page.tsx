@@ -1,137 +1,313 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Users } from "lucide-react"
-import { toast } from "sonner"
+import {
+  Plus,
+  Users,
+  UserPlus,
+  Clock,
+  History,
+  DoorOpen,
+  DoorClosed,
+  IdCard
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-const sample = [
-<<<<<<< HEAD
-  { id: 1, name: "Rohit Sharma", purpose: "Admission Enquiry", contact: "9876543210", inTime: "10:15", outTime: "10:45", createdBy: "Demo" },
-  { id: 2, name: "Meena Rao", purpose: "Meet Teacher", contact: "9998887777", inTime: "11:00", outTime: "11:20", createdBy: "Super" }
-=======
-  { id: 1, name: "Rohit Sharma", purpose: "Admission Enquiry", contact: "9876543210", inTime: "10:15", outTime: "10:45" },
-  { id: 2, name: "Meena Rao", purpose: "Meet Teacher", contact: "9998887777", inTime: "11:00", outTime: "11:20" }
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
-]
+interface VisitorItem {
+  id: string
+  name: string
+  phone: string
+  purpose: string
+  idCard?: string
+  noOfPerson: number
+  date: string
+  inTime?: string
+  outTime?: string
+  note?: string
+}
 
-export default function VisitorLog() {
-  const [rows, setRows] = useState(sample)
-  const [form, setForm] = useState({ name: "", purpose: "", contact: "", inTime: "", outTime: "" })
+export default function VisitorLogPage() {
+  const { toast } = useToast()
+  const [visitors, setVisitors] = useState<VisitorItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.name || !form.purpose || !form.contact || !form.inTime) {
-      toast.error("Name, purpose, contact, and in time are required")
-      return
+  useEffect(() => {
+    fetchVisitors()
+  }, [])
+
+  const fetchVisitors = async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:5000/api/visitors', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setVisitors(data.map((v: any) => ({
+          id: v._id,
+          name: v.name,
+          phone: v.phone,
+          purpose: v.purpose,
+          idCard: v.idCard,
+          noOfPerson: v.noOfPerson,
+          date: new Date(v.date).toLocaleDateString(),
+          inTime: v.inTime,
+          outTime: v.outTime,
+          note: v.note
+        })))
+      }
+    } catch (error) {
+      console.error('Error fetching visitors:', error)
+      toast({ title: "Error", description: "Failed to load visitor logs.", variant: "destructive" })
+    } finally {
+      setLoading(false)
     }
-<<<<<<< HEAD
-    setRows([...rows, { id: Date.now(), ...form, createdBy: "Admin" }])
-=======
-    setRows([...rows, { id: Date.now(), ...form }])
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
-    toast.success("Visitor added")
-    setForm({ name: "", purpose: "", contact: "", inTime: "", outTime: "" })
+  }
+
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:5000/api/visitors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        toast({ title: "Success", description: "Visitor logged successfully." })
+        fetchVisitors()
+        setIsModalOpen(false)
+      }
+    } catch (error) {
+      console.error('Error adding visitor:', error)
+      toast({ title: "Error", description: "Failed to log visitor.", variant: "destructive" })
+    }
+  }
+
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:5000/api/visitors/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      if (response.ok) {
+        toast({ title: "Updated", description: "Visitor record updated." })
+        fetchVisitors()
+        setIsModalOpen(false)
+        setEditingId(null)
+      }
+    } catch (error) {
+      console.error('Error updating visitor:', error)
+      toast({ title: "Error", description: "Failed to update record.", variant: "destructive" })
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.id) return
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:5000/api/visitors/${deleteConfirm.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (response.ok) {
+        toast({ title: "Deleted", description: "Visitor record purged." })
+        fetchVisitors()
+      }
+    } catch (error) {
+      console.error('Error deleting visitor:', error)
+      toast({ title: "Error", description: "Failed to delete record.", variant: "destructive" })
+    } finally {
+      setDeleteConfirm({ open: false, id: null })
+    }
+  }
+
+  const columns = [
+    {
+      key: "name",
+      label: "Visitor Identity",
+      sortable: true,
+      render: (value: string, row: VisitorItem) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-gray-900">{value}</span>
+          <span className="text-[10px] text-gray-500 font-medium tracking-tight uppercase">{row.phone}</span>
+        </div>
+      )
+    },
+    {
+      key: "purpose",
+      label: "Intent of Visit",
+      sortable: true,
+      render: (value: string) => (
+        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100 uppercase tracking-tighter">
+          {value}
+        </span>
+      )
+    },
+    {
+      key: "idCard",
+      label: "Verification ID",
+      sortable: true,
+      render: (value: string) => value ? (
+        <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold">
+          <IdCard size={14} /> {value}
+        </div>
+      ) : <span className="text-gray-300">N/A</span>
+    },
+    {
+      key: "inTime",
+      label: "Arrival",
+      sortable: true,
+      render: (value: string) => (
+        <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium">
+          <DoorOpen size={14} className="text-emerald-500" /> {value || "--:--"}
+        </div>
+      )
+    },
+    {
+      key: "outTime",
+      label: "Departure",
+      sortable: true,
+      render: (value: string) => (
+        <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium">
+          <DoorClosed size={14} className="text-red-500" /> {value || "On Premise"}
+        </div>
+      )
+    }
+  ]
+
+  const formFields: FormField[] = [
+    { name: "name", label: "Full Name", type: "text", required: true, placeholder: "Visitor's full name" },
+    { name: "phone", label: "Contact Number", type: "text", required: true, placeholder: "Mobile/Phone number" },
+    { name: "purpose", label: "Visit Purpose", type: "text", required: true, placeholder: "Admission, Meeting, Delivery, etc." },
+    { name: "idCard", label: "ID Card / Govt ID", type: "text", required: false, placeholder: "Aadhar, License, etc." },
+    { name: "noOfPerson", label: "Group Size", type: "number", required: true, placeholder: "1" },
+    { name: "date", label: "Visit Date", type: "date", required: true },
+    { name: "inTime", label: "Entry Time", type: "text", required: true, placeholder: "HH:MM (24h)" },
+    { name: "outTime", label: "Exit Time", type: "text", required: false, placeholder: "HH:MM (24h)" },
+    { name: "note", label: "Security Remarks", type: "textarea", required: false, placeholder: "Optional notes..." },
+  ]
+
+  const stats = {
+    total: visitors.length,
+    onPremise: visitors.filter(v => !v.outTime).length,
+    today: visitors.filter(v => v.date === new Date().toLocaleDateString()).length,
+    groupEntries: visitors.filter(v => v.noOfPerson > 1).length
   }
 
   return (
-    <DashboardLayout title="Visitor Log">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                <Users className="h-5 w-5" />
-                Add Visitor
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-red-500">Name *</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Purpose *</Label>
-                  <Input value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Contact *</Label>
-                  <Input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">In Time *</Label>
-                  <Input value={form.inTime} onChange={(e) => setForm({ ...form, inTime: e.target.value })} placeholder="HH:MM" className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Out Time</Label>
-                  <Input value={form.outTime} onChange={(e) => setForm({ ...form, outTime: e.target.value })} placeholder="HH:MM" className="bg-white border-gray-200" />
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-6">Save</Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+    <DashboardLayout title="Security Gateway">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <Users className="text-emerald-600" size={24} />
+              Visitor Registry
+            </h1>
+            <p className="text-sm text-gray-500">Live monitoring and historical auditing of all campus access</p>
+          </div>
+          <Button
+            onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+            className="bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 gap-2 h-11 px-6 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+          >
+            <UserPlus className="h-4 w-4" /> Grant Access
+          </Button>
         </div>
 
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg text-gray-800">Visitor List</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-pink-50 hover:bg-pink-50">
-                      <TableHead className="font-bold text-gray-700 uppercase">Name</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Purpose</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Contact</TableHead>
-<<<<<<< HEAD
-                      <TableHead className="font-bold text-gray-700 uppercase">In Time</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Out Time</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Created By</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Action</TableHead>
-=======
-                      <TableHead className="font-bold text-gray-700 uppercase">In</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Out</TableHead>
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.name}</TableCell>
-                        <TableCell>{row.purpose}</TableCell>
-                        <TableCell>{row.contact}</TableCell>
-                        <TableCell>{row.inTime}</TableCell>
-                        <TableCell>{row.outTime || "-"}</TableCell>
-<<<<<<< HEAD
-                        {/* @ts-ignore */}
-                        <TableCell>{row.createdBy || "Admin"}</TableCell>
-                        <TableCell>
-                          <Button size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538]">
-                            Action <span className="ml-2">▼</span>
-                          </Button>
-                        </TableCell>
-=======
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Visitors"
+            value={stats.total.toString()}
+            icon={History}
+            iconColor="text-blue-600"
+            iconBgColor="bg-blue-50"
+            description="Historical total"
+          />
+          <StatCard
+            title="On Premises"
+            value={stats.onPremise.toString()}
+            icon={DoorOpen}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-50"
+            description="Active guests"
+          />
+          <StatCard
+            title="Today's Traffic"
+            value={stats.today.toString()}
+            icon={Clock}
+            iconColor="text-amber-600"
+            iconBgColor="bg-amber-50"
+            description="Arrivals today"
+          />
+          <StatCard
+            title="Group Entries"
+            value={stats.groupEntries.toString()}
+            icon={Users}
+            iconColor="text-purple-600"
+            iconBgColor="bg-purple-50"
+            description="Multiple persons"
+          />
         </div>
+
+        <AdvancedTable
+          title="Consolidated Access Log"
+          columns={columns}
+          data={visitors}
+          loading={loading}
+          searchable
+          searchPlaceholder="Search by name, phone or purpose..."
+          pagination
+          onEdit={(row) => {
+            setEditingId(row.id)
+            setIsModalOpen(true)
+          }}
+          onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+        />
+
+        <FormModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false)
+            setEditingId(null)
+          }}
+          title={editingId ? "Modify Access Record" : "New Secure Authorization"}
+          fields={formFields}
+          initialData={editingId ? visitors.find(v => v.id === editingId) : undefined}
+          onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+        />
+
+        <ConfirmationDialog
+          open={deleteConfirm.open}
+          onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+          onConfirm={confirmDelete}
+          title="Revoke and Purge Record?"
+          description="This will permanently delete the visitor entry from the security archives. This action is terminal."
+          variant="destructive"
+        />
       </div>
     </DashboardLayout>
   )
 }
-

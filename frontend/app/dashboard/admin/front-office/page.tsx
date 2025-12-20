@@ -9,8 +9,13 @@ import {
   MessageSquare,
   ClipboardList,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  ShieldCheck,
+  GraduationCap,
+  Settings2,
+  SendHorizontal
 } from "lucide-react"
+
 import Link from "next/link"
 
 export default function FrontOffice() {
@@ -58,12 +63,34 @@ export default function FrontOffice() {
       color: "bg-cyan-50 border-cyan-100"
     },
     {
-      title: "Legacy Admission Enquiry",
-      description: "Existing admission enquiry screen",
-      icon: <ClipboardList className="h-8 w-8 text-amber-600" />,
-      href: "/dashboard/admin/front-office/admission-enquiry",
-      color: "bg-amber-50 border-amber-100"
+      title: "Gate Pass",
+      description: "Issue and track entry/exit passes",
+      icon: <ShieldCheck className="h-8 w-8 text-indigo-600" />,
+      href: "/dashboard/admin/front-office/gate-pass",
+      color: "bg-indigo-50 border-indigo-100"
+    },
+    {
+      title: "Entrance Exam",
+      description: "Manage candidate entrance forms",
+      icon: <GraduationCap className="h-8 w-8 text-orange-600" />,
+      href: "/dashboard/admin/front-office/entrance-exam",
+      color: "bg-orange-50 border-orange-100"
+    },
+    {
+      title: "Postal Exchange",
+      description: "Outgoing/Incoming postal logs",
+      icon: <SendHorizontal className="h-8 w-8 text-sky-600" />,
+      href: "/dashboard/admin/front-office/postal-exchange",
+      color: "bg-sky-50 border-sky-100"
+    },
+    {
+      title: "Front Office Setup",
+      description: "Configure purposes, types and sources",
+      icon: <Settings2 className="h-8 w-8 text-slate-600" />,
+      href: "/dashboard/admin/front-office/setup",
+      color: "bg-slate-50 border-slate-100"
     }
+
   ]
 
   return (

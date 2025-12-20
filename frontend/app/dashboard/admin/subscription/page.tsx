@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { StatusBadge } from "@/components/super-admin/status-badge"
@@ -21,12 +21,10 @@ interface Subscription {
 }
 
 export default function Subscription() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([
-    { id: "1", planName: "Basic", price: 99, features: "100 Students", status: "Active", renewalDate: "2025-02-15", subscribers: 25 },
-    { id: "2", planName: "Premium", price: 299, features: "500 Students", status: "Active", renewalDate: "2025-01-15", subscribers: 15 },
-    { id: "3", planName: "Enterprise", price: 999, features: "Unlimited", status: "Inactive", renewalDate: "2024-12-15", subscribers: 5 },
-    { id: "4", planName: "Starter", price: 49, features: "50 Students", status: "Active", renewalDate: "2025-03-01", subscribers: 40 },
-  ])
+
+  const initialSubscriptions: Subscription[] = []
+
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(initialSubscriptions)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
@@ -34,37 +32,116 @@ export default function Subscription() {
     id: null
   })
 
-  const handleAdd = (data: any) => {
-    const newSub: Subscription = { 
-      id: Date.now().toString(), 
-      ...data,
-      price: Number(data.price),
-      subscribers: Number(data.subscribers || 0)
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/subscription/plans', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const mappedPlans = data.map((item: any) => ({
+            id: item._id,
+            planName: item.planName,
+            price: item.price,
+            features: Array.isArray(item.features) ? item.features.join(', ') : item.features,
+            status: item.status,
+            renewalDate: new Date().toISOString(), // Placeholder as plan doesn't have renewal date
+            subscribers: 0 // Placeholder
+          }));
+          setSubscriptions(mappedPlans);
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+      }
+    };
+
+    fetchPlans();
+  }, []);
+
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/subscription/plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        const item = await response.json();
+        const newSub: Subscription = {
+          id: item._id,
+          planName: item.planName,
+          price: item.price,
+          features: Array.isArray(item.features) ? item.features.join(', ') : item.features,
+          status: item.status,
+          renewalDate: new Date().toISOString(),
+          subscribers: 0
+        };
+        setSubscriptions([newSub, ...subscriptions]);
+        setIsModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error adding plan:', error);
     }
-    setSubscriptions([...subscriptions, newSub])
-    setIsModalOpen(false)
   }
 
-  const handleEdit = (id: string, data: any) => {
-    setSubscriptions(subscriptions.map((s) => (s.id === id ? { 
-      ...s, 
-      ...data,
-      price: Number(data.price),
-      subscribers: Number(data.subscribers || s.subscribers)
-    } : s)))
-    setIsModalOpen(false)
-    setEditingId(null)
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/subscription/plans/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        const item = await response.json();
+        setSubscriptions(subscriptions.map((s) => (s.id === id ? {
+          ...s,
+          planName: item.planName,
+          price: item.price,
+          features: Array.isArray(item.features) ? item.features.join(', ') : item.features,
+          status: item.status
+        } : s)));
+        setIsModalOpen(false);
+        setEditingId(null);
+      }
+    } catch (error) {
+      console.error('Error updating plan:', error);
+    }
   }
 
   const handleDelete = (item: any) => {
     setDeleteConfirm({ open: true, id: item.id })
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteConfirm.id) {
-      setSubscriptions(subscriptions.filter((s) => s.id !== deleteConfirm.id))
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/subscription/plans/${deleteConfirm.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          setSubscriptions(subscriptions.filter((s) => s.id !== deleteConfirm.id));
+        }
+      } catch (error) {
+        console.error('Error deleting plan:', error);
+      }
     }
-    setDeleteConfirm({ open: false, id: null })
+    setDeleteConfirm({ open: false, id: null });
   }
 
   const handleBulkAction = (action: string, selectedIds: string[]) => {
@@ -144,11 +221,13 @@ export default function Subscription() {
     { name: "features", label: "Features Description", type: "text" as const, required: true },
     { name: "subscribers", label: "Current Subscribers", type: "number" as const, required: false },
     { name: "renewalDate", label: "Renewal Date", type: "date" as const, required: true },
-    { name: "status", label: "Status", type: "select" as const, options: [
-      { value: "Active", label: "Active" },
-      { value: "Inactive", label: "Inactive" },
-      { value: "Expired", label: "Expired" }
-    ], required: true },
+    {
+      name: "status", label: "Status", type: "select" as const, options: [
+        { value: "Active", label: "Active" },
+        { value: "Inactive", label: "Inactive" },
+        { value: "Expired", label: "Expired" }
+      ], required: true
+    },
   ]
 
   return (

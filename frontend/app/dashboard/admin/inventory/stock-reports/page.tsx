@@ -104,3 +104,5 @@ export default function StockReports() {
   )
 }
 
+
+// Force rebuild for Turbopack error fix

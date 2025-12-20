@@ -1,177 +1,263 @@
 "use client"
 
+import { useState } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { MessageSquare, Mail, Send, User, Clock, Plus, Bell } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import { MessageSquare, Mail, Send, User, Clock, Plus, Bell, Search, Paperclip, MoreVertical, Reply, Trash2, Archive } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
+// Mock Data
+const users = [
+  { id: 1, name: "Mr. Smith", role: "Mathematics", email: "smith@school.edu", avatar: "/teachers/smith.jpg", status: "online" },
+  { id: 2, name: "Ms. Johnson", role: "English", email: "johnson@school.edu", avatar: "/teachers/johnson.jpg", status: "offline" },
+  { id: 3, name: "Dr. Williams", role: "Science", email: "williams@school.edu", avatar: "/teachers/williams.jpg", status: "busy" },
+  { id: 4, name: "Admin Office", role: "Administration", email: "admin@school.edu", avatar: "/logo.png", status: "online" },
+]
+
+const initialMessages = [
+  { id: 1, fromId: 1, subject: "Algebra Assignment Feedback", body: "Hi John, great work on your recent assignment. I noticed you struggled a bit with quadratic equations. Let's discuss it in the next class.", date: "2024-11-06T10:30:00", read: false, tags: ["Academic"] },
+  { id: 2, fromId: 2, subject: "Essay Submission Deadline", body: "Dear Students, please remember that the final draft of your essay is due this Friday. No extensions will be granted.", date: "2024-11-05T14:15:00", read: true, tags: ["Important"] },
+  { id: 3, fromId: 4, subject: "Annual Sports Day", body: "The Annual Sports Day is scheduled for next week. Please register for events by tomorrow.", date: "2024-11-04T09:00:00", read: true, tags: ["Event"] },
+  { id: 4, fromId: 3, subject: "Lab Report Corrections", body: "Please correct the observation table in your lab report and resubmit.", date: "2024-11-03T16:45:00", read: true, tags: ["Academic"] },
+]
+
+import { toast } from "sonner"
 
 export default function StudentCommunicate() {
-  const messages = [
-    { id: 1, from: "Mr. Smith", role: "Mathematics Teacher", subject: "Assignment Feedback", message: "Great work on your recent assignment!", date: "2024-11-06", status: "Unread" },
-    { id: 2, from: "Ms. Johnson", role: "English Teacher", subject: "Essay Submission", message: "Please submit your essay by Friday.", date: "2024-11-05", status: "Read" },
-    { id: 3, from: "School Admin", role: "Administration", subject: "Sports Day Event", message: "Sports day scheduled for next week.", date: "2024-11-04", status: "Read" },
-    { id: 4, from: "Dr. Williams", role: "Science Teacher", subject: "Lab Report", message: "Your lab report needs revision.", date: "2024-11-03", status: "Unread" },
-  ]
+  const [selectedMessage, setSelectedMessage] = useState(initialMessages[0])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isNewMessageOpen, setIsNewMessageOpen] = useState(false)
+  const [replyText, setReplyText] = useState("")
 
-  const teachers = [
-    { name: "Mr. Smith", subject: "Mathematics", email: "smith@school.com" },
-    { name: "Ms. Johnson", subject: "English", email: "johnson@school.com" },
-    { name: "Dr. Williams", subject: "Science", email: "williams@school.com" },
-  ]
+  const filteredMessages = initialMessages.filter(m =>
+    users.find(u => u.id === m.fromId)?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    m.subject.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
-  const totalMessages = messages.length
-  const unreadMessages = messages.filter(m => m.status === "Unread").length
-  const readMessages = messages.filter(m => m.status === "Read").length
+  const getSender = (id: number) => users.find(u => u.id === id)
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsNewMessageOpen(false)
+    toast.success("Message Sent", { description: "Your message has been sent successfully." })
+  }
+
+  const handleSendReply = () => {
+    if (!replyText.trim()) return
+    setReplyText("")
+    toast.success("Reply Sent", { description: "Your reply has been sent." })
+  }
 
   return (
     <DashboardLayout title="Communicate">
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-            Communication Center
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Connect with teachers and receive school updates
-          </p>
-        </div>
+      <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 p-1">
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard
-            title="Total Messages"
-            value={totalMessages.toString()}
-            icon={MessageSquare}
-            iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
-          />
-          <StatCard
-            title="Unread"
-            value={unreadMessages.toString()}
-            icon={Mail}
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-100"
-          />
-          <StatCard
-            title="Read"
-            value={readMessages.toString()}
-            icon={Send}
-            iconColor="text-green-600"
-            iconBgColor="bg-green-100"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Messages Inbox */}
-          <div className="md:col-span-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Mail className="h-5 w-5" />
-                    Inbox
-                  </CardTitle>
-                  <Button size="sm" className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
-                    <Plus className="h-4 w-4 mr-1" />
-                    New Message
-                  </Button>
+        {/* Top Controls */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search messages..."
+              className="pl-8 bg-white"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="mr-2 h-4 w-4" /> New Message
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[525px]">
+              <form onSubmit={handleSendMessage}>
+                <DialogHeader>
+                  <DialogTitle>Compose Message</DialogTitle>
+                  <DialogDescription>
+                    Send a message to your teachers or administration.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="recipient">To</Label>
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Recipient" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map(u => (
+                          <SelectItem key={u.id} value={u.email}>{u.name} ({u.role})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="subject">Subject</Label>
+                    <Input id="subject" placeholder="Enter subject" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="message">Message</Label>
+                    <Textarea id="message" placeholder="Type your message here..." rows={5} required />
+                  </div>
                 </div>
-                <CardDescription>Messages from teachers and school</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {messages.map((message) => (
-                    <div key={message.id} className={`p-4 border rounded-lg hover:shadow-sm transition-shadow cursor-pointer ${
-                      message.status === "Unread" ? "bg-blue-50 border-blue-200" : ""
-                    }`}>
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white">
-                            {message.from.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-1">
-                            <div>
-                              <p className="font-semibold">{message.from}</p>
-                              <p className="text-xs text-muted-foreground">{message.role}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {new Date(message.date).toLocaleDateString()}
-                              </span>
-                              {message.status === "Unread" && (
-                                <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
-                              )}
-                            </div>
+                <DialogFooter>
+                  <Button type="submit">Send Message</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Main Content Split View */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 h-full overflow-hidden">
+
+          {/* Message List (Left) */}
+          <Card className="md:col-span-4 lg:col-span-3 flex flex-col h-full overflow-hidden border-none shadow-md">
+            <div className="p-4 border-b bg-gray-50/50">
+              <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                <Mail className="h-4 w-4" /> Inbox
+                <Badge variant="secondary" className="ml-auto">{filteredMessages.length}</Badge>
+              </h3>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="flex flex-col gap-1 p-2">
+                {filteredMessages.map((message) => {
+                  const sender = getSender(message.fromId)
+                  return (
+                    <button
+                      key={message.id}
+                      onClick={() => setSelectedMessage(message)}
+                      className={cn(
+                        "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent",
+                        selectedMessage.id === message.id ? "bg-blue-50 border-blue-200" : "bg-white",
+                        !message.read && "font-semibold"
+                      )}
+                    >
+                      <div className="flex w-full flex-col gap-1">
+                        <div className="flex items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{sender?.name}</span>
+                            {!message.read && (
+                              <span className="flex h-2 w-2 rounded-full bg-blue-600" />
+                            )}
                           </div>
-                          <p className="font-medium text-sm mb-1">{message.subject}</p>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{message.message}</p>
+                          <div className="ml-auto text-xs text-muted-foreground">
+                            {new Date(message.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </div>
+                        </div>
+                        <div className="text-xs font-medium">{message.subject}</div>
+                        <div className="line-clamp-2 text-xs text-muted-foreground">
+                          {message.body.substring(0, 300)}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          {message.tags.map(tag => (
+                            <Badge key={tag} variant="outline" className="text-[10px] px-1 py-0 h-5">{tag}</Badge>
+                          ))}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </ScrollArea>
+          </Card>
 
-          {/* Teacher Contacts */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  My Teachers
-                </CardTitle>
-                <CardDescription>Quick access to teachers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {teachers.map((teacher, index) => (
-                    <div key={index} className="p-3 border rounded-lg hover:shadow-sm transition-shadow">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xs">
-                            {teacher.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm">{teacher.name}</p>
-                          <p className="text-xs text-muted-foreground">{teacher.subject}</p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline" className="w-full">
-                        <MessageSquare className="h-3 w-3 mr-1" />
-                        Message
-                      </Button>
+          {/* Message Details (Right) */}
+          <Card className="md:col-span-8 lg:col-span-9 flex flex-col h-full overflow-hidden border-none shadow-md">
+            {selectedMessage ? (
+              <>
+                <div className="flex items-center justify-between p-6 border-b">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>{getSender(selectedMessage.fromId)?.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-semibold">{getSender(selectedMessage.fromId)?.name}</div>
+                      <div className="text-xs text-muted-foreground">{getSender(selectedMessage.fromId)?.role}</div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="text-gray-500" onClick={() => toast.info("Archived", { description: "Message moved to archive" })}><Archive className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => toast.error("Deleted", { description: "Message moved to trash" })}><Trash2 className="h-4 w-4" /></Button>
+                    <Separator orientation="vertical" className="h-6" />
 
-            {/* Announcements */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Announcements
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <p className="text-muted-foreground">• Sports Day - Nov 30</p>
-                  <p className="text-muted-foreground">• Mid-term Exams - Nov 25</p>
-                  <p className="text-muted-foreground">• Holiday - Nov 26</p>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => toast.success("Marked as Unread")}>Mark as Unread</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.success("Starred", { description: "Message added to favorites" })}>Star Message</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600" onClick={() => toast.error("Reported", { description: "Message reported as spam" })}>Report Spam</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+
+                <ScrollArea className="flex-1 p-6">
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800">{selectedMessage.subject}</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {new Date(selectedMessage.date).toLocaleString()}
+                      </p>
+                    </div>
+                    <Separator />
+                    <div className="prose prose-sm max-w-none text-gray-700">
+                      <p>{selectedMessage.body}</p>
+                    </div>
+                  </div>
+                </ScrollArea>
+
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex gap-4">
+                    <Textarea
+                      placeholder="Reply to this message..."
+                      className="min-h-[100px] bg-white resize-none"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center mt-4">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground">
+                      <Paperclip className="h-4 w-4 mr-2" /> Attach
+                    </Button>
+                    <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSendReply}>
+                      <Send className="h-4 w-4 mr-2" /> Send Reply
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <Mail className="h-16 w-16 mb-4 opacity-20" />
+                <p>Select a message to read</p>
+              </div>
+            )}
+          </Card>
         </div>
+
       </div>
     </DashboardLayout>
   )

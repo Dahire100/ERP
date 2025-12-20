@@ -8,29 +8,31 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { X } from "lucide-react"
 
-interface FormField {
+export interface FormField {
   name: string
   label: string
-  type: "text" | "email" | "number" | "date" | "select"
+  type: "text" | "email" | "number" | "date" | "select" | "textarea"
   required?: boolean
+  placeholder?: string
   options?: { value: string; label: string }[]
 }
 
 interface FormModalProps {
   isOpen: boolean
   title: string
+  description?: string
   fields: FormField[]
   initialData?: any
   onSubmit: (data: any) => void
   onClose: () => void
 }
 
-export default function FormModal({ isOpen, title, fields, initialData, onSubmit, onClose }: FormModalProps) {
+export default function FormModal({ isOpen, title, description, fields, initialData, onSubmit, onClose }: FormModalProps) {
   const [formData, setFormData] = useState(initialData || {})
 
   if (!isOpen) return null
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev: any) => ({ ...prev, [name]: value }))
   }
@@ -44,11 +46,14 @@ export default function FormModal({ isOpen, title, fields, initialData, onSubmit
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X size={20} />
-          </button>
+        <div className="p-6 border-b">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+              <X size={20} />
+            </button>
+          </div>
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -71,6 +76,17 @@ export default function FormModal({ isOpen, title, fields, initialData, onSubmit
                     </option>
                   ))}
                 </select>
+              ) : field.type === "textarea" ? (
+                <textarea
+                  id={field.name}
+                  name={field.name}
+                  value={formData[field.name] || ""}
+                  onChange={handleChange}
+                  required={field.required}
+                  placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                  className="w-full px-3 py-2 border rounded-md min-h-[100px]"
+                  rows={4}
+                />
               ) : (
                 <Input
                   id={field.name}
@@ -79,7 +95,7 @@ export default function FormModal({ isOpen, title, fields, initialData, onSubmit
                   value={formData[field.name] || ""}
                   onChange={handleChange}
                   required={field.required}
-                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
                 />
               )}
             </div>

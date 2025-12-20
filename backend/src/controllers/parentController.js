@@ -7,6 +7,14 @@ const Exam = require('../models/Exam');
 const ExamResult = require('../models/ExamResult');
 const StudentProgress = require('../models/StudentProgress');
 const Notice = require('../models/Notice');
+const { IssueRecord } = require('../models/Library');
+const TransportRoute = require('../models/TransportRoute');
+const { HostelAllocation } = require('../models/Hostel');
+const StudentDocument = require('../models/StudentDocument');
+const StudyMaterial = require('../models/StudyMaterial');
+const HostelOutpass = require('../models/HostelOutpass');
+const LeaveRequest = require('../models/LeaveRequest');
+const Timetable = require('../models/Timetable');
 
 // Get parent dashboard
 exports.getParentDashboard = async (req, res) => {
@@ -21,8 +29,8 @@ exports.getParentDashboard = async (req, res) => {
         { 'parent.email': req.user.email }
       ]
     })
-    .populate('class', 'name section')
-    .select('firstName lastName rollNumber class admissionDate');
+      .populate('class', 'name section')
+      .select('firstName lastName rollNumber class admissionDate');
 
     if (!children || children.length === 0) {
       return res.json({
@@ -98,8 +106,8 @@ exports.getParentDashboard = async (req, res) => {
         const latestResult = await ExamResult.findOne({
           studentId: child._id
         })
-        .populate('examId', 'examName')
-        .sort({ createdAt: -1 });
+          .populate('examId', 'examName')
+          .sort({ createdAt: -1 });
 
         return {
           ...child.toObject(),
@@ -288,7 +296,7 @@ exports.getChildHomework = async (req, res) => {
       const submission = hw.submissions.find(
         s => s.studentId.toString() === studentId
       );
-      
+
       return {
         ...hw.toObject(),
         studentSubmission: submission ? {
@@ -482,3 +490,173 @@ exports.getParentNotices = async (req, res) => {
     });
   }
 };
+
+// ===== NEW FEATURES FOR PARENTS =====
+
+// Get child timetable
+exports.getChildTimetable = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+
+    // Verify access
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    // Assuming Timetable is stored by classId
+    const classId = student.class && student.class._id ? student.class._id : student.class;
+    const timetable = await Timetable.find({ schoolId, classId, isActive: true });
+
+    res.json({ success: true, data: timetable });
+  } catch (err) {
+    console.error('Error fetching timetable:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch timetable' });
+  }
+};
+
+// Get child library history
+exports.getChildLibraryHistory = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    const records = await IssueRecord.find({ schoolId, 'issuedTo.userId': studentId })
+      .populate('bookId', 'title author')
+      .sort({ issueDate: -1 });
+    res.json({ success: true, data: records });
+  } catch (err) {
+    console.error('Error fetching library history:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch library history' });
+  }
+};
+
+// Get child transport
+exports.getChildTransport = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    if (!student.transportRoute) return res.json({ success: true, data: null });
+
+    const route = await TransportRoute.findOne({ schoolId, routeName: student.transportRoute });
+    res.json({ success: true, data: route });
+  } catch (err) {
+    console.error('Error fetching transport:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch transport' });
+  }
+};
+
+// Get child hostel
+exports.getChildHostel = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    const allocation = await HostelAllocation.findOne({ schoolId, studentId, status: 'active' })
+      .populate('hostelId')
+      .populate('roomId');
+    res.json({ success: true, data: allocation });
+  } catch (err) {
+    console.error('Error fetching hostel:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch hostel' });
+  }
+};
+
+// Get child downloads
+exports.getChildDownloads = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    const classId = student.class && student.class._id ? student.class._id : student.class;
+    const materials = await StudyMaterial.find({
+      schoolId,
+      isActive: true,
+      $or: [
+        { classes: { $size: 0 } },
+        { classes: classId }
+      ]
+    }).sort({ createdAt: -1 });
+
+    res.json({ success: true, data: materials });
+  } catch (err) {
+    console.error('Error fetching downloads:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch downloads' });
+  }
+};
+
+// Apply leave for child
+exports.applyChildLeave = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+    const { leaveType, startDate, endDate, reason, totalDays } = req.body;
+
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    const newLeave = new LeaveRequest({
+      schoolId,
+      studentId,
+      requesterId: req.user.userId,
+      requesterType: 'parent',
+      leaveType,
+      startDate,
+      endDate,
+      totalDays,
+      reason,
+      status: 'pending'
+    });
+
+    await newLeave.save();
+    res.status(201).json({ success: true, message: 'Leave applied successfully' });
+  } catch (err) {
+    console.error('Error applying leave:', err);
+    res.status(500).json({ success: false, error: 'Failed to apply leave' });
+  }
+};
+
+// Apply outpass for child
+exports.applyChildOutpass = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+    const { fromDate, toDate, reason, parentContact } = req.body;
+
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    const allocation = await HostelAllocation.findOne({ schoolId, studentId, status: 'active' });
+    if (!allocation) return res.status(400).json({ error: 'Child not in hostel' });
+
+    const newOutpass = new HostelOutpass({
+      schoolId,
+      studentId,
+      hostelId: allocation.hostelId,
+      fromDate,
+      toDate,
+      reason,
+      parentContact: parentContact || req.user.phone,
+      status: 'pending'
+    });
+
+    await newOutpass.save();
+    res.status(201).json({ success: true, message: 'Outpass requested successfully' });
+  } catch (err) {
+    console.error('Error applying outpass:', err);
+    res.status(500).json({ success: false, error: 'Failed to apply outpass' });
+  }
+};
+

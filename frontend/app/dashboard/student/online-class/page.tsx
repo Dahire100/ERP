@@ -1,26 +1,39 @@
 "use client"
 
+import { useState } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Video, Calendar, Clock, PlayCircle, Users } from "lucide-react"
+import { Video, Calendar, Clock, PlayCircle, Users, ExternalLink, Filter } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 export default function StudentOnlineClass() {
+  const [activeTab, setActiveTab] = useState("live")
+
   const liveClasses = [
-    { id: 1, subject: "Mathematics", teacher: "Mr. Smith", time: "10:00 AM", date: "2024-11-06", duration: "45 min", status: "Live Now", participants: 28 },
-    { id: 2, subject: "Science", teacher: "Dr. Williams", time: "02:00 PM", date: "2024-11-06", duration: "45 min", status: "Upcoming", participants: 0 },
-    { id: 3, subject: "English", teacher: "Ms. Johnson", time: "11:00 AM", date: "2024-11-07", duration: "45 min", status: "Scheduled", participants: 0 },
+    { id: 1, subject: "Mathematics", topic: "Calculus II", teacher: "Mr. Smith", time: "10:00 AM", date: "2024-11-06", duration: "45 min", status: "Live Now", participants: 28, link: "https://zoom.us/test" },
+    { id: 2, subject: "Science", topic: "Organic Chemistry", teacher: "Dr. Williams", time: "02:00 PM", date: "2024-11-06", duration: "45 min", status: "Upcoming", participants: 0, link: "https://zoom.us/test" },
+    { id: 3, subject: "English", topic: "Shakespeare", teacher: "Ms. Johnson", time: "11:00 AM", date: "2024-11-07", duration: "45 min", status: "Scheduled", participants: 0, link: "https://zoom.us/test" },
+    { id: 4, subject: "History", topic: "World War I", teacher: "Mr. Brown", time: "09:00 AM", date: "2024-11-08", duration: "45 min", status: "Scheduled", participants: 0, link: "https://zoom.us/test" },
   ]
 
   const recordings = [
     { id: 1, subject: "Mathematics", topic: "Algebra Basics", teacher: "Mr. Smith", date: "2024-11-05", duration: "42 min", views: 45 },
     { id: 2, subject: "Science", topic: "Chemical Reactions", teacher: "Dr. Williams", date: "2024-11-04", duration: "38 min", views: 52 },
     { id: 3, subject: "History", topic: "World War II", teacher: "Mr. Brown", date: "2024-11-03", duration: "40 min", views: 38 },
+    { id: 4, subject: "English", topic: "Poetry Analysis", teacher: "Ms. Johnson", date: "2024-11-02", duration: "35 min", views: 20 },
   ]
 
   const liveNow = liveClasses.filter(c => c.status === "Live Now").length
   const upcoming = liveClasses.filter(c => c.status === "Upcoming" || c.status === "Scheduled").length
+
+  const handleJoin = (link: string) => {
+    window.open(link, "_blank")
+    toast.success("Joining class...", { description: "Redirecting to video platform." })
+  }
 
   return (
     <DashboardLayout title="Online Class">
@@ -67,111 +80,89 @@ export default function StudentOnlineClass() {
           />
         </div>
 
-        {/* Live Classes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Video className="h-5 w-5" />
-              Live & Upcoming Classes
-            </CardTitle>
-            <CardDescription>Join live classes or view schedule</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {liveClasses.map((classItem) => (
-                <div key={classItem.id} className="p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className={`p-2 rounded-lg ${
-                        classItem.status === "Live Now" ? "bg-red-100" :
-                        classItem.status === "Upcoming" ? "bg-blue-100" : "bg-green-100"
-                      }`}>
-                        <Video className={`h-5 w-5 ${
-                          classItem.status === "Live Now" ? "text-red-600" :
-                          classItem.status === "Upcoming" ? "text-blue-600" : "text-green-600"
-                        }`} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold">{classItem.subject}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span>{classItem.teacher}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {classItem.time}
-                          </span>
-                          <span>•</span>
-                          <span>{classItem.duration}</span>
-                          {classItem.status === "Live Now" && (
-                            <>
-                              <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {classItem.participants} participants
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        classItem.status === "Live Now" ? "bg-red-100 text-red-700 animate-pulse" :
-                        classItem.status === "Upcoming" ? "bg-blue-100 text-blue-700" :
-                        "bg-green-100 text-green-700"
-                      }`}>
-                        {classItem.status}
-                      </span>
-                      <Button size="sm" className={classItem.status === "Live Now" ? "bg-red-600 hover:bg-red-700" : "bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"}>
-                        {classItem.status === "Live Now" ? "Join Now" : "View Details"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        <Tabs defaultValue="live" className="w-full" onValueChange={setActiveTab}>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList>
+              <TabsTrigger value="live" className="gap-2"><Video className="h-4 w-4" /> Live & Upcoming</TabsTrigger>
+              <TabsTrigger value="recordings" className="gap-2"><PlayCircle className="h-4 w-4" /> Recordings</TabsTrigger>
+            </TabsList>
+            <div className="hidden md:flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => toast.info("Filter Options", { description: "Advanced filters coming soon." })}>
+                <Filter className="mr-2 h-4 w-4" /> Filter
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Recordings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PlayCircle className="h-5 w-5" />
-              Class Recordings
-            </CardTitle>
-            <CardDescription>Watch previous class recordings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recordings.map((recording) => (
-                <div key={recording.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <PlayCircle className="h-5 w-5 text-purple-600" />
+          <TabsContent value="live" className="space-y-4">
+            {liveClasses.map((classItem) => (
+              <div key={classItem.id} className="p-4 border rounded-xl hover:shadow-md transition-shadow bg-white">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className={`p-3 rounded-full ${classItem.status === "Live Now" ? "bg-red-100 animate-pulse" :
+                      classItem.status === "Upcoming" ? "bg-blue-100" : "bg-gray-100"
+                      }`}>
+                      <Video className={`h-6 w-6 ${classItem.status === "Live Now" ? "text-red-600" :
+                        classItem.status === "Upcoming" ? "text-blue-600" : "text-gray-600"
+                        }`} />
                     </div>
-                    <div>
-                      <p className="font-semibold">{recording.subject} - {recording.topic}</p>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                        <span>{recording.teacher}</span>
-                        <span>•</span>
-                        <span>{new Date(recording.date).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>{recording.duration}</span>
-                        <span>•</span>
-                        <span>{recording.views} views</span>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-bold text-lg">{classItem.subject}</h3>
+                        <Badge variant={classItem.status === "Live Now" ? "destructive" : "secondary"}>
+                          {classItem.status}
+                        </Badge>
+                        <span className="text-sm font-medium text-gray-500">• {classItem.topic}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {classItem.teacher}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {classItem.time}</span>
+                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(classItem.date).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="outline">
-                    <PlayCircle className="h-3 w-3 mr-1" />
-                    Watch
-                  </Button>
+                  <div>
+                    {classItem.status === "Live Now" ? (
+                      <Button className="bg-red-600 hover:bg-red-700 w-full md:w-auto" onClick={() => handleJoin(classItem.link)}>
+                        <PlayCircle className="mr-2 h-4 w-4" /> Join Class
+                      </Button>
+                    ) : (
+                      <Button variant="outline" className="w-full md:w-auto" disabled={classItem.status === "Scheduled"}>
+                        {classItem.status === "Upcoming" ? "Join Waiting Room" : "Not Started"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
+              </div>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="recordings" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recordings.map((recording) => (
+                <Card key={recording.id} className="hover:shadow-md transition-all cursor-pointer group">
+                  <CardContent className="p-4 flex gap-4">
+                    <div className="relative h-24 w-40 bg-gray-900 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <PlayCircle className="h-8 w-8 text-white z-10 opacity-80 group-hover:scale-110 transition-transform" />
+                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/70 text-white text-[10px] rounded">
+                        {recording.duration}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-base line-clamp-1">{recording.topic}</h4>
+                      <p className="text-sm text-blue-600 font-medium mb-1">{recording.subject}</p>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>{recording.teacher}</p>
+                        <p>{new Date(recording.date).toLocaleDateString()} • {recording.views} views</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </TabsContent>
+        </Tabs>
+
       </div>
     </DashboardLayout>
   )

@@ -18,12 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { 
-  Search, 
-  Filter, 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown, 
+import {
+  Search,
+  Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -55,8 +55,10 @@ interface AdvancedTableProps {
   onBulkAction?: (action: string, selectedIds: string[]) => void
   actions?: { label: string; onClick: (item: any) => void; icon?: React.ReactNode }[]
   pageSize?: number
+  pagination?: boolean
   emptyMessage?: string | React.ReactNode
   loading?: boolean
+  headerClassName?: string
 }
 
 export function AdvancedTable({
@@ -74,8 +76,10 @@ export function AdvancedTable({
   onBulkAction,
   actions = [],
   pageSize = 10,
+  pagination = true,
   emptyMessage = "No data found",
-  loading = false
+  loading = false,
+  headerClassName
 }: AdvancedTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
@@ -192,7 +196,7 @@ export function AdvancedTable({
               />
             </div>
           )}
-          
+
           {filterable && filterOptions.map((filter) => (
             <Select
               key={filter.key}
@@ -240,7 +244,7 @@ export function AdvancedTable({
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-muted/50">
+              <thead className={cn("bg-muted/50", headerClassName)}>
                 <tr>
                   {selectable && (
                     <th className="w-12 px-4 py-3">
@@ -364,7 +368,7 @@ export function AdvancedTable({
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {pagination && totalPages > 1 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Showing {(currentPage - 1) * pageSize + 1} to{" "}

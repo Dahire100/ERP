@@ -7,13 +7,17 @@ const leaveRequestSchema = new mongoose.Schema({
     ref: 'School',
     required: true
   },
+  studentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student'
+  },
   requesterId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true
   },
   requesterType: {
     type: String,
-    enum: ['teacher', 'student', 'staff'],
+    enum: ['teacher', 'student', 'staff', 'parent'],
     required: true
   },
   leaveType: {

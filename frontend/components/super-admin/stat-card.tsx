@@ -12,12 +12,13 @@ interface StatCardProps {
     value: number
     isPositive: boolean
   }
+  description?: string
   iconColor?: string
   iconBgColor?: string
   loading?: boolean
 }
 
-export function StatCard({ title, value, icon: Icon, trend, iconColor = "text-blue-600", iconBgColor = "bg-blue-100", loading = false }: StatCardProps) {
+export function StatCard({ title, value, icon: Icon, trend, description, iconColor = "text-blue-600", iconBgColor = "bg-blue-100", loading = false }: StatCardProps) {
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardContent className="pt-6">
@@ -32,7 +33,7 @@ export function StatCard({ title, value, icon: Icon, trend, iconColor = "text-bl
             ) : (
               <>
                 <p className="text-3xl font-bold tracking-tight mb-2">{value}</p>
-                {trend && (
+                {trend ? (
                   <div className="flex items-center gap-1">
                     <span className={cn(
                       "text-xs font-medium",
@@ -42,6 +43,8 @@ export function StatCard({ title, value, icon: Icon, trend, iconColor = "text-bl
                     </span>
                     <span className="text-xs text-muted-foreground">vs last month</span>
                   </div>
+                ) : description && (
+                  <p className="text-xs text-muted-foreground">{description}</p>
                 )}
               </>
             )}

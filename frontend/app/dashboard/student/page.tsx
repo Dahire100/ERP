@@ -1,13 +1,28 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import DashboardLayout from "@/components/dashboard-layout"
 import { ProtectedRoute } from "@/components/protected-route"
-import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { BookOpen, FileText, Award, Calendar, Clock, Bell, TrendingUp, CheckCircle, Laptop, Download, ClipboardList, MessageSquare } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  BookOpen,
+  FileText,
+  Award,
+  Calendar,
+  Clock,
+  Bell,
+  CheckCircle,
+  Laptop,
+  Download,
+  ClipboardList,
+  MessageSquare,
+  ArrowRight,
+  TrendingUp,
+  AlertCircle
+} from "lucide-react"
 
 export default function StudentDashboard() {
   return (
@@ -18,19 +33,21 @@ export default function StudentDashboard() {
 }
 
 function StudentDashboardContent() {
+  const router = useRouter()
   const studentInfo = {
-    name: "John Student",
+    name: "Alice Student",
     rollNo: "2024001",
     class: "10-A",
     gpa: 3.8,
-    attendance: 92
+    attendance: 94,
+    img: "/placeholder-avatar.jpg"
   }
 
   const courses = [
-    { name: "Mathematics", grade: "A", progress: 85, teacher: "Mr. Smith", nextClass: "Tomorrow, 9:00 AM" },
-    { name: "English", grade: "B+", progress: 78, teacher: "Ms. Johnson", nextClass: "Today, 2:00 PM" },
-    { name: "Science", grade: "A-", progress: 82, teacher: "Dr. Williams", nextClass: "Tomorrow, 11:00 AM" },
-    { name: "History", grade: "B", progress: 75, teacher: "Mr. Brown", nextClass: "Friday, 10:00 AM" },
+    { name: "Mathematics", grade: "A", progress: 85, teacher: "Mr. Smith", nextClass: "Tomorrow, 9:00 AM", color: "text-blue-600 bg-blue-50" },
+    { name: "English", grade: "B+", progress: 78, teacher: "Ms. Johnson", nextClass: "Today, 2:00 PM", color: "text-purple-600 bg-purple-50" },
+    { name: "Science", grade: "A-", progress: 82, teacher: "Dr. Williams", nextClass: "Tomorrow, 11:00 AM", color: "text-green-600 bg-green-50" },
+    { name: "History", grade: "B", progress: 75, teacher: "Mr. Brown", nextClass: "Friday, 10:00 AM", color: "text-orange-600 bg-orange-50" },
   ]
 
   const assignments = [
@@ -40,133 +57,195 @@ function StudentDashboardContent() {
   ]
 
   const upcomingEvents = [
-    { title: "Mid-term Exams", date: "2024-11-25", type: "Exam" },
-    { title: "Sports Day", date: "2024-11-30", type: "Event" },
-    { title: "Parent-Teacher Meeting", date: "2024-12-05", type: "Meeting" },
+    { title: "Mid-term Exams", date: "2024-11-25", type: "Exam", color: "text-red-600 bg-red-100" },
+    { title: "Sports Day", date: "2024-11-30", type: "Event", color: "text-blue-600 bg-blue-100" },
+    { title: "Parent-Teacher Meeting", date: "2024-12-05", type: "Meeting", color: "text-green-600 bg-green-100" },
   ]
 
-  const pendingAssignments = assignments.filter(a => a.status === "Pending").length
+  const pendingAssignmentsCount = assignments.filter(a => a.status === "Pending").length
 
   const quickLinks = [
-    { title: "Homework Submission", icon: FileText, href: "/dashboard/student/homework" },
-    { title: "Downloads", icon: Download, href: "/dashboard/student/download-center" },
-    { title: "Attendance", icon: Calendar, href: "/dashboard/student/attendance" },
-    { title: "Notices", icon: Bell, href: "/dashboard/student/communicate" },
-    { title: "Results", icon: Award, href: "/dashboard/student/report" },
-    { title: "Leave Apply", icon: ClipboardList, href: "/dashboard/student/hostel" },
-    { title: "Online Classes", icon: Laptop, href: "/dashboard/student/online-class" },
-    { title: "Messages", icon: MessageSquare, href: "/dashboard/student/communicate" },
+    { title: "Homework", icon: FileText, href: "/dashboard/student/homework", color: "text-blue-500" },
+    { title: "Downloads", icon: Download, href: "/dashboard/student/download-center", color: "text-indigo-500" },
+    { title: "Attendance", icon: Calendar, href: "/dashboard/student/attendance", color: "text-green-500" },
+    { title: "Notices", icon: Bell, href: "/dashboard/student/communicate", color: "text-yellow-500" },
+    { title: "Results", icon: Award, href: "/dashboard/student/report", color: "text-purple-500" },
+    { title: "Leave Apply", icon: ClipboardList, href: "/dashboard/student/leave-apply", color: "text-pink-500" },
+    { title: "Online Class", icon: Laptop, href: "/dashboard/student/online-class", color: "text-cyan-500" },
+    { title: "Messages", icon: MessageSquare, href: "/dashboard/student/communicate", color: "text-orange-500" },
   ]
 
   return (
     <DashboardLayout title="Student Dashboard">
-      <div className="space-y-6">
-        {/* Welcome Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Welcome Back, {studentInfo.name}!
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Class {studentInfo.class} • Roll No: {studentInfo.rollNo}
-            </p>
-          </div>
-          <Avatar className="h-16 w-16">
-            <AvatarFallback className="bg-gradient-to-br from-green-500 to-blue-500 text-white text-xl font-bold">
-              {studentInfo.name.split(' ').map(n => n[0]).join('')}
-            </AvatarFallback>
-          </Avatar>
-        </div>
+      <div className="space-y-8 p-1">
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard
-            title="GPA"
-            value={studentInfo.gpa.toString()}
-            icon={Award}
-            iconColor="text-green-600"
-            iconBgColor="bg-green-100"
-            trend={{ value: 5, isPositive: true }}
-          />
-          <StatCard
-            title="Courses"
-            value={courses.length.toString()}
-            icon={BookOpen}
-            iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
-          />
-          <StatCard
-            title="Pending Tasks"
-            value={pendingAssignments.toString()}
-            icon={FileText}
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-100"
-          />
-          <StatCard
-            title="Attendance"
-            value={`${studentInfo.attendance}%`}
-            icon={Calendar}
-            iconColor="text-purple-600"
-            iconBgColor="bg-purple-100"
-            trend={{ value: 2, isPositive: true }}
-          />
-        </div>
+        {/* Welcome Section with Glassmorphism */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white shadow-xl">
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
 
-        {/* Quick Links */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Quick Links
-            </CardTitle>
-            <CardDescription>Jump to important actions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {quickLinks.map((link) => (
-                <Button key={link.title} variant="outline" className="h-auto py-4 flex flex-col items-start" asChild>
-                  <a href={link.href}>
-                    <link.icon className="h-4 w-4 mb-2 text-blue-600" />
-                    <span className="text-sm font-semibold text-gray-900">{link.title}</span>
-                  </a>
-                </Button>
-              ))}
+          <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold tracking-tight">Welcome back, {studentInfo.name}! 👋</h2>
+              <p className="text-blue-100 text-lg">
+                You have <span className="font-semibold text-white">{pendingAssignmentsCount} pending tasks</span> and <span className="font-semibold text-white">2 upcoming classes</span> today.
+              </p>
+              <div className="flex gap-4 pt-4">
+                <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
+                  <Award className="h-5 w-5 text-yellow-300" />
+                  <span className="font-medium">Class {studentInfo.class}</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
+                  <CheckCircle className="h-5 w-5 text-green-300" />
+                  <span className="font-medium">Roll No: {studentInfo.rollNo}</span>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <Avatar className="h-24 w-24 border-4 border-white/20 shadow-lg">
+              <AvatarImage src={studentInfo.img} />
+              <AvatarFallback className="bg-white/10 text-3xl font-bold text-white backdrop-blur-md">
+                {studentInfo.name.split(' ').map(n => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Courses */}
-          <div className="md:col-span-2">
-            <Card>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-green-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Current GPA</p>
+                  <h3 className="text-3xl font-bold mt-1">{studentInfo.gpa}</h3>
+                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                    <TrendingUp className="h-3 w-3 mr-1" /> +0.2 from last term
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <Award className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-blue-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Courses</p>
+                  <h3 className="text-3xl font-bold mt-1">{courses.length}</h3>
+                  <p className="text-xs text-blue-600 mt-1 flex items-center">
+                    All currently in progress
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <BookOpen className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-orange-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pending Tasks</p>
+                  <h3 className="text-3xl font-bold mt-1">{pendingAssignmentsCount}</h3>
+                  <p className="text-xs text-orange-600 mt-1 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" /> Needs attention
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow duration-300 border-l-4 border-l-purple-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Attendance</p>
+                  <h3 className="text-3xl font-bold mt-1">{studentInfo.attendance}%</h3>
+                  <p className="text-xs text-purple-600 mt-1 flex items-center">
+                    <CheckCircle className="h-3 w-3 mr-1" /> Excellent
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+          {/* Left Column (Courses & Quick Links) */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-indigo-500" /> Quick Actions
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {quickLinks.map((link) => (
+                  <a
+                    key={link.title}
+                    href={link.href}
+                    className="group flex flex-col items-center justify-center p-4 bg-white border rounded-xl hover:shadow-md hover:border-indigo-200 transition-all duration-200"
+                  >
+                    <div className={`p-3 rounded-full bg-gray-50 group-hover:bg-white transition-colors mb-2 ${link.color}`}>
+                      <link.icon className="h-6 w-6" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-600">{link.title}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Courses List */}
+            <Card className="border-none shadow-md">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  My Courses
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-blue-500" /> My Courses
+                  </span>
+                  <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => router.push("/dashboard/student/academics")}>View All</Button>
                 </CardTitle>
-                <CardDescription>Your enrolled courses and progress</CardDescription>
+                <CardDescription>Your academic progress and schedules</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {courses.map((course) => (
-                    <div key={course.name} className="p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                      <div className="flex items-start justify-between mb-3">
+                    <div key={course.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className={`p-3 rounded-lg ${course.color}`}>
+                          <BookOpen className="h-6 w-6" />
+                        </div>
                         <div>
-                          <p className="font-semibold text-lg">{course.name}</p>
-                          <p className="text-xs text-muted-foreground">{course.teacher}</p>
+                          <h4 className="font-semibold text-gray-900">{course.name}</h4>
+                          <p className="text-sm text-gray-500">{course.teacher}</p>
+                          <div className="flex items-center gap-1.5 mt-1 text-xs text-blue-600 font-medium">
+                            <Clock className="h-3.5 w-3.5" /> {course.nextClass}
+                          </div>
                         </div>
-                        <span className="text-2xl font-bold text-green-600">{course.grade}</span>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Progress</span>
-                          <span className="font-medium">{course.progress}%</span>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-[150px]">
+                        <div className="w-full sm:w-32 space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">Progress</span>
+                            <span className="font-medium">{course.progress}%</span>
+                          </div>
+                          <Progress value={course.progress} className="h-2" />
                         </div>
-                        <Progress value={course.progress} className="h-2" />
-                      </div>
-                      <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>Next class: {course.nextClass}</span>
+                        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 font-bold text-gray-700">
+                          {course.grade}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -175,92 +254,70 @@ function StudentDashboardContent() {
             </Card>
           </div>
 
-          {/* Upcoming Events */}
-          <div>
-            <Card>
+          {/* Right Column (Assignments & Events) */}
+          <div className="space-y-8">
+
+            {/* Assignments */}
+            <Card className="border-none shadow-md h-fit">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Upcoming Events
+                  <FileText className="h-5 w-5 text-orange-500" /> Pending Work
                 </CardTitle>
-                <CardDescription>Important dates</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {assignments.slice(0, 3).map((assignment) => (
+                  <div key={assignment.id} className="p-3 border rounded-xl hover:shadow-sm transition-shadow bg-white">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${assignment.priority === "High" ? "bg-red-50 text-red-700 border-red-100" :
+                        "bg-yellow-50 text-yellow-700 border-yellow-100"
+                        }`}>
+                        {assignment.priority}
+                      </span>
+                      <span className="text-xs text-gray-400">{assignment.subject}</span>
+                    </div>
+                    <h4 className="text-sm font-semibold mb-1 line-clamp-1">{assignment.title}</h4>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> {new Date(assignment.dueDate).toLocaleDateString()}
+                      </span>
+                      <span className={`font-medium ${assignment.status === "Submitted" ? "text-green-600" : "text-orange-500"
+                        }`}>
+                        {assignment.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <Button variant="outline" className="w-full text-sm" onClick={() => router.push("/dashboard/student/homework")}>
+                  View All Assignments <ArrowRight className="h-3 w-3 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Upcoming Events */}
+            <Card className="border-none shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-indigo-500" /> Upcoming
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="relative border-l-2 border-gray-100 ml-3 space-y-6">
                   {upcomingEvents.map((event, index) => (
-                    <div key={index} className="p-3 border rounded-lg">
-                      <p className="font-semibold text-sm">{event.title}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(event.date).toLocaleDateString()}
-                        </span>
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          event.type === "Exam" ? "bg-red-100 text-red-700" :
-                          event.type === "Event" ? "bg-blue-100 text-blue-700" :
-                          "bg-green-100 text-green-700"
-                        }`}>
-                          {event.type}
-                        </span>
-                      </div>
+                    <div key={index} className="relative pl-6">
+                      <div className={`absolute -left-[9px] top-1 h-4 w-4 rounded-full border-2 border-white ${event.color?.split(' ')[0].replace('text-', 'bg-')}`}></div>
+                      <h4 className="text-sm font-semibold">{event.title}</h4>
+                      <p className="text-xs text-gray-500 mt-0.5">{new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                      <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full font-medium ${event.color}`}>
+                        {event.type}
+                      </span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
+
           </div>
         </div>
-
-        {/* Assignments */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Recent Assignments
-            </CardTitle>
-            <CardDescription>Your pending and submitted assignments</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {assignments.map((assignment) => (
-                <div key={assignment.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className={`p-2 rounded-lg ${
-                      assignment.status === "Submitted" ? "bg-green-100" : "bg-orange-100"
-                    }`}>
-                      {assignment.status === "Submitted" ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-orange-600" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold">{assignment.title}</p>
-                      <p className="text-xs text-muted-foreground">{assignment.subject} • Due: {new Date(assignment.dueDate).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      assignment.priority === "High" ? "bg-red-100 text-red-700" :
-                      "bg-orange-100 text-orange-700"
-                    }`}>
-                      {assignment.priority}
-                    </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      assignment.status === "Submitted"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-orange-100 text-orange-700"
-                    }`}>
-                      {assignment.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Button className="w-full mt-4 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
-              View All Assignments
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   )

@@ -1,418 +1,333 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Edit, Search, Trash2, Printer, FileText, Download, Clock, Image as ImageIcon } from "lucide-react"
-import { toast } from "sonner"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+    Plus,
+    ShieldCheck,
+    DoorOpen,
+    Users,
+    UserSquare2,
+    Clock,
+    Calendar,
+    Image as ImageIcon,
+    ArrowUpRight,
+    ArrowDownLeft,
+    History
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-interface GatePassData {
-    id: number
-    issuedTo: string
-    studentName?: string
-    staffName?: string
+interface GatePassItem {
+    id: string
+    issuedTo: "Student" | "Staff"
+    name: string
     personCarrying?: string
-    image?: string
     startDate: string
     endDate: string
-    inTime: string
-    outTime: string
-    note: string
+    inTime?: string
+    outTime?: string
+    note?: string
+    image?: string
 }
 
-export default function GatePass() {
-    const [searchTerm, setSearchTerm] = useState("")
-    const [issuedTo, setIssuedTo] = useState("Student")
-
-    // Sample data
-    const [gatePasses, setGatePasses] = useState<GatePassData[]>([
-        {
-            id: 61,
-            issuedTo: "Staff",
-            staffName: "Windy Windy",
-            personCarrying: "Sweet",
-            startDate: "27-10-2025",
-            endDate: "27-10-2025",
-            inTime: "09:00AM",
-            outTime: "03:00PM",
-            note: "Going out"
-        },
-        {
-            id: 60,
-            issuedTo: "Staff",
-            staffName: "Windy Windy",
-            image: "/placeholder-image.jpg",
-            startDate: "27-10-2025",
-            endDate: "27-10-2025",
-            inTime: "12:00AM",
-            outTime: "01:00PM",
-            note: "Family emergency"
-        },
-        {
-            id: 59,
-            issuedTo: "Staff",
-            staffName: "Pramod Kumawat",
-            startDate: "27-09-2025",
-            endDate: "27-09-2025",
-            inTime: "10:25PM",
-            outTime: "03:15PM",
-            note: "checkup"
-        },
-        {
-            id: 58,
-            issuedTo: "Student",
-            studentName: "Yashpal Thakur",
-            personCarrying: "Akshay",
-            startDate: "08-08-2025",
-            endDate: "29-08-2025",
-            inTime: "12:00AM",
-            outTime: "12:00AM",
-            note: "Test"
-        }
-    ])
-
-    const [formData, setFormData] = useState({
-        issuedTo: "Student",
-        name: "",
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
-        inTime: "",
-        outTime: "",
-        personCarrying: "",
-        note: "",
-        image: null as File | null
+export default function GatePassPage() {
+    const { toast } = useToast()
+    const [passes, setPasses] = useState<GatePassItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+        open: false,
+        id: null
     })
 
-    const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
-        if (field === "issuedTo") {
-            setIssuedTo(value)
+    useEffect(() => {
+        fetchPasses()
+    }, [])
+
+    const fetchPasses = async () => {
+        setLoading(true)
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch('http://localhost:5000/api/gate-pass', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (response.ok) {
+                const data = await response.json()
+                setPasses(data.map((p: any) => ({
+                    id: p._id,
+                    issuedTo: p.issuedTo,
+                    name: p.name,
+                    personCarrying: p.personCarrying,
+                    startDate: new Date(p.startDate).toLocaleDateString(),
+                    endDate: new Date(p.endDate).toLocaleDateString(),
+                    inTime: p.inTime,
+                    outTime: p.outTime,
+                    note: p.note,
+                    image: p.image
+                })))
+            }
+        } catch (error) {
+            console.error('Error fetching gate passes:', error)
+            toast({ title: "Error", description: "Failed to load authorization logs.", variant: "destructive" })
+        } finally {
+            setLoading(false)
         }
     }
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFormData(prev => ({ ...prev, image: e.target.files![0] }))
+    const handleAdd = async (data: any) => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch('http://localhost:5000/api/gate-pass', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            })
+            if (response.ok) {
+                toast({ title: "Success", description: "Gate pass issued successfully." })
+                fetchPasses()
+                setIsModalOpen(false)
+            }
+        } catch (error) {
+            console.error('Error issuing pass:', error)
+            toast({ title: "Error", description: "Failed to issue gate pass.", variant: "destructive" })
         }
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-
-        if (!formData.name || !formData.startDate || !formData.endDate) {
-            toast.error("Please fill all required fields")
-            return
+    const handleEdit = async (id: string, data: any) => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`http://localhost:5000/api/gate-pass/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            })
+            if (response.ok) {
+                toast({ title: "Updated", description: "Authorization record refined." })
+                fetchPasses()
+                setIsModalOpen(false)
+                setEditingId(null)
+            }
+        } catch (error) {
+            console.error('Error updating pass:', error)
+            toast({ title: "Error", description: "Failed to update record.", variant: "destructive" })
         }
-
-        const newPass: GatePassData = {
-            id: gatePasses.length > 0 ? Math.max(...gatePasses.map(p => p.id)) + 1 : 1,
-            issuedTo: formData.issuedTo,
-            studentName: formData.issuedTo === "Student" ? formData.name : undefined,
-            staffName: formData.issuedTo === "Staff" ? formData.name : undefined,
-            personCarrying: formData.personCarrying,
-            startDate: new Date(formData.startDate).toLocaleDateString('en-GB').replace(/\//g, '-'),
-            endDate: new Date(formData.endDate).toLocaleDateString('en-GB').replace(/\//g, '-'),
-            inTime: formData.inTime || "--",
-            outTime: formData.outTime || "--",
-            note: formData.note
-        }
-
-        setGatePasses([newPass, ...gatePasses])
-        toast.success("Gate Pass added successfully!")
-
-        // Reset form
-        setFormData({
-            issuedTo: "Student",
-            name: "",
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date().toISOString().split('T')[0],
-            inTime: "",
-            outTime: "",
-            personCarrying: "",
-            note: "",
-            image: null
-        })
-        setIssuedTo("Student")
     }
 
-    const handleDelete = (id: number) => {
-        setGatePasses(gatePasses.filter(pass => pass.id !== id))
-        toast.success("Gate Pass deleted successfully")
+    const confirmDelete = async () => {
+        if (!deleteConfirm.id) return
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`http://localhost:5000/api/gate-pass/${deleteConfirm.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (response.ok) {
+                toast({ title: "Deleted", description: "Authorization record purged." })
+                fetchPasses()
+            }
+        } catch (error) {
+            console.error('Error deleting pass:', error)
+            toast({ title: "Error", description: "Failed to delete record.", variant: "destructive" })
+        } finally {
+            setDeleteConfirm({ open: false, id: null })
+        }
+    }
+
+    const columns = [
+        {
+            key: "name",
+            label: "Authorized Entity",
+            sortable: true,
+            render: (value: string, row: GatePassItem) => (
+                <div className="flex items-center gap-3">
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center border font-bold text-xs ${row.issuedTo === 'Student' ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-purple-50 border-purple-100 text-purple-600'
+                        }`}>
+                        {row.issuedTo === 'Student' ? 'ST' : 'SF'}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-bold text-gray-900">{value}</span>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">
+                            Issued to {row.issuedTo}
+                        </span>
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: "personCarrying",
+            label: "Escort/Guardian",
+            sortable: true,
+            render: (value: string) => value ? (
+                <div className="flex items-center gap-2 text-xs text-gray-600 font-medium bg-gray-50 px-2 py-1 rounded w-fit">
+                    <UserSquare2 size={12} className="text-gray-400" /> {value}
+                </div>
+            ) : <span className="text-gray-300 italic text-[10px]">Self/None</span>
+        },
+        {
+            key: "timeline",
+            label: "Validity period",
+            render: (_: any, row: GatePassItem) => (
+                <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                        <ArrowUpRight size={10} /> {row.startDate}
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-red-600">
+                        <ArrowDownLeft size={10} /> {row.endDate}
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: "times",
+            label: "In/Out Window",
+            render: (_: any, row: GatePassItem) => (
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                        <Clock size={12} className="text-emerald-500" /> {row.inTime || "N/A"}
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                        <Clock size={12} className="text-red-500" /> {row.outTime || "N/A"}
+                    </span>
+                </div>
+            )
+        }
+    ]
+
+    const formFields: FormField[] = [
+        {
+            name: "issuedTo",
+            label: "Recipient Category",
+            type: "select",
+            options: [
+                { value: "Student", label: "Student" },
+                { value: "Staff", label: "Staff Member" }
+            ],
+            required: true
+        },
+        { name: "name", label: "Full Name", type: "text", required: true, placeholder: "Name of person issued to" },
+        { name: "startDate", label: "Effective From", type: "date", required: true },
+        { name: "endDate", label: "Expires On", type: "date", required: true },
+        { name: "inTime", label: "Authorized Entry Time", type: "text", required: false, placeholder: "HH:MM (24h)" },
+        { name: "outTime", label: "Authorized Exit Time", type: "text", required: false, placeholder: "HH:MM (24h)" },
+        { name: "personCarrying", label: "Guardian / Escort Name", type: "text", required: false, placeholder: "Optional: for students" },
+        { name: "note", label: "Justification/Notes", type: "textarea", required: false, placeholder: "Reason for gate pass..." },
+    ]
+
+    const stats = {
+        total: passes.length,
+        activeToday: passes.filter(p => {
+            const today = new Date().toLocaleDateString();
+            return p.startDate === today;
+        }).length,
+        studentPasses: passes.filter(p => p.issuedTo === 'Student').length,
+        staffPasses: passes.filter(p => p.issuedTo === 'Staff').length
     }
 
     return (
-        <DashboardLayout title="Gate Pass">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Side - Add Form */}
-                <div className="lg:col-span-1">
-                    <Card>
-                        <CardHeader className="bg-pink-50 border-b border-pink-100">
-                            <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                                <Edit className="h-5 w-5" />
-                                Add Gate Pass
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="issuedTo" className="text-red-500">Issued To *</Label>
-                                    <Select value={formData.issuedTo} onValueChange={(value) => handleInputChange("issuedTo", value)}>
-                                        <SelectTrigger className="bg-white border-gray-200">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Student">Student</SelectItem>
-                                            <SelectItem value="Staff">Staff</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+        <DashboardLayout title="Movement Control">
+            <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="name" className="text-red-500">
-                                        {issuedTo === "Student" ? "Student Name *" : "Staff Name *"}
-                                    </Label>
-                                    <Input
-                                        id="name"
-                                        placeholder={issuedTo === "Student" ? "Enter student name" : "Enter staff name"}
-                                        value={formData.name}
-                                        onChange={(e) => handleInputChange("name", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="startDate" className="text-red-500">Start Date *</Label>
-                                    <Input
-                                        id="startDate"
-                                        type="date"
-                                        value={formData.startDate}
-                                        onChange={(e) => handleInputChange("startDate", e.target.value)}
-                                        className="bg-gray-100 border-gray-200"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="endDate" className="text-red-500">End Date *</Label>
-                                    <Input
-                                        id="endDate"
-                                        type="date"
-                                        value={formData.endDate}
-                                        onChange={(e) => handleInputChange("endDate", e.target.value)}
-                                        className="bg-gray-100 border-gray-200"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="inTime">In Time</Label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-2.5 text-gray-500">
-                                            <Clock className="h-4 w-4" />
-                                        </div>
-                                        <Input
-                                            id="inTime"
-                                            type="time"
-                                            value={formData.inTime}
-                                            onChange={(e) => handleInputChange("inTime", e.target.value)}
-                                            className="pl-9 bg-gray-100 border-gray-200"
-                                            placeholder="In time"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="outTime">Out Time</Label>
-                                    <div className="relative">
-                                        <div className="absolute left-3 top-2.5 text-gray-500">
-                                            <Clock className="h-4 w-4" />
-                                        </div>
-                                        <Input
-                                            id="outTime"
-                                            type="time"
-                                            value={formData.outTime}
-                                            onChange={(e) => handleInputChange("outTime", e.target.value)}
-                                            className="pl-9 bg-gray-100 border-gray-200"
-                                            placeholder="Out time"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Image</Label>
-                                    <div className="flex items-center gap-2 border border-gray-200 rounded-md p-1 bg-white">
-                                        <Button type="button" className="bg-blue-900 text-white hover:bg-blue-800 h-8 text-sm">
-                                            Choose File
-                                        </Button>
-                                        <span className="text-sm text-gray-500 px-2 truncate max-w-[150px]">
-                                            {formData.image ? formData.image.name : "No file chosen"}
-                                        </span>
-                                        <Input
-                                            type="file"
-                                            className="hidden"
-                                            onChange={handleFileChange}
-                                            accept="image/*"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="personCarrying">Name of Person Carrying Student</Label>
-                                    <Input
-                                        id="personCarrying"
-                                        placeholder="Name of Person Carrying Student"
-                                        value={formData.personCarrying}
-                                        onChange={(e) => handleInputChange("personCarrying", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="note">Note</Label>
-                                    <Textarea
-                                        id="note"
-                                        value={formData.note}
-                                        onChange={(e) => handleInputChange("note", e.target.value)}
-                                        rows={3}
-                                        className="bg-white border-gray-200"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end pt-2">
-                                    <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-6">
-                                        Save
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardContent>
-                    </Card>
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                            <ShieldCheck className="text-indigo-600" size={24} />
+                            Gate Pass Command
+                        </h1>
+                        <p className="text-sm text-gray-500">Authorize and audit the physical entry/exit workflows of the campus</p>
+                    </div>
+                    <Button
+                        onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+                        className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 gap-2 h-11 px-6 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+                    >
+                        <Plus className="h-4 w-4" /> Issue New Pass
+                    </Button>
                 </div>
 
-                {/* Right Side - List */}
-                <div className="lg:col-span-2">
-                    <Card>
-                        <CardHeader className="bg-pink-50 border-b border-pink-100">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                                    <div className="flex items-center gap-2">
-                                        <span className="h-5 w-5 flex items-center justify-center">☰</span>
-                                        Gate Pass List
-                                    </div>
-                                </CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><Printer className="h-4 w-4" /></Button>
-                                    <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><FileText className="h-4 w-4" /></Button>
-                                    <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><Download className="h-4 w-4" /></Button>
-                                    <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none">Column visibility ▼</Button>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-500">Search:</span>
-                                    <Input
-                                        className="w-48 h-8"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-pink-50 hover:bg-pink-50">
-                                            <TableHead className="font-bold text-gray-700 w-12">#</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">Student Name</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">Staff Name</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">Name of Person<br />Carrying Student</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">Image</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">Start Date</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">End Date</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">In Time</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">Out Time</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs">Note</TableHead>
-                                            <TableHead className="font-bold text-gray-700 uppercase text-xs text-right">Action</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {gatePasses
-                                            .filter(pass =>
-                                            (pass.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                                pass.staffName?.toLowerCase().includes(searchTerm.toLowerCase()))
-                                            )
-                                            .map((pass) => (
-                                                <TableRow key={pass.id}>
-                                                    <TableCell className="font-medium text-blue-600">{pass.id}</TableCell>
-                                                    <TableCell>{pass.studentName || ""}</TableCell>
-                                                    <TableCell>{pass.staffName || ""}</TableCell>
-                                                    <TableCell>{pass.personCarrying || ""}</TableCell>
-                                                    <TableCell>
-                                                        {pass.image ? (
-                                                            <div className="h-8 w-12 bg-gray-200 rounded overflow-hidden">
-                                                                <img src={pass.image} alt="Pass" className="h-full w-full object-cover" />
-                                                            </div>
-                                                        ) : (
-                                                            ""
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>{pass.startDate}</TableCell>
-                                                    <TableCell>{pass.endDate}</TableCell>
-                                                    <TableCell>{pass.inTime}</TableCell>
-                                                    <TableCell>{pass.outTime}</TableCell>
-                                                    <TableCell className="max-w-[100px] truncate" title={pass.note}>{pass.note}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 h-7 px-2 text-xs">
-                                                                    Action <span className="ml-1">▼</span>
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem>
-                                                                    <Edit className="h-4 w-4 mr-2" /> Edit
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(pass.id)}>
-                                                                    <Trash2 className="h-4 w-4 mr-2" /> Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </CardContent>
-                    </Card>
+                {/* Stats Section */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <StatCard
+                        title="Total Issued"
+                        value={stats.total.toString()}
+                        icon={History}
+                        iconColor="text-blue-600"
+                        iconBgColor="bg-blue-50"
+                        description="Lifetime record"
+                    />
+                    <StatCard
+                        title="Daily Active"
+                        value={stats.activeToday.toString()}
+                        icon={DoorOpen}
+                        iconColor="text-emerald-600"
+                        iconBgColor="bg-emerald-50"
+                        description="Valid today"
+                    />
+                    <StatCard
+                        title="Student Passes"
+                        value={stats.studentPasses.toString()}
+                        icon={Users}
+                        iconColor="text-amber-600"
+                        iconBgColor="bg-amber-50"
+                        description="Active scholars"
+                    />
+                    <StatCard
+                        title="Staff Clearances"
+                        value={stats.staffPasses.toString()}
+                        icon={UserSquare2}
+                        iconColor="text-purple-600"
+                        iconBgColor="bg-purple-50"
+                        description="Faculty movement"
+                    />
                 </div>
+
+                <AdvancedTable
+                    title="Consolidated Authorization Log"
+                    columns={columns}
+                    data={passes}
+                    loading={loading}
+                    searchable
+                    searchPlaceholder="Track by name or justification..."
+                    pagination
+                    onEdit={(row) => {
+                        setEditingId(row.id)
+                        setIsModalOpen(true)
+                    }}
+                    onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+                />
+
+                <FormModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false)
+                        setEditingId(null)
+                    }}
+                    title={editingId ? "Refine Authorization" : "New Secure Gate Pass"}
+                    fields={formFields}
+                    initialData={editingId ? passes.find(p => p.id === editingId) : undefined}
+                    onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+                />
+
+                <ConfirmationDialog
+                    open={deleteConfirm.open}
+                    onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+                    onConfirm={confirmDelete}
+                    title="Void and Archive Authorization?"
+                    description="This will permanently nullify this gate pass. Security personnel will no longer recognize this record."
+                    variant="destructive"
+                />
             </div>
         </DashboardLayout>
     )

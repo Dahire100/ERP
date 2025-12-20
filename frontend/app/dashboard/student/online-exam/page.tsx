@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { FileText, CheckCircle, Clock, Award } from "lucide-react"
 
+import { toast } from "sonner"
+
 export default function StudentOnlineExam() {
   const tests = [
     { id: 1, title: "Math Quiz 1", subject: "Mathematics", status: "Available", duration: "30 min", questions: 20, deadline: "2024-11-10", score: null },
@@ -23,6 +25,10 @@ export default function StudentOnlineExam() {
   const averageScore = completedWithScores.length > 0
     ? completedWithScores.reduce((sum, t) => sum + (t.score || 0), 0) / completedWithScores.length
     : 0
+
+  const handleStartTest = (title: string) => {
+    toast.success("Starting Test", { description: `Launching ${title}... Good luck!` })
+  }
 
   return (
     <DashboardLayout title="Online Exam">
@@ -97,7 +103,7 @@ export default function StudentOnlineExam() {
                       <span>📝 Questions: {test.questions}</span>
                       <span className="col-span-2">📅 Deadline: {new Date(test.deadline).toLocaleDateString()}</span>
                     </div>
-                    <Button size="sm" className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+                    <Button onClick={() => handleStartTest(test.title)} size="sm" className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
                       Start Test
                     </Button>
                   </div>

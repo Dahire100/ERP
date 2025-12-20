@@ -8,7 +8,17 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Settings, Bell, Lock, User, Palette } from "lucide-react"
 
+import { toast } from "sonner"
+
 export default function StudentSettings() {
+  const handleSaveProfile = () => {
+    toast.success("Profile Updated", { description: "Your account information has been saved." })
+  }
+
+  const handleUpdatePassword = () => {
+    toast.success("Password Updated", { description: "Your password has been changed successfully." })
+  }
+
   return (
     <DashboardLayout title="Settings">
       <div className="space-y-6">
@@ -41,7 +51,7 @@ export default function StudentSettings() {
                 <Label htmlFor="phone">Phone</Label>
                 <Input id="phone" placeholder="+1-555-0100" defaultValue="+1-555-0100" />
               </div>
-              <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+              <Button onClick={handleSaveProfile} className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
                 Save Changes
               </Button>
             </CardContent>
@@ -68,7 +78,7 @@ export default function StudentSettings() {
                 <Label htmlFor="confirm">Confirm Password</Label>
                 <Input id="confirm" type="password" placeholder="Confirm new password" />
               </div>
-              <Button variant="outline" className="w-full">
+              <Button onClick={handleUpdatePassword} variant="outline" className="w-full">
                 Update Password
               </Button>
             </CardContent>

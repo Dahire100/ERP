@@ -1,436 +1,328 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
+import { StatusBadge } from "@/components/super-admin/status-badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Trash2, UserPlus, Search } from "lucide-react"
-import { toast } from "sonner"
+    Plus,
+    Search,
+    UserSquare2,
+    Users,
+    Clock,
+    Calendar,
+    MapPin,
+    ClipboardList,
+    UserPlus
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-interface VisitorData {
-    id: number
+interface VisitorItem {
+    id: string
     purpose: string
     name: string
-    email: string
     phone: string
+    email?: string
     date: string
     inTime: string
-    outTime: string
-    createdBy: string
+    outTime?: string
+    noOfPerson: number
+    idCard?: string
+    note?: string
 }
 
-export default function VisitorsBook() {
-    const [searchTerm, setSearchTerm] = useState("")
-    const [selectedVisitors, setSelectedVisitors] = useState<number[]>([])
-
-    // Sample data
-    const [visitors, setVisitors] = useState<VisitorData[]>([
-        {
-            id: 1,
-            purpose: "Marketing",
-            name: "Jasmin",
-            email: "Jasmin@gmail.com",
-            phone: "09123456789",
-            date: "27-10-2025",
-            inTime: "09:00 AM",
-            outTime: "11:00 AM",
-            createdBy: "Demo"
-        },
-        {
-            id: 2,
-            purpose: "Marketing",
-            name: "Ko Leo",
-            email: "Leo@gmail.com",
-            phone: "0153648904",
-            date: "27-10-2025",
-            inTime: "10:00 AM",
-            outTime: "12:00 PM",
-            createdBy: "Super"
-        },
-        {
-            id: 3,
-            purpose: "Checking",
-            name: "Zayar",
-            email: "",
-            phone: "",
-            date: "21-10-2025",
-            inTime: "02:00 PM",
-            outTime: "03:30 PM",
-            createdBy: "Super"
-        },
-        {
-            id: 4,
-            purpose: "To meet the principal",
-            name: "Sudeep Jain",
-            email: "sudeep2001@gmail.com",
-            phone: "9584522907",
-            date: "10-09-2025",
-            inTime: "11:00 AM",
-            outTime: "12:00 PM",
-            createdBy: "Super"
-        },
-        {
-            id: 5,
-            purpose: "To meet the principal",
-            name: "Hardip Gandhi",
-            email: "",
-            phone: "9876543210",
-            date: "22-07-2025",
-            inTime: "03:00 PM",
-            outTime: "04:00 PM",
-            createdBy: "Demo"
-        }
-    ])
-
-    const [formData, setFormData] = useState({
-        purpose: "",
-        name: "",
-        email: "",
-        phone: "",
-        numberOfPerson: "",
-        idCard: "",
-        date: new Date().toISOString().split('T')[0],
-        inTime: "",
-        outTime: "",
-        attachment: null as File | null,
-        note: ""
+export default function VisitorsBookPage() {
+    const { toast } = useToast()
+    const [visitors, setVisitors] = useState<VisitorItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+        open: false,
+        id: null
     })
 
-    const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
-    }
+    useEffect(() => {
+        fetchVisitors();
+    }, []);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFormData(prev => ({ ...prev, attachment: e.target.files![0] }))
+    const fetchVisitors = async () => {
+        setLoading(true)
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/visitors', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                const mappedData = data.map((item: any) => ({
+                    id: item._id,
+                    purpose: item.purpose,
+                    name: item.name,
+                    phone: item.phone,
+                    email: item.email,
+                    date: new Date(item.date).toLocaleDateString(),
+                    inTime: item.inTime || "N/A",
+                    outTime: item.outTime || "Still In",
+                    noOfPerson: item.noOfPerson || 1,
+                    idCard: item.idCard,
+                    note: item.note
+                }));
+                setVisitors(mappedData);
+            }
+        } catch (error) {
+            console.error('Error fetching visitors:', error);
+            toast({ title: "Error", description: "Failed to load visitor records.", variant: "destructive" });
+        } finally {
+            setLoading(false)
         }
-    }
+    };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-
-        // Validation
-        if (!formData.purpose || !formData.name || !formData.date) {
-            toast.error("Please fill all required fields")
-            return
+    const handleAdd = async (data: any) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/visitors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                toast({ title: "Success", description: "Visitor entry logged." });
+                fetchVisitors();
+                setIsModalOpen(false);
+            }
+        } catch (error) {
+            console.error('Error adding visitor:', error);
+            toast({ title: "Error", description: "Failed to log visitor.", variant: "destructive" });
         }
+    };
 
-        // Add new visitor
-        const newVisitor: VisitorData = {
-            id: visitors.length + 1,
-            purpose: formData.purpose,
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            date: new Date(formData.date).toLocaleDateString('en-GB'),
-            inTime: formData.inTime,
-            outTime: formData.outTime,
-            createdBy: "Admin"
+    const handleEdit = async (id: string, data: any) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:5000/api/visitors/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                toast({ title: "Updated", description: "Visitor record updated." });
+                fetchVisitors();
+                setIsModalOpen(false);
+                setEditingId(null);
+            }
+        } catch (error) {
+            console.error('Error updating visitor:', error);
+            toast({ title: "Error", description: "Failed to update record.", variant: "destructive" });
         }
+    };
 
-        setVisitors([...visitors, newVisitor])
-        toast.success("Visitor added successfully!")
-
-        // Reset form
-        setFormData({
-            purpose: "",
-            name: "",
-            email: "",
-            phone: "",
-            numberOfPerson: "",
-            idCard: "",
-            date: new Date().toISOString().split('T')[0],
-            inTime: "",
-            outTime: "",
-            attachment: null,
-            note: ""
-        })
-    }
-
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedVisitors(visitors.map(v => v.id))
-        } else {
-            setSelectedVisitors([])
+    const confirmDelete = async () => {
+        if (!deleteConfirm.id) return;
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:5000/api/visitors/${deleteConfirm.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                toast({ title: "Deleted", description: "Visitor record removed." });
+                fetchVisitors();
+            }
+        } catch (error) {
+            console.error('Error deleting visitor:', error);
+            toast({ title: "Error", description: "Failed to delete visitor.", variant: "destructive" });
+        } finally {
+            setDeleteConfirm({ open: false, id: null });
         }
-    }
+    };
 
-    const handleSelectVisitor = (id: number, checked: boolean) => {
-        if (checked) {
-            setSelectedVisitors([...selectedVisitors, id])
-        } else {
-            setSelectedVisitors(selectedVisitors.filter(vId => vId !== id))
+    const columns = [
+        {
+            key: "name",
+            label: "Visitor Details",
+            sortable: true,
+            render: (value: string, row: VisitorItem) => (
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 font-bold text-emerald-600">
+                        {value.charAt(0)}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-bold text-gray-900">{value}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                            {row.phone} {row.email ? `| ${row.email}` : ''}
+                        </span>
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: "purpose",
+            label: "Intent",
+            sortable: true,
+            render: (value: string) => (
+                <span className="text-xs font-semibold text-gray-700 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                    {value}
+                </span>
+            )
+        },
+        {
+            key: "inTime",
+            label: "Arrival",
+            sortable: true,
+            render: (value: string, row: VisitorItem) => (
+                <div className="flex flex-col">
+                    <span className="text-xs text-gray-900 font-bold flex items-center gap-1">
+                        <Clock size={10} className="text-emerald-500" /> {value}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium">{row.date}</span>
+                </div>
+            )
+        },
+        {
+            key: "outTime",
+            label: "Departure",
+            sortable: true,
+            render: (value: string) => (
+                <span className={`text-xs font-medium ${value === "Still In" ? "text-orange-500 animate-pulse" : "text-gray-500"}`}>
+                    {value}
+                </span>
+            )
+        },
+        {
+            key: "noOfPerson",
+            label: "Group Size",
+            sortable: true,
+            render: (value: number) => (
+                <div className="flex items-center gap-1.5">
+                    <Users size={12} className="text-gray-400" />
+                    <span className="text-xs font-bold text-gray-700">{value}</span>
+                </div>
+            )
         }
-    }
+    ]
 
-    const handleBulkDelete = () => {
-        if (selectedVisitors.length === 0) {
-            toast.error("Please select visitors to delete")
-            return
-        }
+    const formFields: FormField[] = [
+        { name: "name", label: "Visitor Name", type: "text", required: true, placeholder: "Enter visitor's full name" },
+        { name: "phone", label: "Contact No.", type: "text", required: true, placeholder: "Active mobile number" },
+        { name: "purpose", label: "Visiting Purpose", type: "text", required: true, placeholder: "e.g., Parent-Teacher Meeting, Maintenance..." },
+        { name: "idCard", label: "ID/Identification", type: "text", required: false, placeholder: "Aadhar, DL, or Employee ID" },
+        { name: "noOfPerson", label: "Count of Persons", type: "number", required: true, placeholder: "1" },
+        { name: "date", label: "Visit Date", type: "date", required: true },
+        { name: "inTime", label: "In Time", type: "text", required: true, placeholder: "e.g., 10:30 AM" },
+        { name: "outTime", label: "Out Time (Optional)", type: "text", required: false, placeholder: "e.g., 11:45 AM" },
+        { name: "note", label: "Special Remarks", type: "textarea", required: false, placeholder: "Any additional details..." },
+    ];
 
-        setVisitors(visitors.filter(v => !selectedVisitors.includes(v.id)))
-        setSelectedVisitors([])
-        toast.success(`${selectedVisitors.length} visitors deleted`)
+    const stats = {
+        total: visitors.length,
+        active: visitors.filter(v => v.outTime === 'Still In' || !v.outTime).length,
+        today: visitors.filter(v => v.date === new Date().toLocaleDateString()).length,
+        groupVisits: visitors.filter(v => v.noOfPerson > 1).length
     }
 
     return (
-        <DashboardLayout title="Visitor Books">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Side - Add Visitors Form */}
-                <div className="lg:col-span-1">
-                    <Card>
-                        <CardHeader className="bg-gray-50">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <UserPlus className="h-5 w-5" />
-                                Add Visitors
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="purpose">Purpose *</Label>
-                                    <Select value={formData.purpose} onValueChange={(value) => handleInputChange("purpose", value)} required>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Marketing">Marketing</SelectItem>
-                                            <SelectItem value="Checking">Checking</SelectItem>
-                                            <SelectItem value="To meet the principal">To meet the principal</SelectItem>
-                                            <SelectItem value="Interview">Interview</SelectItem>
-                                            <SelectItem value="Admission">Admission</SelectItem>
-                                            <SelectItem value="Meeting">Meeting</SelectItem>
-                                            <SelectItem value="Other">Other</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+        <DashboardLayout title="Access Control">
+            <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Name *</Label>
-                                    <Input
-                                        id="name"
-                                        value={formData.name}
-                                        onChange={(e) => handleInputChange("name", e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => handleInputChange("email", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone</Label>
-                                    <Input
-                                        id="phone"
-                                        type="tel"
-                                        value={formData.phone}
-                                        onChange={(e) => handleInputChange("phone", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="numberOfPerson">Number Of Person</Label>
-                                    <Input
-                                        id="numberOfPerson"
-                                        type="number"
-                                        value={formData.numberOfPerson}
-                                        onChange={(e) => handleInputChange("numberOfPerson", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="idCard">Id Card</Label>
-                                    <Input
-                                        id="idCard"
-                                        value={formData.idCard}
-                                        onChange={(e) => handleInputChange("idCard", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="date">Date *</Label>
-                                    <Input
-                                        id="date"
-                                        type="date"
-                                        value={formData.date}
-                                        onChange={(e) => handleInputChange("date", e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="inTime">In Time</Label>
-                                    <Input
-                                        id="inTime"
-                                        type="time"
-                                        placeholder="In time"
-                                        value={formData.inTime}
-                                        onChange={(e) => handleInputChange("inTime", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="outTime">Out Time</Label>
-                                    <Input
-                                        id="outTime"
-                                        type="time"
-                                        placeholder="Out time"
-                                        value={formData.outTime}
-                                        onChange={(e) => handleInputChange("outTime", e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="attachment">Attachment</Label>
-                                    <Input
-                                        id="attachment"
-                                        type="file"
-                                        onChange={handleFileChange}
-                                        className="cursor-pointer"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="note">Note</Label>
-                                    <Textarea
-                                        id="note"
-                                        value={formData.note}
-                                        onChange={(e) => handleInputChange("note", e.target.value)}
-                                        rows={3}
-                                    />
-                                </div>
-
-                                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                                    <UserPlus className="h-4 w-4 mr-2" />
-                                    Add Visitor
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                            <UserSquare2 className="text-emerald-600" size={24} />
+                            Visitors Registry
+                        </h1>
+                        <p className="text-sm text-gray-500">Log and monitor all external traffic entering the premises</p>
+                    </div>
+                    <Button
+                        onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+                        className="bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 gap-2 h-11 px-6 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+                    >
+                        <Plus className="h-4 w-4" /> Record New Entry
+                    </Button>
                 </div>
 
-                {/* Right Side - Visitor List */}
-                <div className="lg:col-span-2">
-                    <Card>
-                        <CardHeader className="bg-gray-50">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                    </svg>
-                                    Visitor List
-                                </CardTitle>
-                                <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={handleBulkDelete}
-                                    disabled={selectedVisitors.length === 0}
-                                >
-                                    Bulk Delete
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            {/* Search Bar */}
-                            <div className="mb-4">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <Input
-                                        placeholder="Search..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-9"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Table */}
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-12">
-                                                <Checkbox
-                                                    checked={selectedVisitors.length === visitors.length}
-                                                    onCheckedChange={handleSelectAll}
-                                                />
-                                            </TableHead>
-                                            <TableHead>#</TableHead>
-                                            <TableHead>PURPOSE</TableHead>
-                                            <TableHead>NAME</TableHead>
-                                            <TableHead>EMAIL</TableHead>
-                                            <TableHead>PHONE</TableHead>
-                                            <TableHead>DATE</TableHead>
-                                            <TableHead>IN TIME</TableHead>
-                                            <TableHead>OUT TIME</TableHead>
-                                            <TableHead>CREATED BY</TableHead>
-                                            <TableHead>ACTION</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {visitors
-                                            .filter(visitor =>
-                                                visitor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                                visitor.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                                visitor.email.toLowerCase().includes(searchTerm.toLowerCase())
-                                            )
-                                            .map((visitor, index) => (
-                                                <TableRow key={visitor.id}>
-                                                    <TableCell>
-                                                        <Checkbox
-                                                            checked={selectedVisitors.includes(visitor.id)}
-                                                            onCheckedChange={(checked) => handleSelectVisitor(visitor.id, checked as boolean)}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>{index + 1}</TableCell>
-                                                    <TableCell>{visitor.purpose}</TableCell>
-                                                    <TableCell className="font-medium">{visitor.name}</TableCell>
-                                                    <TableCell>{visitor.email || "-"}</TableCell>
-                                                    <TableCell>{visitor.phone || "-"}</TableCell>
-                                                    <TableCell>{visitor.date}</TableCell>
-                                                    <TableCell>{visitor.inTime || "-"}</TableCell>
-                                                    <TableCell>{visitor.outTime || "-"}</TableCell>
-                                                    <TableCell>{visitor.createdBy}</TableCell>
-                                                    <TableCell>
-                                                        <Button size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538]">
-                                                            Action <span className="ml-2">▼</span>
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </CardContent>
-                    </Card>
+                {/* Stats Section */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <StatCard
+                        title="Total Visitors"
+                        value={stats.total.toString()}
+                        icon={ClipboardList}
+                        iconColor="text-blue-600"
+                        iconBgColor="bg-blue-50"
+                        description="Historical logs"
+                    />
+                    <StatCard
+                        title="On Premises"
+                        value={stats.active.toString()}
+                        icon={MapPin}
+                        iconColor="text-orange-600"
+                        iconBgColor="bg-orange-50"
+                        description="Currently checked-in"
+                    />
+                    <StatCard
+                        title="Today's Traffic"
+                        value={stats.today.toString()}
+                        icon={Calendar}
+                        iconColor="text-emerald-600"
+                        iconBgColor="bg-emerald-50"
+                        description="Recorded today"
+                    />
+                    <StatCard
+                        title="Group Entries"
+                        value={stats.groupVisits.toString()}
+                        icon={Users}
+                        iconColor="text-indigo-600"
+                        iconBgColor="bg-indigo-50"
+                        description="Visits with 2+ persons"
+                    />
                 </div>
+
+                <AdvancedTable
+                    title="Digital Visitor Manifest"
+                    columns={columns}
+                    data={visitors}
+                    loading={loading}
+                    searchable
+                    searchPlaceholder="Monitor by visitor name or purpose..."
+                    pagination
+                    onEdit={(row) => {
+                        setEditingId(row.id);
+                        setIsModalOpen(true);
+                    }}
+                    onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+                />
+
+                <FormModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setEditingId(null);
+                    }}
+                    title={editingId ? "Update Visitor Details" : "New Secure Entry Point"}
+                    fields={formFields}
+                    initialData={editingId ? visitors.find(v => v.id === editingId) : undefined}
+                    onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+                />
+
+                <ConfirmationDialog
+                    open={deleteConfirm.open}
+                    onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+                    onConfirm={confirmDelete}
+                    title="Delete Security Log?"
+                    description="This will permanently purge this visitor's record from the security logs. This action cannot be reversed."
+                    variant="destructive"
+                />
             </div>
         </DashboardLayout>
     )

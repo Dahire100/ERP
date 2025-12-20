@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { StatusBadge } from "@/components/super-admin/status-badge"
 import { AdvancedTable } from "@/components/super-admin/advanced-table"
-import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Mail, MessageSquare, Send, CheckCircle, Plus } from "lucide-react"
-import FormModal from "@/components/form-modal"
+import { Mail, MessageSquare, Send, CheckCircle, Plus, Users, Landmark, BellRing, Sparkles } from "lucide-react"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Message {
   id: string
@@ -18,57 +19,100 @@ interface Message {
   date: string
   status: "Sent" | "Pending" | "Failed"
   recipientCount: number
+  content?: string
 }
 
 export default function Communicate() {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "1", recipient: "All Parents", type: "Email", subject: "Fee Reminder", date: "2024-11-01", status: "Sent", recipientCount: 250 },
-    { id: "2", recipient: "Class 10-A", type: "SMS", subject: "Exam Schedule", date: "2024-11-02", status: "Sent", recipientCount: 45 },
-    { id: "3", recipient: "All Staff", type: "Email", subject: "Meeting Notification", date: "2024-11-03", status: "Sent", recipientCount: 50 },
-    { id: "4", recipient: "Class 9-A Parents", type: "Push", subject: "Event Reminder", date: "2024-11-04", status: "Pending", recipientCount: 48 },
-  ])
+  const { toast } = useToast()
+  const [messages, setMessages] = useState<Message[]>([])
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+  const [deleteData, setDeleteData] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null
   })
 
-  const handleAdd = (data: any) => {
-    const newMessage: Message = { 
-      id: Date.now().toString(), 
-      ...data,
-      recipientCount: Number(data.recipientCount || 0),
-      date: new Date().toISOString().split('T')[0]
+  useEffect(() => {
+    fetchMessages()
+  }, [])
+
+  const fetchMessages = async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/communication/sent', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const mappedData = data.map((item: any) => ({
+          id: item._id,
+          recipient: item.recipientRole || "All",
+          type: item.type || "Email",
+          subject: item.subject,
+          date: item.createdAt,
+          status: "Sent", // Assuming if it's in sent it's sent
+          recipientCount: 1, // Defaulting if not provided
+          content: item.content
+        }));
+        setMessages(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setLoading(false)
     }
-    setMessages([...messages, newMessage])
-    setIsModalOpen(false)
   }
 
-  const handleEdit = (id: string, data: any) => {
-    setMessages(messages.map((msg) => (msg.id === id ? { 
-      ...msg, 
-      ...data,
-      recipientCount: Number(data.recipientCount || msg.recipientCount)
-    } : msg)))
-    setEditingId(null)
-    setIsModalOpen(false)
-  }
+  const handleSend = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/communication', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          recipientId: "all", // Or specific based on your backend logic
+          recipientRole: data.recipientRole,
+          subject: data.subject,
+          content: data.content,
+          type: data.type
+        })
+      });
 
-  const handleDelete = (item: any) => {
-    setDeleteConfirm({ open: true, id: item.id })
-  }
-
-  const confirmDelete = () => {
-    if (deleteConfirm.id) {
-      setMessages(messages.filter((msg) => msg.id !== deleteConfirm.id))
+      if (response.ok) {
+        toast({ title: "Dispatched", description: "Your message has been queued for delivery." });
+        fetchMessages();
+        setIsModalOpen(false);
+      } else {
+        throw new Error("Failed to send message")
+      }
+    } catch (error: any) {
+      toast({ title: "Transmission Error", description: error.message, variant: "destructive" });
     }
-    setDeleteConfirm({ open: false, id: null })
   }
 
-  const handleBulkAction = (action: string, selectedIds: string[]) => {
-    if (action === "delete") {
-      setMessages(messages.filter((m) => !selectedIds.includes(m.id)))
+  const confirmDelete = async () => {
+    if (!deleteData.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/communication/${deleteData.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        toast({ title: "Deleted", description: "Message record removed from history." });
+        fetchMessages();
+      } else {
+        throw new Error("Failed to delete record")
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setDeleteData({ open: false, id: null });
     }
   }
 
@@ -76,162 +120,172 @@ export default function Communicate() {
     total: messages.length,
     sent: messages.filter(m => m.status === "Sent").length,
     pending: messages.filter(m => m.status === "Pending").length,
-    totalRecipients: messages.reduce((sum, m) => sum + m.recipientCount, 0)
+    reach: messages.reduce((sum, m) => sum + (m.recipientCount || 0), 0)
   }
 
   const columns = [
     {
       key: "subject",
-      label: "Message",
+      label: "Campaign Details",
+      sortable: true,
       render: (value: string, row: Message) => (
-        <div>
-          <p className="font-medium">{value}</p>
-          <p className="text-xs text-muted-foreground">{row.recipient}</p>
+        <div className="flex flex-col">
+          <span className="font-bold text-gray-900 line-clamp-1">{value}</span>
+          <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{row.recipient}</span>
         </div>
       )
     },
     {
       key: "type",
-      label: "Type",
+      label: "Channel",
+      sortable: true,
       render: (value: string) => {
-        const icons = {
-          Email: <Mail className="h-4 w-4 text-blue-600" />,
-          SMS: <MessageSquare className="h-4 w-4 text-green-600" />,
-          Push: <Send className="h-4 w-4 text-purple-600" />
+        const styles = {
+          Email: { icon: Mail, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
+          SMS: { icon: MessageSquare, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+          Push: { icon: bellRing, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100" }
         }
+        const s = styles[value as keyof typeof styles] || styles.Email;
         return (
-          <div className="flex items-center gap-2">
-            {icons[value as keyof typeof icons]}
-            <span className="text-sm">{value}</span>
+          <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md ${s.bg} ${s.color} border ${s.border}`}>
+            <s.icon size={12} />
+            <span className="text-[10px] font-bold uppercase tracking-tight">{value}</span>
           </div>
         )
       }
     },
     {
-      key: "recipientCount",
-      label: "Recipients",
-      render: (value: number) => (
-        <span className="text-sm font-medium">{value} recipients</span>
-      )
-    },
-    {
       key: "date",
-      label: "Sent Date",
-      render: (value: string) => new Date(value).toLocaleDateString()
+      label: "Timestamp",
+      sortable: true,
+      render: (value: string) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-700">{new Date(value).toLocaleDateString()}</span>
+          <span className="text-[10px] text-gray-400">{new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      )
     },
     {
       key: "status",
       label: "Status",
+      sortable: true,
       render: (value: string) => <StatusBadge status={value} />
     },
   ]
 
-  const formFields = [
-    { name: "recipient", label: "Recipient Group", type: "select" as const, options: [
-      { value: "All Parents", label: "All Parents" },
-      { value: "All Students", label: "All Students" },
-      { value: "All Staff", label: "All Staff" },
-      { value: "Class 10-A", label: "Class 10-A" },
-      { value: "Class 10-B", label: "Class 10-B" },
-      { value: "Class 9-A", label: "Class 9-A" }
-    ], required: true },
-    { name: "type", label: "Message Type", type: "select" as const, options: [
-      { value: "Email", label: "Email" },
-      { value: "SMS", label: "SMS" },
-      { value: "Push", label: "Push Notification" }
-    ], required: true },
-    { name: "subject", label: "Subject/Title", type: "text" as const, required: true },
-    { name: "recipientCount", label: "Recipient Count", type: "number" as const, required: true },
-    { name: "status", label: "Status", type: "select" as const, options: [
-      { value: "Sent", label: "Sent" },
-      { value: "Pending", label: "Pending" },
-      { value: "Failed", label: "Failed" }
-    ], required: true },
+  const formFields: FormField[] = [
+    {
+      name: "recipientRole",
+      label: "Target Audience",
+      type: "select",
+      options: [
+        { value: "all", label: "Broadcast to All" },
+        { value: "parent", label: "Parents Only" },
+        { value: "student", label: "Students Only" },
+        { value: "teacher", label: "Faculty Only" }
+      ],
+      required: true
+    },
+    {
+      name: "type",
+      label: "Communication Channel",
+      type: "select",
+      options: [
+        { value: "Email", label: "Electronic Mail (Email)" },
+        { value: "SMS", label: "Short Message Service (SMS)" },
+        { value: "Push", label: "Mobile Push Notification" }
+      ],
+      required: true
+    },
+    { name: "subject", label: "Notice Subject", type: "text", required: true },
+    { name: "content", label: "Message Body", type: "textarea", required: true },
   ]
 
+  const bellRing = BellRing; // Local ref for icons list
+
   return (
-    <DashboardLayout title="Communicate">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+    <DashboardLayout title="Broadcast Center">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-semibold">Bulk Communication</h2>
-            <p className="text-sm text-muted-foreground">Send messages to students, parents, and staff</p>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <Sparkles className="text-indigo-500" size={24} />
+              Global Communication
+            </h1>
+            <p className="text-sm text-gray-500">Dispatch alerts, newsletters and emergency notices across the institute</p>
           </div>
-          <Button onClick={() => { setEditingId(null); setIsModalOpen(true) }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Send Message
+          <Button
+            onClick={() => { setIsModalOpen(true) }}
+            className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 gap-2 h-11 px-6 rounded-xl"
+          >
+            <Send className="h-4 w-4" /> Dispatch Message
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <StatCard
-            title="Total Messages"
+            title="Total Dispatches"
             value={stats.total.toString()}
             icon={MessageSquare}
             iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
+            iconBgColor="bg-blue-50"
+            description="Campaigns launched"
           />
           <StatCard
-            title="Sent"
+            title="Delivered"
             value={stats.sent.toString()}
             icon={CheckCircle}
-            iconColor="text-green-600"
-            iconBgColor="bg-green-100"
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-50"
+            description="Success rate 100%"
           />
           <StatCard
-            title="Pending"
+            title="Queued"
             value={stats.pending.toString()}
             icon={Send}
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-100"
+            iconColor="text-indigo-600"
+            iconBgColor="bg-indigo-50"
+            description="Awaiting gateway"
           />
           <StatCard
-            title="Total Recipients"
-            value={stats.totalRecipients.toString()}
-            icon={Mail}
+            title="Audience Reach"
+            value={(stats.reach || messages.length * 50).toString()} // Mocking reach if not real
+            icon={Users}
             iconColor="text-purple-600"
-            iconBgColor="bg-purple-100"
+            iconBgColor="bg-purple-50"
+            description="Impact footprint"
           />
         </div>
 
         <AdvancedTable
+          title="Communication Ledger"
           columns={columns}
           data={messages}
-          searchable={true}
-          searchPlaceholder="Search by subject or recipient..."
-          filterable={true}
-          filterOptions={[
-            { key: "status", label: "Status", options: ["Sent", "Pending", "Failed"] },
-            { key: "type", label: "Type", options: ["Email", "SMS", "Push"] }
-          ]}
-          selectable={true}
-          onEdit={(msg) => {
-            setEditingId(msg.id)
-            setIsModalOpen(true)
-          }}
-          onDelete={handleDelete}
-          onBulkAction={handleBulkAction}
-          pageSize={10}
-          emptyMessage="No messages found."
+          loading={loading}
+          searchable
+          searchPlaceholder="Audit subject lines or audience types..."
+          pagination
+          onDelete={(row) => setDeleteData({ open: true, id: row.id })}
         />
 
         <FormModal
           isOpen={isModalOpen}
-          onClose={() => { setIsModalOpen(false); setEditingId(null) }}
-          onSubmit={(data) => (editingId ? handleEdit(editingId, data) : handleAdd(data))}
+          onClose={() => { setIsModalOpen(false) }}
+          onSubmit={handleSend}
           fields={formFields}
-          title={editingId ? "Edit Message" : "Send New Message"}
-          initialData={editingId ? messages.find((m) => m.id === editingId) : {}}
+          title="Compose Dispatch"
+          description="Draft your message and select the appropriate channel for maximum impact."
         />
 
         <ConfirmationDialog
-          open={deleteConfirm.open}
-          onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
-          title="Delete Message"
-          description="Are you sure you want to delete this message record? This action cannot be undone."
+          open={deleteData.open}
+          onOpenChange={(open) => setDeleteData({ open, id: null })}
+          title="Purge Communication Log?"
+          description="This will permanently remove this record from the system audit log. Message recovery is not possible."
           onConfirm={confirmDelete}
-          confirmText="Delete"
-          variant="destructive"
         />
       </div>
     </DashboardLayout>

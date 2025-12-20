@@ -1,466 +1,325 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Edit, Search, Trash2, Printer, Plus, ArrowLeft, Download, FileText } from "lucide-react"
-import { toast } from "sonner"
+    Plus,
+    FileEdit,
+    UserCircle2,
+    Building2,
+    PhoneCall,
+    CalendarDays,
+    UserPlus,
+    BookOpenCheck,
+    ClipboardList,
+    GraduationCap
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-interface ExamFormData {
-    id: number
+interface ExamItem {
+    id: string
     name: string
-    fatherName: string
+    fatherName?: string
     phone: string
-    gender: string
+    gender?: string
     dob: string
-    examName: string
-    formNo: string
-    centerName: string
+    examName?: string
+    formNo?: string
+    centerName?: string
     image?: string
 }
 
-export default function EntranceExam() {
-    const [view, setView] = useState<"list" | "form">("list")
-    const [isEditing, setIsEditing] = useState(false)
-    const [searchTerm, setSearchTerm] = useState("")
-
-    // Sample data
-    const [examForms, setExamForms] = useState<ExamFormData[]>([
-        {
-            id: 2,
-            name: "CaVFrzqp9L",
-            fatherName: "RCi6xED9gk",
-            phone: "7027685640",
-            gender: "Male",
-            dob: "06-Feb-2024",
-            examName: "",
-            formNo: "",
-            centerName: ""
-        },
-        {
-            id: 3,
-            name: "qwertyui",
-            fatherName: "0lUvbWa4ji",
-            phone: "7464244631",
-            gender: "Male",
-            dob: "06-Feb-2024",
-            examName: "",
-            formNo: "",
-            centerName: ""
-        },
-        {
-            id: 4,
-            name: "j1DPsAseh1",
-            fatherName: "EoD0Ee0Ese",
-            phone: "2586007727",
-            gender: "Male",
-            dob: "06-Feb-2024",
-            examName: "",
-            formNo: "",
-            centerName: ""
-        },
-        {
-            id: 5,
-            name: "xyOlW8T3pH",
-            fatherName: "C4IV3nGUT0",
-            phone: "1489992061",
-            gender: "Male",
-            dob: "06-Feb-2024",
-            examName: "",
-            formNo: "",
-            centerName: ""
-        },
-        {
-            id: 6,
-            name: "ksOGggAmQy",
-            fatherName: "zxRg5ZWAQg",
-            phone: "5272965754",
-            gender: "Male",
-            dob: "06-Feb-2024",
-            examName: "",
-            formNo: "",
-            centerName: ""
-        },
-        {
-            id: 7,
-            name: "yRjIc1EN4G",
-            fatherName: "9b6BcR6pZt",
-            phone: "3485073146",
-            gender: "Male",
-            dob: "06-Feb-2024",
-            examName: "",
-            formNo: "",
-            centerName: ""
-        }
-    ])
-
-    const [formData, setFormData] = useState({
-        id: 0,
-        name: "",
-        fatherName: "",
-        phone: "",
-        gender: "",
-        dob: new Date().toISOString().split('T')[0],
-        examName: "",
-        formNo: "",
-        centerName: "",
-        image: null as File | null
+export default function EntranceExamPage() {
+    const { toast } = useToast()
+    const [exams, setExams] = useState<ExamItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+        open: false,
+        id: null
     })
 
-    const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
-    }
+    useEffect(() => {
+        fetchExams()
+    }, [])
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFormData(prev => ({ ...prev, image: e.target.files![0] }))
-        }
-    }
-
-    const handleAddClick = () => {
-        setFormData({
-            id: 0,
-            name: "",
-            fatherName: "",
-            phone: "",
-            gender: "",
-            dob: new Date().toISOString().split('T')[0],
-            examName: "",
-            formNo: "",
-            centerName: "",
-            image: null
-        })
-        setIsEditing(false)
-        setView("form")
-    }
-
-    const handleEditClick = (exam: ExamFormData) => {
-        // Convert "06-Feb-2024" to "2024-02-06" for input type="date"
-        // This is a simple parser for the sample data format
-        let formattedDate = ""
-        if (exam.dob) {
-            const date = new Date(exam.dob)
-            if (!isNaN(date.getTime())) {
-                formattedDate = date.toISOString().split('T')[0]
+    const fetchExams = async () => {
+        setLoading(true)
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch('http://localhost:5000/api/entrance-exam', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (response.ok) {
+                const data = await response.json()
+                setExams(data.map((e: any) => ({
+                    id: e._id,
+                    name: e.name,
+                    fatherName: e.fatherName,
+                    phone: e.phone,
+                    gender: e.gender,
+                    dob: new Date(e.dob).toLocaleDateString(),
+                    examName: e.examName,
+                    formNo: e.formNo,
+                    centerName: e.centerName,
+                    image: e.image
+                })))
             }
+        } catch (error) {
+            console.error('Error fetching exams:', error)
+            toast({ title: "Error", description: "Failed to load examination applications.", variant: "destructive" })
+        } finally {
+            setLoading(false)
         }
-
-        setFormData({
-            id: exam.id,
-            name: exam.name,
-            fatherName: exam.fatherName,
-            phone: exam.phone,
-            gender: exam.gender,
-            dob: formattedDate || new Date().toISOString().split('T')[0],
-            examName: exam.examName,
-            formNo: exam.formNo,
-            centerName: exam.centerName,
-            image: null
-        })
-        setIsEditing(true)
-        setView("form")
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-
-        if (!formData.name || !formData.phone || !formData.dob) {
-            toast.error("Please fill all required fields")
-            return
-        }
-
-        const formattedDate = new Date(formData.dob).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        }).replace(/ /g, '-')
-
-        if (isEditing) {
-            setExamForms(prev => prev.map(item =>
-                item.id === formData.id ? {
-                    ...item,
-                    name: formData.name,
-                    fatherName: formData.fatherName,
-                    phone: formData.phone,
-                    gender: formData.gender,
-                    dob: formattedDate,
-                    examName: formData.examName,
-                    formNo: formData.formNo,
-                    centerName: formData.centerName
-                } : item
-            ))
-            toast.success("Updated successfully!")
-        } else {
-            const newExam: ExamFormData = {
-                id: examForms.length > 0 ? Math.max(...examForms.map(e => e.id)) + 1 : 1,
-                name: formData.name,
-                fatherName: formData.fatherName,
-                phone: formData.phone,
-                gender: formData.gender,
-                dob: formattedDate,
-                examName: formData.examName,
-                formNo: formData.formNo,
-                centerName: formData.centerName
+    const handleAdd = async (data: any) => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch('http://localhost:5000/api/entrance-exam', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            })
+            if (response.ok) {
+                toast({ title: "Success", description: "Application registered successfully." })
+                fetchExams()
+                setIsModalOpen(false)
             }
-            setExamForms([...examForms, newExam])
-            toast.success("Added successfully!")
+        } catch (error) {
+            console.error('Error registering exam:', error)
+            toast({ title: "Error", description: "Failed to submit application.", variant: "destructive" })
         }
-
-        setView("list")
     }
 
-    const handleDelete = (id: number) => {
-        setExamForms(examForms.filter(item => item.id !== id))
-        toast.success("Deleted successfully")
+    const handleEdit = async (id: string, data: any) => {
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`http://localhost:5000/api/entrance-exam/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            })
+            if (response.ok) {
+                toast({ title: "Updated", description: "Application details refined." })
+                fetchExams()
+                setIsModalOpen(false)
+                setEditingId(null)
+            }
+        } catch (error) {
+            console.error('Error updating exam:', error)
+            toast({ title: "Error", description: "Failed to update record.", variant: "destructive" })
+        }
+    }
+
+    const confirmDelete = async () => {
+        if (!deleteConfirm.id) return
+        try {
+            const token = localStorage.getItem('token')
+            const response = await fetch(`http://localhost:5000/api/entrance-exam/${deleteConfirm.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (response.ok) {
+                toast({ title: "Deleted", description: "Application purged from records." })
+                fetchExams()
+            }
+        } catch (error) {
+            console.error('Error deleting exam:', error)
+            toast({ title: "Error", description: "Failed to delete record.", variant: "destructive" })
+        } finally {
+            setDeleteConfirm({ open: false, id: null })
+        }
+    }
+
+    const columns = [
+        {
+            key: "name",
+            label: "Candidate profile",
+            sortable: true,
+            render: (value: string, row: ExamItem) => (
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-orange-50 rounded-full flex items-center justify-center border border-orange-100 font-bold text-orange-600 text-xs shadow-sm">
+                        {value.charAt(0)}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-bold text-gray-900 leading-tight">{value}</span>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">
+                            DOB: {row.dob} | {row.gender}
+                        </span>
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: "examName",
+            label: "Examination Identity",
+            sortable: true,
+            render: (value: string, row: ExamItem) => (
+                <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-xs text-gray-800">{value || "General Intake"}</span>
+                    <span className="text-[10px] text-indigo-600 font-bold flex items-center gap-1">
+                        <ClipboardList size={10} /> Form: {row.formNo || "PENDING"}
+                    </span>
+                </div>
+            )
+        },
+        {
+            key: "centerName",
+            label: "Venu / Center",
+            sortable: true,
+            render: (value: string) => value ? (
+                <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium bg-gray-50 px-2 py-1 rounded-md border border-gray-100 italic w-fit">
+                    <Building2 size={12} className="text-gray-400" /> {value}
+                </div>
+            ) : <span className="text-gray-300 text-[10px]">Pending Allocation</span>
+        },
+        {
+            key: "phone",
+            label: "Contact Gateway",
+            sortable: true,
+            render: (value: string) => (
+                <div className="flex items-center gap-1.5 text-xs text-blue-600 font-bold">
+                    <PhoneCall size={12} /> {value}
+                </div>
+            )
+        }
+    ]
+
+    const formFields: FormField[] = [
+        { name: "name", label: "Full Name", type: "text", required: true, placeholder: "Candidate's legal name" },
+        { name: "fatherName", label: "Guardian / Father Name", type: "text", required: false, placeholder: "Legal guardian name" },
+        { name: "phone", label: "Emergency Contact", type: "text", required: true, placeholder: "Primary mobile number" },
+        {
+            name: "gender",
+            label: "Gender Identity",
+            type: "select",
+            options: [
+                { value: "Male", label: "Male" },
+                { value: "Female", label: "Female" },
+                { value: "Other", label: "Non-binary / Other" }
+            ],
+            required: false
+        },
+        { name: "dob", label: "Date of Birth", type: "date", required: true },
+        { name: "examName", label: "Exam Title", type: "text", required: true, placeholder: "e.g. Grade 1 Entrance 2024" },
+        { name: "formNo", label: "Application Form #", type: "text", required: true, placeholder: "Internal tracking number" },
+        { name: "centerName", label: "Examination Center", type: "text", required: false, placeholder: "Allocated venue" },
+        { name: "note", label: "Administrative Notes", type: "textarea", required: false, placeholder: "Disability reqs, scholarship notes, etc." },
+    ]
+
+    const stats = {
+        total: exams.length,
+        today: exams.filter(e => e.dob === new Date().toLocaleDateString()).length, // This is DOB, maybe not registration date but used for demo
+        male: exams.filter(e => e.gender === 'Male').length,
+        female: exams.filter(e => e.gender === 'Female').length
     }
 
     return (
-        <DashboardLayout title="Entrance Examination Form">
-            {view === "list" ? (
-                <Card>
-                    <CardHeader className="bg-pink-50 border-b border-pink-100 flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                            <div className="flex items-center gap-2">
-                                <span className="h-5 w-5 flex items-center justify-center">☰</span>
-                                Entrance Examination Form
-                            </div>
-                        </CardTitle>
-                        <Button onClick={handleAddClick} className="bg-blue-900 hover:bg-blue-800">
-                            <Plus className="h-4 w-4 mr-2" /> Add
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><Printer className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><FileText className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none"><Download className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="bg-blue-900 text-white hover:bg-blue-800 border-none">Column visibility ▼</Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">Search:</span>
-                                <Input
-                                    className="w-48 h-8"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                        </div>
+        <DashboardLayout title="Entrance Command">
+            <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
 
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-pink-50 hover:bg-pink-50">
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Form ID</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Name</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Father Name</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Number</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Gender</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">DOB</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Exam Name</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Form No</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs">Center Name</TableHead>
-                                        <TableHead className="font-bold text-gray-700 uppercase text-xs text-right">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {examForms
-                                        .filter(item =>
-                                            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            item.phone.includes(searchTerm)
-                                        )
-                                        .map((item) => (
-                                            <TableRow key={item.id}>
-                                                <TableCell>{item.id}</TableCell>
-                                                <TableCell>{item.name}</TableCell>
-                                                <TableCell>{item.fatherName}</TableCell>
-                                                <TableCell>{item.phone}</TableCell>
-                                                <TableCell>{item.gender}</TableCell>
-                                                <TableCell>{item.dob}</TableCell>
-                                                <TableCell>{item.examName}</TableCell>
-                                                <TableCell>{item.formNo}</TableCell>
-                                                <TableCell>{item.centerName}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-blue-600">
-                                                            <Printer className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-gray-500 hover:text-blue-600"
-                                                            onClick={() => handleEditClick(item)}
-                                                        >
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-red-500 hover:text-red-600"
-                                                            onClick={() => handleDelete(item.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
-            ) : (
-                <Card>
-                    <CardHeader className="bg-pink-50 border-b border-pink-100 flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                            <Edit className="h-5 w-5" />
-                            {isEditing ? "Edit" : "Add"} Entrance Examination Form
-                        </CardTitle>
-                        <Button variant="ghost" onClick={() => setView("list")} className="hover:bg-pink-100">
-                            <ArrowLeft className="h-4 w-4 mr-2" /> Back
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name" className="text-red-500">Name *</Label>
-                                    <Input
-                                        id="name"
-                                        placeholder="Enter name"
-                                        value={formData.name}
-                                        onChange={(e) => handleInputChange("name", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                        required
-                                    />
-                                </div>
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                            <GraduationCap className="text-orange-600" size={24} />
+                            Examination Intake
+                        </h1>
+                        <p className="text-sm text-gray-500">Manage all external candidates and entrance evaluation workflows</p>
+                    </div>
+                    <Button
+                        onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+                        className="bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-100 gap-2 h-11 px-6 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+                    >
+                        <Plus className="h-4 w-4" /> Register Candidate
+                    </Button>
+                </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="gender">Gender</Label>
-                                    <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
-                                        <SelectTrigger className="bg-white border-gray-200">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Male">Male</SelectItem>
-                                            <SelectItem value="Female">Female</SelectItem>
-                                            <SelectItem value="Other">Other</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                {/* Stats Section */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <StatCard
+                        title="Total Applications"
+                        value={stats.total.toString()}
+                        icon={ClipboardList}
+                        iconColor="text-blue-600"
+                        iconBgColor="bg-blue-50"
+                        description="Intake database size"
+                    />
+                    <StatCard
+                        title="Male Candidates"
+                        value={stats.male.toString()}
+                        icon={UserPlus}
+                        iconColor="text-indigo-600"
+                        iconBgColor="bg-indigo-50"
+                        description="Cumulative male"
+                    />
+                    <StatCard
+                        title="Female Candidates"
+                        value={stats.female.toString()}
+                        icon={UserCircle2}
+                        iconColor="text-pink-600"
+                        iconBgColor="bg-pink-50"
+                        description="Cumulative female"
+                    />
+                    <StatCard
+                        title="Tests Pending"
+                        value={exams.filter(e => !e.centerName).length.toString()}
+                        icon={BookOpenCheck}
+                        iconColor="text-amber-600"
+                        iconBgColor="bg-amber-50"
+                        description="Requiring allocation"
+                    />
+                </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone" className="text-red-500">Phone *</Label>
-                                    <Input
-                                        id="phone"
-                                        placeholder="Enter number"
-                                        value={formData.phone}
-                                        onChange={(e) => handleInputChange("phone", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                        required
-                                    />
-                                </div>
+                <AdvancedTable
+                    title="Consolidated Intake registry"
+                    columns={columns}
+                    data={exams}
+                    loading={loading}
+                    searchable
+                    searchPlaceholder="Audit by candidate name, phone or form number..."
+                    pagination
+                    onEdit={(row) => {
+                        setEditingId(row.id)
+                        setIsModalOpen(true)
+                    }}
+                    onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+                />
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="dob" className="text-red-500">Date of Birth *</Label>
-                                    <Input
-                                        id="dob"
-                                        type="date"
-                                        value={formData.dob}
-                                        onChange={(e) => handleInputChange("dob", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                        required
-                                    />
-                                </div>
+                <FormModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false)
+                        setEditingId(null)
+                    }}
+                    title={editingId ? "Refine Candidate profile" : "Capture New Intake Application"}
+                    fields={formFields}
+                    initialData={editingId ? exams.find(e => e.id === editingId) : undefined}
+                    onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+                />
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="fatherName">Father Name</Label>
-                                    <Input
-                                        id="fatherName"
-                                        placeholder="Enter father_name"
-                                        value={formData.fatherName}
-                                        onChange={(e) => handleInputChange("fatherName", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Image</Label>
-                                    <div className="flex items-center gap-2 border border-gray-200 rounded-md p-1 bg-white">
-                                        <Button type="button" className="bg-blue-900 text-white hover:bg-blue-800 h-8 text-sm">
-                                            Choose File
-                                        </Button>
-                                        <span className="text-sm text-gray-500 px-2 truncate">
-                                            {formData.image ? formData.image.name : "No file chosen"}
-                                        </span>
-                                        <Input
-                                            type="file"
-                                            className="hidden"
-                                            onChange={handleFileChange}
-                                            accept="image/*"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="examName">Exam Name</Label>
-                                    <Input
-                                        id="examName"
-                                        value={formData.examName}
-                                        onChange={(e) => handleInputChange("examName", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="formNo">Form No</Label>
-                                    <Input
-                                        id="formNo"
-                                        value={formData.formNo}
-                                        onChange={(e) => handleInputChange("formNo", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="centerName">Center Name</Label>
-                                    <Input
-                                        id="centerName"
-                                        value={formData.centerName}
-                                        onChange={(e) => handleInputChange("centerName", e.target.value)}
-                                        className="bg-white border-gray-200"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end pt-4">
-                                <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-8">
-                                    Save
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
-            )}
+                <ConfirmationDialog
+                    open={deleteConfirm.open}
+                    onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+                    onConfirm={confirmDelete}
+                    title="Expunge Application permanently?"
+                    description="This will purge the candidate's entrance examination data from the system. This action is terminal."
+                    variant="destructive"
+                />
+            </div>
         </DashboardLayout>
     )
 }

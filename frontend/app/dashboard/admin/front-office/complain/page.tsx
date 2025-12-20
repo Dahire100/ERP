@@ -1,477 +1,371 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
+import { StatusBadge } from "@/components/super-admin/status-badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Search, Plus, Edit, Trash2, FileText, Download, Printer } from "lucide-react"
-import { toast } from "sonner"
+    Plus,
+    Search,
+    ShieldAlert,
+    MessageSquare,
+    CheckCircle2,
+    Clock,
+    User,
+    AlertTriangle,
+    FileText
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-interface ComplainData {
-    id: number
-    complainType: string
-    isParent: string
-    complainBy: string
-    studentName: string
-    class: string
-    admissionNo: string
-    mobileNumber: string
-    email: string
-    date: string
-    assigned: string
-    status: string
-    note: string
+interface ComplaintItem {
+    id: string
+    complainantName: string
+    complainantType: "student" | "parent" | "teacher" | "staff" | "visitor" | "other"
+    complaintType: string
+    subject: string
     description: string
-    reply: string
-    replyAttachment: string
-    replyBy: string
+    priority: "low" | "medium" | "high" | "urgent"
+    status: "open" | "in-progress" | "resolved" | "closed" | "rejected"
+    createdAt: string
+    response?: string
 }
 
-export default function Complain() {
-    const [isDialogOpen, setIsDialogOpen] = useState(false)
-    const [searchTerm, setSearchTerm] = useState("")
-    const [statusFilter, setStatusFilter] = useState("")
-    const [startDate, setStartDate] = useState("")
-    const [endDate, setEndDate] = useState("")
-
-    // Sample data
-    const [complains, setComplains] = useState<ComplainData[]>([
-        {
-            id: 1,
-            complainType: "Staff",
-            isParent: "No",
-            complainBy: "Testingss",
-            studentName: "",
-            class: "",
-            admissionNo: "",
-            mobileNumber: "1234456789",
-            email: "nikhil@gmail.com",
-            date: "05-11-2025",
-            assigned: "Chaitnya Jain",
-            status: "Requested",
-            note: "Check last week consumption",
-            description: "Lunch not enough for children",
-            reply: "",
-            replyAttachment: "",
-            replyBy: ""
-        },
-        {
-            id: 2,
-            complainType: "Staff",
-            isParent: "No",
-            complainBy: "test 2",
-            studentName: "",
-            class: "",
-            admissionNo: "",
-            mobileNumber: "1234456789",
-            email: "nikhil@gmail.com",
-            date: "05-11-2025",
-            assigned: "Chaitnya Jain",
-            status: "Pending",
-            note: "Checking details",
-            description: "Staff behavior issue",
-            reply: "",
-            replyAttachment: "",
-            replyBy: ""
-        }
-    ])
-
-    const [formData, setFormData] = useState({
-        complainType: "",
-        complainBy: "",
-        complainFrom: "",
-        mobileNumber: "",
-        email: "",
-        date: new Date().toISOString().split('T')[0],
-        assigned: "",
-        attachment: null as File | null,
-        previousNote: "",
-        description: ""
+export default function ComplainPage() {
+    const { toast } = useToast()
+    const [complaints, setComplaints] = useState<ComplaintItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+        open: false,
+        id: null
     })
 
-    const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
-    }
+    useEffect(() => {
+        fetchComplaints();
+    }, []);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setFormData(prev => ({ ...prev, attachment: e.target.files![0] }))
+    const fetchComplaints = async () => {
+        setLoading(true)
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/complaints', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                const mappedData = data.map((item: any) => ({
+                    id: item._id,
+                    complainantName: item.complainantName,
+                    complainantType: item.complainantType,
+                    complaintType: item.complaintType,
+                    subject: item.subject,
+                    description: item.description,
+                    priority: item.priority || "medium",
+                    status: item.status || "open",
+                    createdAt: new Date(item.createdAt).toLocaleDateString(),
+                    response: item.response
+                }));
+                setComplaints(mappedData);
+            }
+        } catch (error) {
+            console.error('Error fetching complaints:', error);
+            toast({ title: "Error", description: "Failed to load grievance data.", variant: "destructive" });
+        } finally {
+            setLoading(false)
         }
-    }
+    };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-
-        if (!formData.complainType || !formData.complainBy || !formData.complainFrom || !formData.mobileNumber || !formData.date) {
-            toast.error("Please fill all required fields")
-            return
+    const handleAdd = async (data: any) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:5000/api/complaints', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                toast({ title: "Success", description: "Complaint registered successfully." });
+                fetchComplaints();
+                setIsModalOpen(false);
+            }
+        } catch (error) {
+            console.error('Error adding complaint:', error);
+            toast({ title: "Error", description: "Failed to submit complaint.", variant: "destructive" });
         }
+    };
 
-        const newComplain: ComplainData = {
-            id: complains.length + 1,
-            complainType: formData.complainType,
-            isParent: formData.complainFrom === "Parent" ? "Yes" : "No",
-            complainBy: formData.complainBy,
-            studentName: "",
-            class: "",
-            admissionNo: "",
-            mobileNumber: formData.mobileNumber,
-            email: formData.email,
-            date: new Date(formData.date).toLocaleDateString('en-GB'),
-            assigned: formData.assigned,
-            status: "Requested",
-            note: formData.previousNote,
-            description: formData.description,
-            reply: "",
-            replyAttachment: "",
-            replyBy: ""
+    const handleEdit = async (id: string, data: any) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:5000/api/complaints/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                toast({ title: "Updated", description: "Complaint details updated." });
+                fetchComplaints();
+                setIsModalOpen(false);
+                setEditingId(null);
+            }
+        } catch (error) {
+            console.error('Error updating complaint:', error);
+            toast({ title: "Error", description: "Failed to update record.", variant: "destructive" });
         }
+    };
 
-        setComplains([...complains, newComplain])
-        toast.success("Complain added successfully!")
-        setIsDialogOpen(false)
+    const confirmDelete = async () => {
+        if (!deleteConfirm.id) return;
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:5000/api/complaints/${deleteConfirm.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                toast({ title: "Deleted", description: "Grievance record removed." });
+                fetchComplaints();
+            }
+        } catch (error) {
+            console.error('Error deleting complaint:', error);
+            toast({ title: "Error", description: "Failed to delete complaint.", variant: "destructive" });
+        } finally {
+            setDeleteConfirm({ open: false, id: null });
+        }
+    };
 
-        setFormData({
-            complainType: "",
-            complainBy: "",
-            complainFrom: "",
-            mobileNumber: "",
-            email: "",
-            date: new Date().toISOString().split('T')[0],
-            assigned: "",
-            attachment: null,
-            previousNote: "",
-            description: ""
-        })
+    const columns = [
+        {
+            key: "complainantName",
+            label: "Reporter",
+            sortable: true,
+            render: (value: string, row: ComplaintItem) => (
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-pink-50 rounded-full flex items-center justify-center border border-pink-100">
+                        <User className="h-4 w-4 text-pink-600" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-bold text-gray-900">{value}</span>
+                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">
+                            {row.complainantType}
+                        </span>
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: "subject",
+            label: "Grievance Detail",
+            sortable: false,
+            render: (value: string, row: ComplaintItem) => (
+                <div className="flex flex-col gap-0.5 max-w-[300px]">
+                    <span className="font-semibold text-xs text-gray-800 truncate">{value}</span>
+                    <span className="text-[10px] text-gray-400 line-clamp-1 italic">{row.description}</span>
+                </div>
+            )
+        },
+        {
+            key: "priority",
+            label: "Impact",
+            sortable: true,
+            render: (value: string) => {
+                const colors: Record<string, string> = {
+                    low: "bg-blue-100 text-blue-700",
+                    medium: "bg-yellow-100 text-yellow-700",
+                    high: "bg-orange-100 text-orange-700",
+                    urgent: "bg-red-100 text-red-700"
+                }
+                return (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${colors[value] || "bg-gray-100"}`}>
+                        {value}
+                    </span>
+                )
+            }
+        },
+        {
+            key: "status",
+            label: "Current State",
+            sortable: true,
+            render: (value: string) => <StatusBadge status={value} />
+        },
+        {
+            key: "createdAt",
+            label: "Filed On",
+            sortable: true,
+            render: (value: string) => <span className="text-xs text-gray-500 font-medium">{value}</span>
+        }
+    ]
+
+    const formFields: FormField[] = [
+        { name: "complainantName", label: "Grievant Name", type: "text", required: true, placeholder: "Who is reporting?" },
+        {
+            name: "complainantType",
+            label: "Entity Type",
+            type: "select",
+            options: [
+                { value: "student", label: "Student" },
+                { value: "parent", label: "Parent" },
+                { value: "teacher", label: "Teacher" },
+                { value: "staff", label: "Management/Staff" },
+                { value: "visitor", label: "External Visitor" },
+                { value: "other", label: "Other" }
+            ],
+            required: true
+        },
+        {
+            name: "complaintType",
+            label: "Reporting Category",
+            type: "select",
+            options: [
+                { value: "academic", label: "Academics" },
+                { value: "discipline", label: "Discipline" },
+                { value: "facility", label: "Facilities" },
+                { value: "transport", label: "Transport" },
+                { value: "fee", label: "Fee Issues" },
+                { value: "bullying", label: "Bullying" },
+                { value: "other", label: "General" }
+            ],
+            required: true
+        },
+        { name: "subject", label: "Core Subject", type: "text", required: true, placeholder: "Brief summary of the issue" },
+        { name: "description", label: "Full Narration", type: "textarea", required: true, placeholder: "Extensive details about the complaint..." },
+        {
+            name: "priority",
+            label: "Urgency Level",
+            type: "select",
+            options: [
+                { value: "low", label: "Low (General)" },
+                { value: "medium", label: "Medium (Prompt)" },
+                { value: "high", label: "High (Critical)" },
+                { value: "urgent", label: "Urgent (Immediate)" }
+            ],
+            required: true
+        },
+        {
+            name: "status",
+            label: "Investigation Status",
+            type: "select",
+            options: [
+                { value: "open", label: "Open (New)" },
+                { value: "in-progress", label: "Under Investigation" },
+                { value: "resolved", label: "Resolved" },
+                { value: "closed", label: "Closed" },
+                { value: "rejected", label: "Discarded" }
+            ],
+            required: true
+        },
+    ];
+
+    const stats = {
+        total: complaints.length,
+        pending: complaints.filter(c => c.status === 'open' || c.status === 'in-progress').length,
+        resolved: complaints.filter(c => c.status === 'resolved' || c.status === 'closed').length,
+        urgent: complaints.filter(c => c.priority === 'urgent' || c.priority === 'high').length
     }
 
     return (
-        <DashboardLayout title="Complain">
-            <div className="space-y-6">
-                {/* Search Criteria */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Search className="h-5 w-5" />
-                            Select Criteria
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label>Status</Label>
-                                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
-                                        <SelectItem value="resolved">Resolved</SelectItem>
-                                        <SelectItem value="closed">Closed</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Start Date</Label>
-                                <Input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>End Date</Label>
-                                <Input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                            <Button className="bg-blue-900 hover:bg-blue-800">
-                                <Search className="h-4 w-4 mr-2" />
-                                Search
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+        <DashboardLayout title="Grievance Cell">
+            <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
 
-                {/* Complain List */}
-                {/* Complain List */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <FileText className="h-5 w-5" />
-                            Complain List
-                        </CardTitle>
-                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="bg-blue-900 hover:bg-blue-800">
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white">
-                                <div className="bg-pink-50 px-6 py-4 border-b border-pink-100">
-                                    <DialogTitle className="flex items-center gap-2 text-xl text-gray-800">
-                                        <Edit className="h-5 w-5" />
-                                        Add & Edit
-                                    </DialogTitle>
-                                </div>
-                                <div className="p-6 max-h-[80vh] overflow-y-auto">
-                                    <form onSubmit={handleSubmit} className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="complainType" className="text-red-500">Complain Type *</Label>
-                                                <Select value={formData.complainType} onValueChange={(value) => handleInputChange("complainType", value)}>
-                                                    <SelectTrigger className="bg-gray-50 border-gray-200">
-                                                        <SelectValue placeholder="Select" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Staff">Staff</SelectItem>
-                                                        <SelectItem value="Student">Student</SelectItem>
-                                                        <SelectItem value="Parent">Parent</SelectItem>
-                                                        <SelectItem value="Other">Other</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                            <ShieldAlert className="text-pink-600" size={24} />
+                            Redressal Management
+                        </h1>
+                        <p className="text-sm text-gray-500">Monitor and resolve complaints filed by the institute community</p>
+                    </div>
+                    <Button
+                        onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+                        className="bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-100 gap-2 h-11 px-6 rounded-xl font-semibold"
+                    >
+                        <Plus className="h-4 w-4" /> Log New Grievance
+                    </Button>
+                </div>
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="complainBy" className="text-red-500">Complain By *</Label>
-                                                <Input
-                                                    id="complainBy"
-                                                    placeholder="Enter name"
-                                                    value={formData.complainBy}
-                                                    onChange={(e) => handleInputChange("complainBy", e.target.value)}
-                                                    className="bg-white border-gray-200"
-                                                    required
-                                                />
-                                            </div>
+                {/* Stats Section */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <StatCard
+                        title="Total Filings"
+                        value={stats.total.toString()}
+                        icon={MessageSquare}
+                        iconColor="text-blue-600"
+                        iconBgColor="bg-blue-50"
+                        description="Lifetime records"
+                    />
+                    <StatCard
+                        title="Active Cases"
+                        value={stats.pending.toString()}
+                        icon={Clock}
+                        iconColor="text-orange-600"
+                        iconBgColor="bg-orange-50"
+                        description="Under investigation"
+                    />
+                    <StatCard
+                        title="Resolved"
+                        value={stats.resolved.toString()}
+                        icon={CheckCircle2}
+                        iconColor="text-emerald-600"
+                        iconBgColor="bg-emerald-50"
+                        description="Successfully closed"
+                    />
+                    <StatCard
+                        title="Critical Issues"
+                        value={stats.urgent.toString()}
+                        icon={AlertTriangle}
+                        iconColor="text-red-600"
+                        iconBgColor="bg-red-50"
+                        description="High/Urgent priority"
+                    />
+                </div>
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="complainFrom" className="text-red-500">Complain From *</Label>
-                                                <Select value={formData.complainFrom} onValueChange={(value) => handleInputChange("complainFrom", value)}>
-                                                    <SelectTrigger className="bg-gray-50 border-gray-200">
-                                                        <SelectValue placeholder="Select" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Staff">Staff</SelectItem>
-                                                        <SelectItem value="Student">Student</SelectItem>
-                                                        <SelectItem value="Parent">Parent</SelectItem>
-                                                        <SelectItem value="Other">Other</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                <AdvancedTable
+                    title="Case Archive"
+                    columns={columns}
+                    data={complaints}
+                    loading={loading}
+                    searchable
+                    searchPlaceholder="Audit by reporter name or subject..."
+                    pagination
+                    onEdit={(row) => {
+                        setEditingId(row.id);
+                        setIsModalOpen(true);
+                    }}
+                    onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+                />
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="mobileNumber" className="text-red-500">Mobile Number *</Label>
-                                                <Input
-                                                    id="mobileNumber"
-                                                    placeholder="Enter mobile no."
-                                                    value={formData.mobileNumber}
-                                                    onChange={(e) => handleInputChange("mobileNumber", e.target.value)}
-                                                    className="bg-white border-gray-200"
-                                                    required
-                                                />
-                                            </div>
+                <FormModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setEditingId(null);
+                    }}
+                    title={editingId ? "Refine Grievance Record" : "Log Official Complaint"}
+                    fields={formFields}
+                    initialData={editingId ? complaints.find(c => c.id === editingId) : undefined}
+                    onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+                />
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="email">Email</Label>
-                                                <Input
-                                                    id="email"
-                                                    placeholder="Enter email"
-                                                    type="email"
-                                                    value={formData.email}
-                                                    onChange={(e) => handleInputChange("email", e.target.value)}
-                                                    className="bg-white border-gray-200"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label htmlFor="date" className="text-red-500">Date *</Label>
-                                                <Input
-                                                    id="date"
-                                                    type="date"
-                                                    value={formData.date}
-                                                    onChange={(e) => handleInputChange("date", e.target.value)}
-                                                    className="bg-gray-50 border-gray-200"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="assigned">Assigned</Label>
-                                                <Select value={formData.assigned} onValueChange={(value) => handleInputChange("assigned", value)}>
-                                                    <SelectTrigger className="bg-gray-50 border-gray-200">
-                                                        <SelectValue placeholder="Select" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="Chaitnya Jain">Chaitnya Jain</SelectItem>
-                                                        <SelectItem value="Admin">Admin</SelectItem>
-                                                        <SelectItem value="Principal">Principal</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label>Attach Document</Label>
-                                                <div className="flex items-center gap-2 border border-gray-200 rounded-md p-1 bg-white">
-                                                    <Button type="button" className="bg-blue-900 text-white hover:bg-blue-800 h-8 text-sm">
-                                                        Choose File
-                                                    </Button>
-                                                    <span className="text-sm text-gray-500 px-2">
-                                                        {formData.attachment ? formData.attachment.name : "No file chosen"}
-                                                    </span>
-                                                    <Input
-                                                        type="file"
-                                                        className="hidden"
-                                                        onChange={handleFileChange}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="previousNote">Previous Note</Label>
-                                                <Textarea
-                                                    id="previousNote"
-                                                    value={formData.previousNote}
-                                                    onChange={(e) => handleInputChange("previousNote", e.target.value)}
-                                                    rows={3}
-                                                    className="bg-white border-gray-200"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label htmlFor="description">Description</Label>
-                                                <Textarea
-                                                    id="description"
-                                                    value={formData.description}
-                                                    onChange={(e) => handleInputChange("description", e.target.value)}
-                                                    rows={3}
-                                                    className="bg-white border-gray-200"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-end pt-4">
-                                            <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-8">
-                                                Save
-                                            </Button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm"><Printer className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm"><FileText className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm"><Download className="h-4 w-4" /></Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">Search:</span>
-                                <Input
-                                    className="w-64 h-8"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-pink-50 hover:bg-pink-50">
-                                        <TableHead className="w-12 font-bold text-gray-700">#</TableHead>
-                                        <TableHead className="font-bold text-gray-700">COMPLAIN TYPE</TableHead>
-                                        <TableHead className="font-bold text-gray-700">IS PARENT</TableHead>
-                                        <TableHead className="font-bold text-gray-700">COMPLAIN BY</TableHead>
-                                        <TableHead className="font-bold text-gray-700">STUDENT NAME</TableHead>
-                                        <TableHead className="font-bold text-gray-700">CLASS</TableHead>
-                                        <TableHead className="font-bold text-gray-700">ADMISSION NO.</TableHead>
-                                        <TableHead className="font-bold text-gray-700">MOBILE NUMBER</TableHead>
-                                        <TableHead className="font-bold text-gray-700">EMAIL</TableHead>
-                                        <TableHead className="font-bold text-gray-700">DATE</TableHead>
-                                        <TableHead className="font-bold text-gray-700">STATUS</TableHead>
-                                        <TableHead className="font-bold text-gray-700">NOTE</TableHead>
-                                        <TableHead className="font-bold text-gray-700">DESCRIPTION</TableHead>
-                                        <TableHead className="font-bold text-gray-700">REPLY</TableHead>
-                                        <TableHead className="font-bold text-gray-700">REPLY ATTACHMENT</TableHead>
-                                        <TableHead className="font-bold text-gray-700">REPLY BY</TableHead>
-                                        <TableHead className="font-bold text-gray-700">ACTION</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {complains
-                                        .filter(complain =>
-                                            complain.complainBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            complain.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                            complain.mobileNumber.includes(searchTerm)
-                                        )
-                                        .map((complain, index) => (
-                                            <TableRow key={complain.id}>
-                                                <TableCell>{index + 1}</TableCell>
-                                                <TableCell>{complain.complainType}</TableCell>
-                                                <TableCell>{complain.isParent}</TableCell>
-                                                <TableCell>{complain.complainBy}</TableCell>
-                                                <TableCell>{complain.studentName}</TableCell>
-                                                <TableCell>{complain.class}</TableCell>
-                                                <TableCell>{complain.admissionNo}</TableCell>
-                                                <TableCell>{complain.mobileNumber}</TableCell>
-                                                <TableCell>{complain.email}</TableCell>
-                                                <TableCell>{complain.date}</TableCell>
-                                                <TableCell>{complain.assigned}</TableCell>
-                                                <TableCell>{complain.status}</TableCell>
-                                                <TableCell>{complain.note}</TableCell>
-                                                <TableCell>{complain.description}</TableCell>
-                                                <TableCell>{complain.reply}</TableCell>
-                                                <TableCell>{complain.replyAttachment}</TableCell>
-                                                <TableCell>{complain.replyBy}</TableCell>
-                                                <TableCell>
-                                                    <Button size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538]">
-                                                        Action <span className="ml-2">▼</span>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
+                <ConfirmationDialog
+                    open={deleteConfirm.open}
+                    onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+                    onConfirm={confirmDelete}
+                    title="Expunge Record?"
+                    description="This will permanently delete this complaint record from the official archive. This action cannot be undone."
+                    variant="destructive"
+                />
             </div>
         </DashboardLayout>
     )

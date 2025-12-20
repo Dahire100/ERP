@@ -1,138 +1,330 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
+import { StatusBadge } from "@/components/super-admin/status-badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ClipboardList } from "lucide-react"
-import { toast } from "sonner"
+  Plus,
+  Search,
+  UserPlus,
+  PhoneCall,
+  CheckCircle2,
+  Clock,
+  Calendar,
+  Layers,
+  ClipboardCheck
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-const sample = [
-  { id: 1, name: "Riya Singh", class: "6", source: "Walk-in", status: "Follow-up", phone: "9876500000" },
-  { id: 2, name: "Vikram Das", class: "7", source: "Call", status: "Interested", phone: "9898989898" }
-]
+interface EnquiryItem {
+  id: string
+  studentName: string
+  phone: string
+  email?: string
+  source: string
+  date: string
+  status: "active" | "passive" | "dead" | "won" | "lost"
+  classId?: { _id: string; name: string }
+  className?: string
+  noOfChild: number
+  description?: string
+}
 
-export default function EnquiryManagement() {
-  const [rows, setRows] = useState(sample)
-  const [form, setForm] = useState({ name: "", class: "", source: "", phone: "", status: "" })
+export default function EnquiryManagementPage() {
+  const { toast } = useToast()
+  const [enquiries, setEnquiries] = useState<EnquiryItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.name || !form.class || !form.phone) {
-      toast.error("Name, class and phone are required")
-      return
+  useEffect(() => {
+    fetchEnquiries();
+  }, []);
+
+  const fetchEnquiries = async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/admission-enquiry', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const mappedData = data.map((item: any) => ({
+          id: item._id,
+          studentName: item.studentName,
+          phone: item.phone,
+          email: item.email,
+          source: item.source,
+          date: new Date(item.date).toLocaleDateString(),
+          status: item.status || "active",
+          className: item.classId?.name || "N/A",
+          noOfChild: item.noOfChild || 1,
+          description: item.description
+        }));
+        setEnquiries(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching enquiries:', error);
+      toast({ title: "Error", description: "Failed to load enquiry data.", variant: "destructive" });
+    } finally {
+      setLoading(false)
     }
-    setRows([...rows, { id: Date.now(), ...form }])
-    toast.success("Enquiry saved")
-    setForm({ name: "", class: "", source: "", phone: "", status: "" })
+  };
+
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/admission-enquiry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        toast({ title: "Success", description: "Enquiry logged successfully." });
+        fetchEnquiries();
+        setIsModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error adding enquiry:', error);
+      toast({ title: "Error", description: "Failed to save enquiry.", variant: "destructive" });
+    }
+  };
+
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/admission-enquiry/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        toast({ title: "Updated", description: "Enquiry record updated." });
+        fetchEnquiries();
+        setIsModalOpen(false);
+        setEditingId(null);
+      }
+    } catch (error) {
+      console.error('Error updating enquiry:', error);
+      toast({ title: "Error", description: "Failed to update record.", variant: "destructive" });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/admission-enquiry/${deleteConfirm.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        toast({ title: "Deleted", description: "Enquiry record removed." });
+        fetchEnquiries();
+      }
+    } catch (error) {
+      console.error('Error deleting enquiry:', error);
+      toast({ title: "Error", description: "Failed to delete record.", variant: "destructive" });
+    } finally {
+      setDeleteConfirm({ open: false, id: null });
+    }
+  };
+
+  const columns = [
+    {
+      key: "studentName",
+      label: "Lead Identity",
+      sortable: true,
+      render: (value: string, row: EnquiryItem) => (
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100 font-bold text-blue-600 text-xs">
+            {value.charAt(0)}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-gray-900">{value}</span>
+            <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
+              <PhoneCall size={10} /> {row.phone}
+            </span>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: "className",
+      label: "Level",
+      sortable: true,
+      render: (value: string) => (
+        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">
+          Class {value}
+        </span>
+      )
+    },
+    {
+      key: "source",
+      label: "Origin",
+      sortable: true,
+      render: (value: string) => (
+        <span className="text-xs text-gray-600 font-medium flex items-center gap-1 uppercase tracking-tighter">
+          <Layers size={12} className="text-gray-400" /> {value}
+        </span>
+      )
+    },
+    {
+      key: "status",
+      label: "Pipeline Stage",
+      sortable: true,
+      render: (value: string) => <StatusBadge status={value} />
+    },
+    {
+      key: "date",
+      label: "Recorded",
+      sortable: true,
+      render: (value: string) => (
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+          <Calendar size={14} className="text-gray-400" /> {value}
+        </div>
+      )
+    }
+  ]
+
+  const formFields: FormField[] = [
+    { name: "studentName", label: "Prospective Student", type: "text", required: true, placeholder: "Full Name" },
+    { name: "phone", label: "Contact Number", type: "text", required: true, placeholder: "Primary mobile number" },
+    { name: "email", label: "Contact Email", type: "email", required: false, placeholder: "example@domain.com" },
+    { name: "source", label: "Discovery Medium", type: "text", required: true, placeholder: "Ref, Web, Ad..." },
+    {
+      name: "status",
+      label: "Engagement Status",
+      type: "select",
+      options: [
+        { value: "active", label: "Active Follow-up" },
+        { value: "passive", label: "Passive Lead" },
+        { value: "won", label: "Successfully Enrolled" },
+        { value: "lost", label: "Closed/Interested Lost" },
+        { value: "dead", label: "No Response" }
+      ],
+      required: true
+    },
+    { name: "noOfChild", label: "Inquiry Count", type: "number", required: true, placeholder: "1" },
+    { name: "description", label: "Requirement Context", type: "textarea", required: false, placeholder: "Add specific requirements or details..." },
+  ];
+
+  const stats = {
+    total: enquiries.length,
+    active: enquiries.filter(e => e.status === 'active').length,
+    won: enquiries.filter(e => e.status === 'won').length,
+    today: enquiries.filter(e => e.date === new Date().toLocaleDateString()).length
   }
 
   return (
-    <DashboardLayout title="Enquiry Management">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                <ClipboardList className="h-5 w-5" />
-                Add Enquiry
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-red-500">Name *</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Class Applying For *</Label>
-                  <Input value={form.class} onChange={(e) => setForm({ ...form, class: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Source</Label>
-                  <Select value={form.source} onValueChange={(val) => setForm({ ...form, source: val })}>
-                    <SelectTrigger className="bg-white border-gray-200">
-                      <SelectValue placeholder="Select source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Walk-in">Walk-in</SelectItem>
-                      <SelectItem value="Call">Call</SelectItem>
-                      <SelectItem value="Email">Email</SelectItem>
-                      <SelectItem value="Reference">Reference</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Phone *</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={form.status} onValueChange={(val) => setForm({ ...form, status: val })}>
-                    <SelectTrigger className="bg-white border-gray-200">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="New">New</SelectItem>
-                      <SelectItem value="Interested">Interested</SelectItem>
-                      <SelectItem value="Follow-up">Follow-up</SelectItem>
-                      <SelectItem value="Closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-6">Save</Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+    <DashboardLayout title="Enquiry Command Center">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <ClipboardCheck className="text-blue-600" size={24} />
+              Enquiry Management
+            </h1>
+            <p className="text-sm text-gray-500">Centralized tracking of all inbound leads and prospective admissions</p>
+          </div>
+          <Button
+            onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+            className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 gap-2 h-11 px-6 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+          >
+            <Plus className="h-4 w-4" /> Log Discovery
+          </Button>
         </div>
 
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg text-gray-800">Enquiries</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-pink-50 hover:bg-pink-50">
-                      <TableHead className="font-bold text-gray-700 uppercase">Name</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Class</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Source</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Phone</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.name}</TableCell>
-                        <TableCell>{row.class}</TableCell>
-                        <TableCell>{row.source}</TableCell>
-                        <TableCell>{row.phone}</TableCell>
-                        <TableCell>{row.status || "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Leads"
+            value={stats.total.toString()}
+            icon={Layers}
+            iconColor="text-blue-600"
+            iconBgColor="bg-blue-50"
+            description="Database size"
+          />
+          <StatCard
+            title="Active Pipeline"
+            value={stats.active.toString()}
+            icon={Clock}
+            iconColor="text-orange-600"
+            iconBgColor="bg-orange-50"
+            description="In-progress"
+          />
+          <StatCard
+            title="Conversions"
+            value={stats.won.toString()}
+            icon={CheckCircle2}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-50"
+            description="Student wins"
+          />
+          <StatCard
+            title="New Today"
+            value={stats.today.toString()}
+            icon={Calendar}
+            iconColor="text-purple-600"
+            iconBgColor="bg-purple-50"
+            description="Daily pulse"
+          />
         </div>
+
+        <AdvancedTable
+          title="Engagement Pipeline"
+          columns={columns}
+          data={enquiries}
+          loading={loading}
+          searchable
+          searchPlaceholder="Audit by student name or contact details..."
+          pagination
+          onEdit={(row) => {
+            setEditingId(row.id);
+            setIsModalOpen(true);
+          }}
+          onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+        />
+
+        <FormModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingId(null);
+          }}
+          title={editingId ? "Update Lead Context" : "Capture Critical Inquiry"}
+          fields={formFields}
+          initialData={editingId ? enquiries.find(e => e.id === editingId) : undefined}
+          onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+        />
+
+        <ConfirmationDialog
+          open={deleteConfirm.open}
+          onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+          onConfirm={confirmDelete}
+          title="Remove Lead from Pipeline?"
+          description="This will purge the inquiry record from the database. This action is terminal."
+          variant="destructive"
+        />
       </div>
     </DashboardLayout>
   )
 }
-

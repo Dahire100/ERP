@@ -1,12 +1,19 @@
 "use client"
 
+import { useState } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Clock, CheckCircle, AlertCircle } from "lucide-react"
+import { BookOpen, Clock, CheckCircle, AlertCircle, Search, Plus, Book } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 
 export default function StudentLibrary() {
+  const [searchQuery, setSearchQuery] = useState("")
+
   const issuedBooks = [
     { id: 1, title: "Mathematics Textbook", author: "John Doe", issueDate: "2024-10-15", dueDate: "2024-11-15", status: "Active" },
     { id: 2, title: "Science Lab Manual", author: "Jane Smith", issueDate: "2024-10-20", dueDate: "2024-11-20", status: "Active" },
@@ -16,14 +23,49 @@ export default function StudentLibrary() {
   const activeBooks = issuedBooks.filter(b => b.status === "Active").length
   const overdueBooks = issuedBooks.filter(b => b.status === "Overdue").length
 
+  const handleRequestBook = (e: React.FormEvent) => {
+    e.preventDefault()
+    toast.success("Book Requested", { description: "You will be notified when it's available." })
+  }
+
   return (
     <DashboardLayout title="Library">
       <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-            Library
-          </h2>
-          <p className="text-muted-foreground mt-1">Manage your issued books</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+              Library
+            </h2>
+            <p className="text-muted-foreground mt-1">Manage your issued books and find new ones</p>
+          </div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="mr-2 h-4 w-4" /> Request New Book
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleRequestBook}>
+                <DialogHeader>
+                  <DialogTitle>Request a Book</DialogTitle>
+                  <DialogDescription>Search the catalog or request a specific title.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label>Book Title</Label>
+                    <Input placeholder="Enter book name" required />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Author</Label>
+                    <Input placeholder="Enter author name" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit">Submit Request</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -32,38 +74,73 @@ export default function StudentLibrary() {
           <StatCard title="Overdue" value={overdueBooks.toString()} icon={AlertCircle} iconColor="text-red-600" iconBgColor="bg-red-100" />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5" />Issued Books</CardTitle>
-            <CardDescription>Books currently issued to you</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {issuedBooks.map((book) => (
-                <div key={book.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${book.status === "Overdue" ? "bg-red-100" : "bg-green-100"}`}>
-                      {book.status === "Overdue" ? <AlertCircle className="h-5 w-5 text-red-600" /> : <CheckCircle className="h-5 w-5 text-green-600" />}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Currently Issued */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5" />Issued Books</CardTitle>
+                <CardDescription>Books currently issued to you</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {issuedBooks.map((book) => (
+                    <div key={book.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${book.status === "Overdue" ? "bg-red-100" : "bg-green-100"}`}>
+                          {book.status === "Overdue" ? <AlertCircle className="h-5 w-5 text-red-600" /> : <CheckCircle className="h-5 w-5 text-green-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold">{book.title}</p>
+                          <p className="text-xs text-muted-foreground">by {book.author}</p>
+                        </div>
+                      </div>
+                      <div className="text-left sm:text-right w-full sm:w-auto">
+                        <p className="text-sm font-medium">Due: {new Date(book.dueDate).toLocaleDateString()}</p>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${book.status === "Overdue" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                          {book.status}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold">{book.title}</p>
-                      <p className="text-xs text-muted-foreground">by {book.author}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">Due: {new Date(book.dueDate).toLocaleDateString()}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${book.status === "Overdue" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
-                      {book.status}
-                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Search */}
+          <div>
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5" /> Quick Search</CardTitle>
+                <CardDescription>Find books in library</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by title, author, ISBN..."
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Popular Categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    {["Science", "Fiction", "History", "Math", "Literature", "Art"].map(cat => (
+                      <Button key={cat} variant="outline" size="sm" className="text-xs h-7">{cat}</Button>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-            <Button className="w-full mt-4 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
-              Search More Books
-            </Button>
-          </CardContent>
-        </Card>
+                <div className="pt-4 border-t text-center">
+                  <Book className="h-16 w-16 mx-auto text-gray-200 mb-2" />
+                  <p className="text-sm text-gray-500">Search to see results here</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )

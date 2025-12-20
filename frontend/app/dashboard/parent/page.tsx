@@ -1,19 +1,22 @@
 "use client"
 
+import { useState } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { ProtectedRoute } from "@/components/protected-route"
-import { StatCard } from "@/components/super-admin/stat-card"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import { 
-  Users, 
-  IndianRupee, 
-  Calendar, 
-  Bell, 
-  MessageSquare, 
-  BookOpen, 
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Users,
+  IndianRupee,
+  Calendar,
+  Bell,
+  MessageSquare,
+  BookOpen,
   TrendingUp,
   Award,
   Clock,
@@ -21,8 +24,16 @@ import {
   FileText,
   BookOpenCheck,
   GraduationCap,
-  Laptop
+  Bus,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle2,
+  Phone,
+  Download,
+  Book
 } from "lucide-react"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 export default function ParentDashboard() {
   return (
@@ -33,276 +44,264 @@ export default function ParentDashboard() {
 }
 
 function ParentDashboardContent() {
+  const router = useRouter()
+  const [activeChild, setActiveChild] = useState("all")
+
+  // Mock Data
   const children = [
-    { 
-      id: 1,
-      name: "Alice Student", 
-      class: "10-A", 
-      gpa: 3.8, 
-      attendance: 92,
+    {
+      id: "child1",
+      name: "Alice Student",
+      class: "10-A",
       rollNo: "2024001",
-      upcomingExams: 3,
-      pendingAssignments: 2
+      avatar: "/avatars/alice.jpg",
+      gpa: 3.8,
+      attendance: 94,
+      nextExam: "Mathematics - 12 Dec",
+      pendingFees: 500,
+      assignments: 2,
+      teacher: "Mrs. Johnson"
     },
-    { 
-      id: 2,
-      name: "Bob Student", 
-      class: "9-B", 
-      gpa: 3.5, 
+    {
+      id: "child2",
+      name: "Bob Student",
+      class: "8-B",
+      rollNo: "2024045",
+      avatar: "/avatars/bob.jpg",
+      gpa: 3.5,
       attendance: 88,
-      rollNo: "2024002",
-      upcomingExams: 2,
-      pendingAssignments: 1
+      nextExam: "Science - 14 Dec",
+      pendingFees: 1200,
+      assignments: 4,
+      teacher: "Mr. Smith"
     },
   ]
 
-  const fees = [
-    { month: "November 2024", amount: 500, status: "Paid", dueDate: "2024-11-01" },
-    { month: "December 2024", amount: 500, status: "Pending", dueDate: "2024-12-01" },
+  const notices = [
+    { id: 1, title: "Winter Vacation Annual Notification", date: "2024-12-18", category: "Holiday", priority: "High" },
+    { id: 2, title: "Parent-Teacher Meeting Schedule", date: "2024-12-15", category: "Meeting", priority: "Medium" },
+    { id: 3, title: "Annual Sports Day Registration", date: "2024-12-10", category: "Events", priority: "Low" },
   ]
-
-  const recentNotices = [
-    { id: 1, title: "Parent-Teacher Meeting", date: "2024-11-15", priority: "High" },
-    { id: 2, title: "Sports Day Event", date: "2024-11-20", priority: "Medium" },
-    { id: 3, title: "Holiday Notice", date: "2024-11-25", priority: "Low" },
-  ]
-
-  const totalFees = fees.reduce((sum, fee) => sum + fee.amount, 0)
-  const paidFees = fees.filter(f => f.status === "Paid").reduce((sum, fee) => sum + fee.amount, 0)
-  const pendingFees = totalFees - paidFees
 
   const quickLinks = [
-    { title: "Fee Payments", icon: CreditCard, href: "/dashboard/parent/fees" },
-    { title: "Fee Receipts", icon: FileText, href: "/dashboard/parent/fees" },
-    { title: "Exam Schedule", icon: Calendar, href: "/dashboard/parent/examinations" },
-    { title: "Result Card", icon: GraduationCap, href: "/dashboard/parent/report" },
-    { title: "Homework", icon: BookOpenCheck, href: "/dashboard/parent/homework" },
-    { title: "Attendance", icon: Clock, href: "/dashboard/parent/attendance" },
-    { title: "Notices", icon: Bell, href: "/dashboard/parent/notice-board" },
-    { title: "Messages", icon: MessageSquare, href: "/dashboard/parent/communicate" },
-    { title: "Online Class Links", icon: Laptop, href: "/dashboard/parent/transport" },
+    { title: "Pay Fees", icon: CreditCard, href: "/dashboard/parent/fees", color: "text-green-600", bg: "bg-green-100" },
+    { title: "Attendance", icon: Calendar, href: "/dashboard/parent/attendance", color: "text-blue-600", bg: "bg-blue-100" },
+    { title: "Homework", icon: BookOpenCheck, href: "/dashboard/parent/homework", color: "text-purple-600", bg: "bg-purple-100" },
+    { title: "Timetable", icon: Clock, href: "/dashboard/parent/class-timetable", color: "text-indigo-600", bg: "bg-indigo-100" },
+    { title: "Transport", icon: Bus, href: "/dashboard/parent/transport", color: "text-teal-600", bg: "bg-teal-100" },
+    { title: "Report Card", icon: FileText, href: "/dashboard/parent/report", color: "text-orange-600", bg: "bg-orange-100" },
+    { title: "Downloads", icon: Download, href: "/dashboard/parent/download-center", color: "text-cyan-600", bg: "bg-cyan-100" },
+    { title: "Library", icon: Book, href: "/dashboard/parent/library", color: "text-emerald-600", bg: "bg-emerald-100" },
+    { title: "Messages", icon: MessageSquare, href: "/dashboard/parent/communicate", color: "text-pink-600", bg: "bg-pink-100" },
   ]
+
+  const handleQuickPay = (amount: number) => {
+    toast.success("Payment Gateway Initiated", { description: `Proceeding to pay ₹${amount}` })
+  }
+
+  const navigateTo = (path: string) => {
+    router.push(path)
+  }
 
   return (
     <DashboardLayout title="Parent Dashboard">
-      <div className="space-y-6">
-        {/* Welcome Header */}
-        <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Welcome Back, Parent!
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Monitor your children's academic progress and school activities
-          </p>
+      <div className="space-y-8 animate-in fade-in-50 duration-500">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800 tracking-tight">
+              Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Mr. & Mrs. Parent</span>
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              Here is what's happening with your children today.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" className="hidden md:flex gap-2">
+              <Phone className="h-4 w-4" /> Contact School
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 shadow-md">
+              <Bell className="h-4 w-4 mr-2" /> Notifications <Badge className="ml-2 bg-blue-500 hover:bg-blue-500">3</Badge>
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Children"
-            value={children.length.toString()}
-            icon={Users}
-            iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
-          />
-          <StatCard
-            title="Pending Fees"
-            value={`₹${pendingFees}`}
-            icon={IndianRupee}
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-100"
-          />
-          <StatCard
-            title="Upcoming Events"
-            value="5"
-            icon={Calendar}
-            iconColor="text-green-600"
-            iconBgColor="bg-green-100"
-          />
-          <StatCard
-            title="New Notices"
-            value={recentNotices.length.toString()}
-            icon={Bell}
-            iconColor="text-purple-600"
-            iconBgColor="bg-purple-100"
-          />
-        </div>
+        {/* Children Overview Section */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+              <Users className="h-5 w-5 text-blue-600" /> My Children
+            </h3>
+          </div>
 
-        {/* Children Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              My Children
-            </CardTitle>
-            <CardDescription>Monitor your children's academic progress</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {children.map((child) => (
-                <div key={child.id} className="p-5 border rounded-xl hover:shadow-md transition-all bg-gradient-to-br from-white to-gray-50">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
-                          {child.name.split(' ').map(n => n[0]).join('')}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {children.map((child) => (
+              <Card key={child.id} className="border-none shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group">
+                <div className={`h-2 w-full ${child.gpa >= 3.0 ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-orange-400 to-red-500'}`} />
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16 border-4 border-white shadow-sm">
+                        <AvatarImage src={child.avatar} />
+                        <AvatarFallback className="bg-slate-100 text-slate-600 text-xl font-bold">
+                          {child.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold text-lg">{child.name}</p>
-                        <p className="text-sm text-muted-foreground">Class {child.class} • Roll No: {child.rollNo}</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="hover:bg-blue-50">
-                      View Profile
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Award className="h-3 w-3" />
-                        GPA
-                      </p>
-                      <p className="text-2xl font-bold text-green-600">{child.gpa}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        Attendance
-                      </p>
-                      <div>
-                        <p className="text-2xl font-bold">{child.attendance}%</p>
-                        <Progress value={child.attendance} className="h-1 mt-1" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        Exams
-                      </p>
-                      <p className="text-2xl font-bold text-blue-600">{child.upcomingExams}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Assignments
-                      </p>
-                      <p className="text-2xl font-bold text-orange-600">{child.pendingAssignments}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Fee Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <IndianRupee className="h-5 w-5" />
-                Fee Status
-              </CardTitle>
-              <CardDescription>View and manage fee payments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {fees.map((fee) => (
-                  <div key={fee.month} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                    <div>
-                      <p className="font-semibold">{fee.month}</p>
-                      <p className="text-xs text-muted-foreground">Due: {new Date(fee.dueDate).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">₹{fee.amount}</p>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          fee.status === "Paid" 
-                            ? "bg-green-100 text-green-700" 
-                            : "bg-orange-100 text-orange-700"
-                        }`}
-                      >
-                        {fee.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                <Button className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Pay Pending Fees
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Notices */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Recent Notices
-              </CardTitle>
-              <CardDescription>Important announcements from school</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentNotices.map((notice) => (
-                  <div key={notice.id} className="p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold">{notice.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(notice.date).toLocaleDateString()}
+                        <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{child.name}</h4>
+                        <p className="text-sm text-gray-500 flex items-center gap-2">
+                          Class {child.class} <span className="w-1 h-1 bg-gray-300 rounded-full" /> Roll: {child.rollNo}
                         </p>
                       </div>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          notice.priority === "High"
-                            ? "bg-red-100 text-red-700"
-                            : notice.priority === "Medium"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
-                        {notice.priority}
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => navigateTo('/dashboard/parent/child-profile')}>
+                      <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="p-3 bg-blue-50 rounded-xl">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp className="h-4 w-4 text-blue-600" />
+                        <span className="text-xs font-semibold text-blue-700">Attendance</span>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <span className="text-2xl font-bold text-blue-900">{child.attendance}%</span>
+                        <span className="text-xs text-blue-600 mb-1">Target: 75%</span>
+                      </div>
+                      <Progress value={child.attendance} className="h-1.5 mt-2 bg-blue-200" />
+                    </div>
+
+                    <div className="p-3 bg-purple-50 rounded-xl">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Award className="h-4 w-4 text-purple-600" />
+                        <span className="text-xs font-semibold text-purple-700">Performance</span>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <span className="text-2xl font-bold text-purple-900">{child.gpa}</span>
+                        <span className="text-xs text-purple-600 mb-1">GPA</span>
+                      </div>
+                      <Progress value={(child.gpa / 4) * 100} className="h-1.5 mt-2 bg-purple-200" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" /> Next Exam
+                      </span>
+                      <span className="font-medium">{child.nextExam}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <IndianRupee className="h-4 w-4" /> Fees Due
+                      </span>
+                      <span className={`font-bold ${child.pendingFees > 0 ? "text-red-500" : "text-green-500"}`}>
+                        {child.pendingFees > 0 ? `₹${child.pendingFees}` : 'Paid'}
                       </span>
                     </div>
                   </div>
+
+                  <div className="mt-6 pt-4 border-t flex gap-3">
+                    <Button className="flex-1 bg-white text-gray-700 border hover:bg-gray-50" size="sm" onClick={() => navigateTo('/dashboard/parent/homework')}>
+                      Homework ({child.assignments})
+                    </Button>
+                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" size="sm" onClick={() => navigateTo('/dashboard/parent/fees')}>
+                      Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Total Fees & Notices Grid */}
+            <div className="flex flex-col gap-6">
+              {/* Fee Card */}
+              <Card className="border-none shadow-md bg-gradient-to-br from-gray-900 to-gray-800 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-10">
+                  <CreditCard className="h-32 w-32 text-white" />
+                </div>
+                <CardContent className="p-6 relative z-10">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <p className="text-gray-400 text-sm font-medium">Total Outstanding Fees</p>
+                      <h3 className="text-3xl font-bold mt-1">₹1,700</h3>
+                    </div>
+                    <div className="p-2 bg-white/10 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-orange-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center text-sm border-b border-gray-700 pb-2">
+                      <span>Alice Student</span>
+                      <span className="font-mono">₹500</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm border-b border-gray-700 pb-2">
+                      <span>Bob Student</span>
+                      <span className="font-mono">₹1,200</span>
+                    </div>
+                  </div>
+                  <Button className="w-full mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold" onClick={() => handleQuickPay(1700)}>
+                    Pay Now
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Quick Links Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {quickLinks.map((link) => (
+                  <div
+                    key={link.title}
+                    className="bg-white p-4 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col items-center justify-center gap-2 text-center"
+                    onClick={() => navigateTo(link.href)}
+                  >
+                    <div className={`p-3 rounded-full ${link.bg} group-hover:scale-110 transition-transform duration-300`}>
+                      <link.icon className={`h-5 w-5 ${link.color}`} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700">{link.title}</span>
+                  </div>
                 ))}
-                <Button variant="outline" className="w-full mt-4">
-                  View All Notices
-                </Button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Notices Section */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center gap-2 text-gray-800">
+              <Bell className="h-5 w-5 text-orange-600" /> Notice Board
+            </h3>
+            <Button variant="link" className="text-blue-600" onClick={() => navigateTo('/dashboard/parent/notice-board')}>View All</Button>
+          </div>
+          <Card className="border-none shadow-md">
+            <CardContent className="p-0">
+              <ScrollArea className="h-[250px]">
+                <div className="divide-y">
+                  {notices.map((notice) => (
+                    <div key={notice.id} className="p-4 hover:bg-gray-50 transition-colors flex items-start gap-4 cursor-pointer" onClick={() => navigateTo('/dashboard/parent/notice-board')}>
+                      <div className="flex-shrink-0 mt-1">
+                        <div className="flex flex-col items-center bg-gray-100 rounded-lg p-2 w-14">
+                          <span className="text-xs font-bold text-gray-500 uppercase">{new Date(notice.date).toLocaleString('default', { month: 'short' })}</span>
+                          <span className="text-lg font-bold text-gray-900">{new Date(notice.date).getDate()}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-xs">{notice.category}</Badge>
+                          {notice.priority === "High" && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Urgent</Badge>}
+                        </div>
+                        <h5 className="font-semibold text-gray-900 leading-tight">{notice.title}</h5>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Click to view full details regarding this announcement.</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-300" />
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>Connect with teachers and access resources</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {quickLinks.map((link) => (
-                <Button key={link.title} className="w-full justify-start h-auto py-4" variant="outline" asChild>
-                  <a href={link.href}>
-                    <div className="flex flex-col items-start gap-1">
-                      <link.icon className="h-5 w-5 mb-1" />
-                      <span className="font-semibold">{link.title}</span>
-                      <span className="text-xs text-muted-foreground">{link.title}</span>
-                    </div>
-                  </a>
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        </section>
       </div>
     </DashboardLayout>
   )

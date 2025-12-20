@@ -1,124 +1,318 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { StatCard } from "@/components/super-admin/stat-card"
+import { AdvancedTable } from "@/components/super-admin/advanced-table"
+import FormModal, { FormField } from "@/components/form-modal"
+import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { PhoneCall } from "lucide-react"
-import { toast } from "sonner"
+  Plus,
+  PhoneOutgoing,
+  PhoneIncoming,
+  Clock,
+  Calendar,
+  UserCircle2,
+  History,
+  PhoneCall,
+  Navigation
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
-const sample = [
-  { id: 1, caller: "Parent of Riya", type: "Incoming", phone: "9876500000", note: "Asked fee details", followUp: "12-06-2025" },
-  { id: 2, caller: "Vendor", type: "Outgoing", phone: "9898989898", note: "Transport query", followUp: "-" }
-]
+interface CallLogItem {
+  id: string
+  name: string
+  phone: string
+  date: string
+  callType: 'Incoming' | 'Outgoing'
+  callDuration?: string
+  nextFollowUpDate?: string
+  note?: string
+  description?: string
+}
 
-export default function PhoneCallLog() {
-  const [rows, setRows] = useState(sample)
-  const [form, setForm] = useState({ caller: "", type: "", phone: "", note: "", followUp: "" })
+export default function PhoneCallLogPage() {
+  const { toast } = useToast()
+  const [logs, setLogs] = useState<CallLogItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.caller || !form.type || !form.phone) {
-      toast.error("Caller, type and phone are required")
-      return
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/phone-call-log', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const mappedData = data.map((item: any) => ({
+          id: item._id,
+          name: item.name,
+          phone: item.phone,
+          date: new Date(item.date).toLocaleDateString(),
+          callType: item.callType || 'Incoming',
+          callDuration: item.callDuration,
+          nextFollowUpDate: item.nextFollowUpDate ? new Date(item.nextFollowUpDate).toLocaleDateString() : 'N/A',
+          note: item.note,
+          description: item.description
+        }));
+        setLogs(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+      toast({ title: "Error", description: "Failed to load call history.", variant: "destructive" });
+    } finally {
+      setLoading(false)
     }
-    setRows([...rows, { id: Date.now(), ...form }])
-    toast.success("Call logged")
-    setForm({ caller: "", type: "", phone: "", note: "", followUp: "" })
+  };
+
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/phone-call-log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        toast({ title: "Success", description: "Call logged successfully." });
+        fetchLogs();
+        setIsModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error adding log:', error);
+      toast({ title: "Error", description: "Failed to save call log.", variant: "destructive" });
+    }
+  };
+
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/phone-call-log/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        toast({ title: "Updated", description: "Call log updated." });
+        fetchLogs();
+        setIsModalOpen(false);
+        setEditingId(null);
+      }
+    } catch (error) {
+      console.error('Error updating log:', error);
+      toast({ title: "Error", description: "Failed to update record.", variant: "destructive" });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/phone-call-log/${deleteConfirm.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        toast({ title: "Deleted", description: "Entry removed from log." });
+        fetchLogs();
+      }
+    } catch (error) {
+      console.error('Error deleting log:', error);
+      toast({ title: "Error", description: "Failed to delete log entry.", variant: "destructive" });
+    } finally {
+      setDeleteConfirm({ open: false, id: null });
+    }
+  };
+
+  const columns = [
+    {
+      key: "name",
+      label: "Interlocutor",
+      sortable: true,
+      render: (value: string, row: CallLogItem) => (
+        <div className="flex items-center gap-3">
+          <div className={`h-8 w-8 rounded-lg flex items-center justify-center border font-bold text-xs
+            ${row.callType === 'Incoming' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'}
+          `}>
+            {row.callType === 'Incoming' ? <PhoneIncoming size={14} /> : <PhoneOutgoing size={14} />}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-gray-900">{value}</span>
+            <span className="text-[10px] text-gray-500 font-medium tracking-wide">{row.phone}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: "callType",
+      label: "Traffic",
+      sortable: true,
+      render: (value: string) => (
+        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tighter border
+          ${value === 'Incoming' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'}
+        `}>
+          {value}
+        </span>
+      )
+    },
+    {
+      key: "date",
+      label: "Timestamp",
+      sortable: true,
+      render: (value: string) => (
+        <span className="text-xs text-gray-600 font-medium">{value}</span>
+      )
+    },
+    {
+      key: "nextFollowUpDate",
+      label: "Follow-up",
+      sortable: true,
+      render: (value: string) => (
+        <div className="flex items-center gap-2">
+          <Calendar size={12} className="text-gray-400" />
+          <span className="text-xs font-semibold text-gray-700">{value}</span>
+        </div>
+      )
+    }
+  ]
+
+  const formFields: FormField[] = [
+    { name: "name", label: "Contact Person", type: "text", required: true, placeholder: "Name of the person" },
+    { name: "phone", label: "Contact Number", type: "text", required: true, placeholder: "+91 ..." },
+    {
+      name: "callType",
+      label: "Call Direction",
+      type: "select",
+      options: [
+        { value: "Incoming", label: "Incoming Call" },
+        { value: "Outgoing", label: "Outgoing Call" }
+      ],
+      required: true
+    },
+    { name: "date", label: "Call Date", type: "date", required: true },
+    { name: "callDuration", label: "Duration", type: "text", required: false, placeholder: "e.g., 5 mins 20 secs" },
+    { name: "nextFollowUpDate", label: "Next Follow-up", type: "date", required: false },
+    { name: "description", label: "Brief Summary", type: "textarea", required: false, placeholder: "Points discussed..." },
+    { name: "note", label: "Internal Notes", type: "textarea", required: false, placeholder: "Private notes for staff..." },
+  ];
+
+  const stats = {
+    total: logs.length,
+    incoming: logs.filter(l => l.callType === 'Incoming').length,
+    outgoing: logs.filter(l => l.callType === 'Outgoing').length,
+    followUps: logs.filter(l => l.nextFollowUpDate && l.nextFollowUpDate !== 'N/A').length
   }
 
   return (
-    <DashboardLayout title="Phone Call Log">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                <PhoneCall className="h-5 w-5" />
-                Log Call
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-red-500">Caller *</Label>
-                  <Input value={form.caller} onChange={(e) => setForm({ ...form, caller: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Type *</Label>
-                  <Select value={form.type} onValueChange={(val) => setForm({ ...form, type: val })}>
-                    <SelectTrigger className="bg-white border-gray-200">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Incoming">Incoming</SelectItem>
-                      <SelectItem value="Outgoing">Outgoing</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-red-500">Phone *</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Note</Label>
-                  <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="bg-white border-gray-200" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Follow-up Date</Label>
-                  <Input value={form.followUp} onChange={(e) => setForm({ ...form, followUp: e.target.value })} placeholder="DD-MM-YYYY" className="bg-white border-gray-200" />
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-6">Save</Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+    <DashboardLayout title="Comms History">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <PhoneCall className="text-indigo-600" size={24} />
+              Telephony Exchange
+            </h1>
+            <p className="text-sm text-gray-500">Comprehensive audit of all inbound and outbound voice communications</p>
+          </div>
+          <Button
+            onClick={() => { setEditingId(null); setIsModalOpen(true); }}
+            className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 gap-2 h-11 px-6 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+          >
+            <Plus className="h-4 w-4" /> Log New Exchange
+          </Button>
         </div>
 
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="bg-pink-50 border-b border-pink-100">
-              <CardTitle className="text-lg text-gray-800">Call Log</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-pink-50 hover:bg-pink-50">
-                      <TableHead className="font-bold text-gray-700 uppercase">Caller</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Type</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Phone</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Note</TableHead>
-                      <TableHead className="font-bold text-gray-700 uppercase">Follow-up</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.caller}</TableCell>
-                        <TableCell>{row.type}</TableCell>
-                        <TableCell>{row.phone}</TableCell>
-                        <TableCell>{row.note || "-"}</TableCell>
-                        <TableCell>{row.followUp || "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Exchanges"
+            value={stats.total.toString()}
+            icon={History}
+            iconColor="text-blue-600"
+            iconBgColor="bg-blue-50"
+            description="Historical logs"
+          />
+          <StatCard
+            title="Inbound Flow"
+            value={stats.incoming.toString()}
+            icon={PhoneIncoming}
+            iconColor="text-emerald-600"
+            iconBgColor="bg-emerald-50"
+            description="Customer inquiries"
+          />
+          <StatCard
+            title="Outbound Flow"
+            value={stats.outgoing.toString()}
+            icon={PhoneOutgoing}
+            iconColor="text-indigo-600"
+            iconBgColor="bg-indigo-50"
+            description="Active follow-ups"
+          />
+          <StatCard
+            title="Next Step Agenda"
+            value={stats.followUps.toString()}
+            icon={Navigation}
+            iconColor="text-orange-600"
+            iconBgColor="bg-orange-50"
+            description="Pending call-backs"
+          />
         </div>
+
+        <AdvancedTable
+          title="Telephony Manifest"
+          columns={columns}
+          data={logs}
+          loading={loading}
+          searchable
+          searchPlaceholder="Track records by person or phone..."
+          pagination
+          onEdit={(row) => {
+            setEditingId(row.id);
+            setIsModalOpen(true);
+          }}
+          onDelete={(row) => setDeleteConfirm({ open: true, id: row.id })}
+        />
+
+        <FormModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingId(null);
+          }}
+          title={editingId ? "Refine Log Entry" : "Capture Telephony Exchange"}
+          fields={formFields}
+          initialData={editingId ? logs.find(l => l.id === editingId) : undefined}
+          onSubmit={(data: any) => editingId ? handleEdit(editingId, data) : handleAdd(data)}
+        />
+
+        <ConfirmationDialog
+          open={deleteConfirm.open}
+          onOpenChange={(open) => setDeleteConfirm({ open, id: null })}
+          onConfirm={confirmDelete}
+          title="Permanently Delete Log?"
+          description="This will remove the communication record from the system. This action is irreversible."
+          variant="destructive"
+        />
       </div>
     </DashboardLayout>
   )

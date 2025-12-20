@@ -14,7 +14,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-<<<<<<< HEAD
 import {
     Table,
     TableBody,
@@ -165,7 +164,7 @@ export default function AddExpense() {
                                 <Button variant="outline" size="icon" className="h-8 w-8 bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><Copy className="h-4 w-4" /></Button>
                                 <Button variant="outline" size="icon" className="h-8 w-8 bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><FileText className="h-4 w-4" /></Button>
                                 <Button variant="outline" size="icon" className="h-8 w-8 bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><FileText className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8 bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><Print className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8 bg-[#1e1e50] text-white hover:bg-[#151538] border-none"><Printer className="h-4 w-4" /></Button>
                                 <Button variant="outline" size="sm" className="bg-[#1e1e50] text-white hover:bg-[#151538] border-none ml-1">Column visibility</Button>
                             </div>
                             <div className="flex items-center gap-2">
@@ -234,123 +233,9 @@ export default function AddExpense() {
                                 <Button variant="outline" size="sm" className="h-8">Next</Button>
                             </div>
                         </div>
-=======
-import { toast } from "sonner"
-import { Receipt } from "lucide-react"
-
-export default function AddExpense() {
-    const [formData, setFormData] = useState({
-        head: "",
-        amount: "",
-        date: "",
-        voucher: "",
-        description: ""
-    })
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!formData.head || !formData.amount || !formData.date) {
-            toast.error("Please fill required fields")
-            return
-        }
-        toast.success("Expense saved")
-        setFormData({ head: "", amount: "", date: "", voucher: "", description: "" })
-    }
-
-    return (
-        <DashboardLayout title="Add Expense">
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader className="bg-pink-50 border-b border-pink-100">
-                        <CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-                            <Receipt className="h-5 w-5" />
-                            Expense Details
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-red-500">Expense Head *</Label>
-                                <Select value={formData.head} onValueChange={(val) => setFormData({ ...formData, head: val })}>
-                                    <SelectTrigger className="bg-white border-gray-200">
-                                        <SelectValue placeholder="Select head" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="salary">Salary</SelectItem>
-                                        <SelectItem value="utilities">Utilities</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-red-500">Amount *</Label>
-                                <Input
-                                    value={formData.amount}
-                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                    placeholder="0.00"
-                                    className="bg-white border-gray-200"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-red-500">Date *</Label>
-                                <Input
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    placeholder="DD-MM-YYYY"
-                                    className="bg-white border-gray-200"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Voucher No.</Label>
-                                <Input
-                                    value={formData.voucher}
-                                    onChange={(e) => setFormData({ ...formData, voucher: e.target.value })}
-                                    placeholder="Auto / manual"
-                                    className="bg-white border-gray-200"
-                                />
-                            </div>
-                            <div className="md:col-span-2 space-y-2">
-                                <Label>Description</Label>
-                                <Textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="bg-white border-gray-200"
-                                    rows={3}
-                                />
-                            </div>
-                            <div className="md:col-span-2 flex justify-end">
-                                <Button type="submit" className="bg-blue-900 hover:bg-blue-800 px-8">
-                                    Save
-                                </Button>
-                            </div>
-                        </form>
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
                     </CardContent>
                 </Card>
             </div>
         </DashboardLayout>
     )
 }
-
-<<<<<<< HEAD
-function Print(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <polyline points="6 9 6 2 18 2 18 9" />
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-            <rect width="12" height="8" x="6" y="14" />
-        </svg>
-    )
-}
-=======
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4

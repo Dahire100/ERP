@@ -15,6 +15,12 @@ const Certificate = require('../models/Certificate');
 const Event = require('../models/Event');
 const Quiz = require('../models/Quiz');
 const StudentProgress = require('../models/StudentProgress');
+const { IssueRecord } = require('../models/Library');
+const TransportRoute = require('../models/TransportRoute');
+const { HostelAllocation } = require('../models/Hostel');
+const StudentDocument = require('../models/StudentDocument');
+const StudyMaterial = require('../models/StudyMaterial');
+const HostelOutpass = require('../models/HostelOutpass');
 
 // Get student dashboard
 exports.getStudentDashboard = async (req, res) => {
@@ -35,20 +41,20 @@ exports.getStudentDashboard = async (req, res) => {
     // Get attendance statistics (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const attendanceRecords = await Attendance.find({
       schoolId,
       classId: student.classId,
       date: { $gte: thirtyDaysAgo }
     });
 
-    const studentAttendance = attendanceRecords.filter(record => 
-      record.students.some(s => 
+    const studentAttendance = attendanceRecords.filter(record =>
+      record.students.some(s =>
         s.studentId.toString() === userId && s.status === 'present'
       )
     );
 
-    const attendancePercentage = attendanceRecords.length > 0 
+    const attendancePercentage = attendanceRecords.length > 0
       ? ((studentAttendance.length / attendanceRecords.length) * 100).toFixed(2)
       : 0;
 
@@ -82,8 +88,8 @@ exports.getStudentDashboard = async (req, res) => {
       schoolId,
       studentId: userId
     })
-    .populate('examId', 'name examDate totalMarks')
-    .sort({ createdAt: -1 });
+      .populate('examId', 'name examDate totalMarks')
+      .sort({ createdAt: -1 });
 
     // Get pending fees
     const pendingFees = await StudentFee.aggregate([
@@ -208,7 +214,7 @@ exports.updateStudentProfile = async (req, res) => {
   try {
     const { userId, schoolId } = req.user;
     const allowedUpdates = ['phone', 'address', 'bloodGroup', 'emergencyContact'];
-    
+
     const updates = {};
     Object.keys(req.body).forEach(key => {
       if (allowedUpdates.includes(key)) {
@@ -271,7 +277,7 @@ exports.getStudentAttendance = async (req, res) => {
     const attendanceRecords = await Attendance.find(query).sort({ date: -1 });
 
     const attendanceData = attendanceRecords.map(record => {
-      const studentRecord = record.students.find(s => 
+      const studentRecord = record.students.find(s =>
         s.studentId.toString() === userId
       );
       return {
@@ -338,7 +344,7 @@ exports.getStudentHomework = async (req, res) => {
       .sort({ dueDate: -1 });
 
     const homeworkWithSubmission = homework.map(hw => {
-      const submission = hw.submissions.find(s => 
+      const submission = hw.submissions.find(s =>
         s.studentId.toString() === userId
       );
       return {
@@ -382,7 +388,7 @@ exports.submitHomework = async (req, res) => {
     }
 
     // Check if already submitted
-    const existingSubmission = homework.submissions.find(s => 
+    const existingSubmission = homework.submissions.find(s =>
       s.studentId.toString() === userId
     );
 
@@ -447,7 +453,7 @@ exports.getStudentAssignments = async (req, res) => {
       .sort({ dueDate: -1 });
 
     const assignmentsWithSubmission = assignments.map(assignment => {
-      const submission = assignment.submissions.find(s => 
+      const submission = assignment.submissions.find(s =>
         s.studentId.toString() === userId
       );
       return {
@@ -491,7 +497,7 @@ exports.submitAssignment = async (req, res) => {
       });
     }
 
-    const existingSubmission = assignment.submissions.find(s => 
+    const existingSubmission = assignment.submissions.find(s =>
       s.studentId.toString() === userId
     );
 
@@ -700,8 +706,8 @@ exports.getStudentLeaveRequests = async (req, res) => {
       requesterId: userId,
       schoolId
     })
-    .populate('approvedBy', 'firstName lastName')
-    .sort({ createdAt: -1 });
+      .populate('approvedBy', 'firstName lastName')
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -904,7 +910,7 @@ exports.registerForEvent = async (req, res) => {
     }
 
     // Check if already registered
-    const alreadyRegistered = event.registeredParticipants.some(p => 
+    const alreadyRegistered = event.registeredParticipants.some(p =>
       p.participantId.toString() === userId
     );
 
@@ -971,7 +977,7 @@ exports.getStudentQuizzes = async (req, res) => {
       .sort({ scheduledDate: -1 });
 
     const quizzesWithAttempt = quizzes.map(quiz => {
-      const attempt = quiz.attempts.find(a => 
+      const attempt = quiz.attempts.find(a =>
         a.studentId.toString() === userId
       );
       return {
@@ -1020,7 +1026,7 @@ exports.startQuiz = async (req, res) => {
     }
 
     // Check if already attempted
-    const existingAttempt = quiz.attempts.find(a => 
+    const existingAttempt = quiz.attempts.find(a =>
       a.studentId.toString() === userId
     );
 
@@ -1112,6 +1118,172 @@ exports.submitQuiz = async (req, res) => {
       success: false,
       error: 'Failed to submit quiz'
     });
+  }
+};
+
+// ===== NEW FEATURES =====
+
+// Get library history
+exports.getLibraryHistory = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const records = await IssueRecord.find({ schoolId, 'issuedTo.userId': userId })
+      .populate('bookId', 'title author')
+      .sort({ issueDate: -1 });
+    res.json({ success: true, data: records });
+  } catch (err) {
+    console.error('Error fetching library history:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch library history' });
+  }
+};
+
+// Get transport details
+exports.getTransportDetails = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const student = await Student.findOne({ _id: userId, schoolId });
+    if (!student || !student.transportRoute) {
+      return res.json({ success: true, data: null });
+    }
+    // Assuming transportRoute in student stores the route name
+    const route = await TransportRoute.findOne({
+      schoolId,
+      routeName: student.transportRoute
+    });
+    res.json({ success: true, data: route });
+  } catch (err) {
+    console.error('Error fetching transport details:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch transport details' });
+  }
+};
+
+// Get hostel details
+exports.getHostelDetails = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const allocation = await HostelAllocation.findOne({
+      schoolId,
+      studentId: userId,
+      status: 'active'
+    })
+      .populate('hostelId')
+      .populate('roomId');
+
+    res.json({ success: true, data: allocation });
+  } catch (err) {
+    console.error('Error fetching hostel details:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch hostel details' });
+  }
+};
+
+// Get student documents
+exports.getStudentDocuments = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const docs = await StudentDocument.find({ schoolId, studentId: userId }).sort({ uploadedAt: -1 });
+    res.json({ success: true, data: docs });
+  } catch (err) {
+    console.error('Error fetching documents:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch documents' });
+  }
+};
+
+// Upload student document
+exports.uploadStudentDocument = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const { title, type, description, fileUrl } = req.body;
+    const newDoc = new StudentDocument({
+      schoolId,
+      studentId: userId,
+      title,
+      type,
+      description,
+      fileUrl
+    });
+    await newDoc.save();
+    res.status(201).json({ success: true, message: 'Document uploaded', data: newDoc });
+  } catch (err) {
+    console.error('Error uploading document:', err);
+    res.status(500).json({ success: false, error: 'Failed to upload document' });
+  }
+};
+
+// Get download center materials
+exports.getDownloads = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const student = await Student.findOne({ _id: userId, schoolId });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    // Match logic: materials with no specific class (all) OR materials for student's class
+    // student.class might be an ID if populated, or we need to handle it.
+    // Assuming student.class matches the reference in StudyMaterial.classes
+    const classId = student.class && student.class._id ? student.class._id : student.class;
+
+    const materials = await StudyMaterial.find({
+      schoolId,
+      isActive: true,
+      $or: [
+        { classes: { $size: 0 } }, // For all classes
+        { classes: classId }
+      ]
+    }).sort({ createdAt: -1 });
+
+    res.json({ success: true, data: materials });
+  } catch (err) {
+    console.error('Error fetching downloads:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch downloads' });
+  }
+};
+
+// Apply for hostel outpass
+exports.applyOutpass = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const { fromDate, toDate, reason, parentContact } = req.body;
+
+    const allocation = await HostelAllocation.findOne({
+      schoolId,
+      studentId: userId,
+      status: 'active'
+    });
+
+    if (!allocation) {
+      return res.status(400).json({
+        success: false,
+        error: 'You are not allocated to any hostel'
+      });
+    }
+
+    const newOutpass = new HostelOutpass({
+      schoolId,
+      studentId: userId,
+      hostelId: allocation.hostelId,
+      fromDate,
+      toDate,
+      reason,
+      parentContact,
+      status: 'pending'
+    });
+
+    await newOutpass.save();
+    res.status(201).json({ success: true, message: 'Outpass requested successfully' });
+  } catch (err) {
+    console.error('Error applying outpass:', err);
+    res.status(500).json({ success: false, error: 'Failed to apply outpass' });
+  }
+};
+
+// Get outpass history
+exports.getOutpassHistory = async (req, res) => {
+  try {
+    const { userId, schoolId } = req.user;
+    const outpasses = await HostelOutpass.find({ schoolId, studentId: userId }).sort({ createdAt: -1 });
+    res.json({ success: true, data: outpasses });
+  } catch (err) {
+    console.error('Error fetching outpass history:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch outpass history' });
   }
 };
 

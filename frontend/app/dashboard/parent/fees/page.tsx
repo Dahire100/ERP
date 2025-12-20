@@ -2,168 +2,364 @@
 
 import { useState } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { StatCard } from "@/components/super-admin/stat-card"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { IndianRupee, CheckCircle, Clock, AlertCircle, Download, CreditCard } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Receipt,
+  CreditCard,
+  Download,
+  Clock,
+  AlertCircle,
+  CheckCircle,
+  Users,
+  ChevronDown
+} from "lucide-react"
+import { toast } from "sonner"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export default function ParentFees() {
-  const [feeRecords, setFeeRecords] = useState([
-    { id: 1, month: "January 2025", amount: 500, dueDate: "2025-02-01", status: "Paid", paidDate: "2025-01-28", receiptNo: "RCP-001" },
-    { id: 2, month: "February 2025", amount: 500, dueDate: "2025-03-01", status: "Pending", paidDate: "-", receiptNo: "-" },
-    { id: 3, month: "March 2025", amount: 500, dueDate: "2025-04-01", status: "Pending", paidDate: "-", receiptNo: "-" },
-    { id: 4, month: "April 2025", amount: 500, dueDate: "2025-05-01", status: "Upcoming", paidDate: "-", receiptNo: "-" },
-  ])
+  const [selectedChild, setSelectedChild] = useState<"all" | "child1" | "child2">("all")
+  const [activeTab, setActiveTab] = useState("pending")
 
-  const totalFees = feeRecords.reduce((sum, fee) => sum + fee.amount, 0)
-  const paidFees = feeRecords.filter(f => f.status === "Paid").reduce((sum, fee) => sum + fee.amount, 0)
-  const pendingFees = feeRecords.filter(f => f.status === "Pending").reduce((sum, fee) => sum + fee.amount, 0)
-  const paidCount = feeRecords.filter(f => f.status === "Paid").length
+  const children = {
+    child1: { name: "Alice Student", class: "10-A", id: "2024001" },
+    child2: { name: "Bob Student", class: "8-B", id: "2024045" }
+  }
+
+  const allPendingFees = [
+    { id: 1, childId: "child1", childName: "Alice Student", title: "Term 2 Tuition Fee", amount: 12500, dueDate: "2024-12-15", status: "Overdue", invoice: "INV-2024-001" },
+    { id: 2, childId: "child1", childName: "Alice Student", title: "Annual Sports Fee", amount: 2000, dueDate: "2025-01-10", status: "Due Soon", invoice: "INV-2024-045" },
+    { id: 3, childId: "child2", childName: "Bob Student", title: "Term 2 Tuition Fee", amount: 11000, dueDate: "2024-12-15", status: "Overdue", invoice: "INV-2024-002" },
+  ]
+
+  const allPaidFees = [
+    { id: 101, childId: "child1", childName: "Alice Student", title: "Term 1 Tuition Fee", amount: 12500, date: "2024-08-10", method: "Online", receipt: "RCP-1092" },
+    { id: 102, childId: "child1", childName: "Alice Student", title: "Admission Fee", amount: 25000, date: "2024-04-01", method: "Bank Transfer", receipt: "RCP-0045" },
+    { id: 103, childId: "child2", childName: "Bob Student", title: "Term 1 Tuition Fee", amount: 11000, date: "2024-08-12", method: "Card", receipt: "RCP-1105" },
+  ]
+
+  const filteredPendingFees = selectedChild === "all"
+    ? allPendingFees
+    : allPendingFees.filter(f => f.childId === selectedChild)
+
+  const filteredPaidFees = selectedChild === "all"
+    ? allPaidFees
+    : allPaidFees.filter(f => f.childId === selectedChild)
+
+  const handlePayNow = (amount: number, feeTitle: string) => {
+    toast.success("Payment Initiated", { description: `Redirecting to payment gateway for ${feeTitle} (₹${amount})...` })
+  }
+
+  const printReceipt = (fee: any) => {
+    const receiptWindow = window.open('', '_blank', 'width=800,height=600');
+    if (receiptWindow) {
+      receiptWindow.document.write(`
+                <html>
+                <head>
+                    <title>Payment Receipt - ${fee.receipt}</title>
+                    <style>
+                        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+                        .receipt-container { max-width: 700px; margin: 0 auto; border: 1px solid #ddd; padding: 40px; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+                        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+                        .school-name { font-size: 24px; font-weight: bold; color: #2563eb; letter-spacing: 1px; text-transform: uppercase; margin: 0; }
+                        .school-address { font-size: 13px; color: #666; margin-top: 5px; }
+                        
+                        .receipt-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+                        .info-group h4 { margin: 0 0 5px 0; font-size: 12px; color: #888; text-transform: uppercase; }
+                        .info-group p { margin: 0; font-size: 15px; font-weight: 600; }
+                        
+                        .student-details { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #e2e8f0; }
+                        .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+                        .detail-row:last-child { margin-bottom: 0; }
+                        .detail-label { color: #64748b; font-size: 14px; }
+                        .detail-value { font-weight: 500; font-size: 14px; }
+                        
+                        .fee-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                        .fee-table th { text-align: left; padding: 12px 0; border-bottom: 2px solid #eee; color: #64748b; font-size: 13px; text-transform: uppercase; }
+                        .fee-table td { padding: 16px 0; border-bottom: 1px solid #eee; }
+                        .amount-col { text-align: right; }
+                        
+                        .total-section { display: flex; justify-content: flex-end; margin-top: 10px; }
+                        .total-box { text-align: right; width: 250px; }
+                        .total-label { font-size: 14px; color: #64748b; }
+                        .total-amount { font-size: 28px; font-weight: bold; color: #0f172a; margin-top: 5px; }
+                        
+                        .footer { margin-top: 60px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #eee; padding-top: 20px; }
+                        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+                        .paid { background: #dcfce7; color: #166534; }
+                        
+                        @media print {
+                           body { padding: 0; }
+                           .receipt-container { box-shadow: none; border: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="receipt-container">
+                        <div class="header">
+                            <h1 class="school-name">Silver Oak International School</h1>
+                            <p class="school-address">123 Education Lane, Knowledge Park, City - 400001</p>
+                        </div>
+                        
+                        <div class="receipt-info">
+                            <div class="info-group">
+                                <h4>Receipt No</h4>
+                                <p>${fee.receipt}</p>
+                            </div>
+                            <div class="info-group" style="text-align: center">
+                                <h4>Date</h4>
+                                <p>${new Date(fee.date).toLocaleDateString()}</p>
+                            </div>
+                             <div class="info-group" style="text-align: right">
+                                <h4>Status</h4>
+                                <span class="badge paid">PAID</span>
+                            </div>
+                        </div>
+                        
+                        <div class="student-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Student Name</span>
+                                <span class="detail-value">${fee.childName}</span>
+                            </div>
+                             <div class="detail-row">
+                                <span class="detail-label">Payment Mode</span>
+                                <span class="detail-value">${fee.method}</span>
+                            </div>
+                        </div>
+                        
+                        <table class="fee-table">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th class="amount-col">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: #333;">${fee.title}</div>
+                                        <div style="font-size: 12px; color: #888; margin-top: 4px;">Tuition and associated academic fees</div>
+                                    </td>
+                                    <td class="amount-col" style="font-weight: 600;">₹${fee.amount.toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="total-section">
+                            <div class="total-box">
+                                <div class="total-label">Total Amount Paid</div>
+                                <div class="total-amount">₹${fee.amount.toLocaleString()}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="footer">
+                            <p>This is a computer-generated receipt and does not require a physical signature.</p>
+                            <p>Generated on ${new Date().toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); }
+                    </script>
+                </body>
+                </html>
+            `);
+      receiptWindow.document.close();
+    } else {
+      toast.error("Popup blocked. Please allow popups to download receipt.");
+    }
+  }
 
   return (
     <DashboardLayout title="Fees Collection">
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Fee Management
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Track and manage your child's fee payments
-          </p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+          <div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Fees & Payments
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              Manage fee payments for all your children
+            </p>
+          </div>
+
+          {/* Child Selector */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="min-w-[180px] justify-between">
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {selectedChild === "all" ? "All Children" : children[selectedChild].name}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem onClick={() => setSelectedChild("all")}>
+                All Children
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedChild("child1")}>
+                Alice Student
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSelectedChild("child2")}>
+                Bob Student
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Fees"
-            value={`₹${totalFees}`}
-            icon={IndianRupee}
-            iconColor="text-blue-600"
-            iconBgColor="bg-blue-100"
-          />
-          <StatCard
-            title="Paid"
-            value={`₹${paidFees}`}
-            icon={CheckCircle}
-            iconColor="text-green-600"
-            iconBgColor="bg-green-100"
-          />
-          <StatCard
-            title="Pending"
-            value={`₹${pendingFees}`}
-            icon={Clock}
-            iconColor="text-orange-600"
-            iconBgColor="bg-orange-100"
-          />
-          <StatCard
-            title="Payments Made"
-            value={paidCount.toString()}
-            icon={CreditCard}
-            iconColor="text-purple-600"
-            iconBgColor="bg-purple-100"
-          />
-        </div>
-
-        {/* Payment Progress */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <IndianRupee className="h-5 w-5" />
-              Payment Progress
-            </CardTitle>
-            <CardDescription>Overall fee payment status</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Payment Completion</span>
-                <span className="text-lg font-bold">{Math.round((paidFees / totalFees) * 100)}%</span>
-              </div>
-              <Progress value={(paidFees / totalFees) * 100} className="h-3" />
-            </div>
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">${totalFees}</p>
-                <p className="text-xs text-muted-foreground">Total Amount</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">${paidFees}</p>
-                <p className="text-xs text-muted-foreground">Paid</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-orange-600">${pendingFees}</p>
-                <p className="text-xs text-muted-foreground">Pending</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Fee Records */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Payment History
-            </CardTitle>
-            <CardDescription>Detailed fee payment records</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {feeRecords.map((fee) => (
-                <div key={fee.id} className="p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        fee.status === "Paid" ? "bg-green-100" :
-                        fee.status === "Pending" ? "bg-orange-100" : "bg-blue-100"
-                      }`}>
-                        {fee.status === "Paid" ? (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        ) : fee.status === "Pending" ? (
-                          <Clock className="h-5 w-5 text-orange-600" />
-                        ) : (
-                          <AlertCircle className="h-5 w-5 text-blue-600" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-semibold">{fee.month}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Due: {new Date(fee.dueDate).toLocaleDateString()}
-                          {fee.paidDate !== "-" && ` • Paid: ${new Date(fee.paidDate).toLocaleDateString()}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right flex items-center gap-3">
-                      <div>
-                        <p className="text-xl font-bold">${fee.amount}</p>
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          fee.status === "Paid" ? "bg-green-100 text-green-700" :
-                          fee.status === "Pending" ? "bg-orange-100 text-orange-700" :
-                          "bg-blue-100 text-blue-700"
-                        }`}>
-                          {fee.status}
-                        </span>
-                      </div>
-                      {fee.status === "Paid" && (
-                        <Button size="sm" variant="outline" className="h-8">
-                          <Download className="h-3 w-3 mr-1" />
-                          Receipt
-                        </Button>
-                      )}
-                      {fee.status === "Pending" && (
-                        <Button size="sm" className="h-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                          Pay Now
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Summary Cards */}
+          <Card className="lg:col-span-3 border-none shadow-sm bg-gradient-to-r from-red-50 to-orange-50">
+            <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-red-100 rounded-full text-red-600">
+                  <AlertCircle className="h-8 w-8" />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div>
+                  <h3 className="text-lg font-bold text-red-900">Total Pending Dues</h3>
+                  <p className="text-sm text-red-700">Accumulated dues for {selectedChild === "all" ? "all children" : children[selectedChild].name}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-3xl font-bold text-red-600">₹{filteredPendingFees.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            <Card className="border-none shadow-md">
+              <CardHeader>
+                <CardTitle>Fee Details</CardTitle>
+                <CardDescription>View pending dues and payment history</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="pending">Pending Dues</TabsTrigger>
+                    <TabsTrigger value="history">Payment History</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="pending" className="space-y-4">
+                    {filteredPendingFees.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No pending dues found.
+                      </div>
+                    )}
+                    {filteredPendingFees.map((fee) => (
+                      <div key={fee.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-xl bg-white hover:shadow-sm transition-all gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1">
+                            <Receipt className="h-5 w-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{fee.title}</h4>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{fee.childName}</span>
+                            </div>
+                            <p className="text-sm text-gray-500">Invoice: {fee.invoice}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant={fee.status === "Overdue" ? "destructive" : "secondary"}>
+                                {fee.status}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> Due {new Date(fee.dueDate).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                          <span className="text-xl font-bold">₹{fee.amount.toLocaleString()}</span>
+                          <Button size="sm" className="w-full md:w-auto bg-green-600 hover:bg-green-700" onClick={() => handlePayNow(fee.amount, fee.title)}>
+                            Pay Now
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </TabsContent>
+
+                  <TabsContent value="history" className="space-y-4">
+                    <div className="rounded-md border">
+                      <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase">
+                        <div className="col-span-4">Fee Description</div>
+                        <div className="col-span-3">Payment Date</div>
+                        <div className="col-span-2">Mode</div>
+                        <div className="col-span-3 text-right">Amount</div>
+                      </div>
+                      <div className="divide-y relative">
+                        {filteredPaidFees.map((fee) => (
+                          <div key={fee.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors bg-white">
+                            <div className="col-span-4">
+                              <p className="font-medium text-sm text-gray-900">{fee.title}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{fee.childName}</span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">{fee.receipt}</p>
+                            </div>
+                            <div className="col-span-3 text-sm text-gray-600">
+                              {new Date(fee.date).toLocaleDateString()}
+                            </div>
+                            <div className="col-span-2">
+                              <Badge variant="outline" className="text-xs">{fee.method}</Badge>
+                            </div>
+                            <div className="col-span-3 text-right flex flex-col items-end gap-1">
+                              <span className="font-bold text-sm">₹{fee.amount.toLocaleString()}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-blue-600 flex items-center gap-1 hover:underline h-auto p-0 hover:bg-transparent"
+                                onClick={() => printReceipt(fee)}
+                              >
+                                <Download className="h-3 w-3" /> Receipt
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar Info */}
+          <div className="space-y-6">
+            <Card className="bg-blue-50 border-blue-100">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-700">
+                  <CreditCard className="h-5 w-5" /> Bank Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-blue-900">
+                <div className="flex justify-between">
+                  <span className="opacity-70">Bank Name</span>
+                  <span className="font-medium">HDFC Bank</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="opacity-70">Account Name</span>
+                  <span className="font-medium">School ERP Trust</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="opacity-70">Account No</span>
+                  <span className="font-medium">XXXX-8821</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="opacity-70">IFSC Code</span>
+                  <span className="font-medium">HDFC0001234</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )

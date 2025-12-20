@@ -44,12 +44,34 @@ const parentPortalRoutes = require('./src/routes/parent');
 const communicationRoutes = require('./src/routes/communication');
 const onlineClassRoutes = require('./src/routes/onlineClass');
 const leaveRoutes = require('./src/routes/leave');
+const sectionRoutes = require('./src/routes/sections');
+const complaintRoutes = require('./src/routes/complaints');
+const admissionEnquiryRoutes = require('./src/routes/admissionEnquiry');
+const visitorRoutes = require('./src/routes/visitors');
+const phoneCallLogRoutes = require('./src/routes/phoneCallLog');
+const postalExchangeRoutes = require('./src/routes/postalExchange');
+const frontOfficeSetupRoutes = require('./src/routes/frontOfficeSetup');
+const gatePassRoutes = require('./src/routes/gatePass');
+const entranceExamRoutes = require('./src/routes/entranceExam');
+
+
+
+
+
+
+
+
 
 // Student portal routes
 const studentPortalRoutes = require('./src/routes/studentPortal');
 
 // Certificate routes
 const certificateRoutes = require('./src/routes/certificates');
+
+// CMS & Subscription routes
+const cmsRoutes = require('./src/routes/cms');
+const subscriptionRoutes = require('./src/routes/subscription');
+const eventRoutes = require('./src/routes/events');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -81,9 +103,31 @@ app.use('/api/parent', parentPortalRoutes);
 app.use('/api/messages', communicationRoutes);
 app.use('/api/online-classes', onlineClassRoutes);
 app.use('/api/leave-requests', leaveRoutes);
+app.use('/api/sections', sectionRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/admission-enquiry', admissionEnquiryRoutes);
+app.use('/api/visitors', visitorRoutes);
+app.use('/api/phone-call-log', phoneCallLogRoutes);
+app.use('/api/postal-exchange', postalExchangeRoutes);
+app.use('/api/front-office-setup', frontOfficeSetupRoutes);
+app.use('/api/gate-pass', gatePassRoutes);
+app.use('/api/entrance-exam', entranceExamRoutes);
+
+
+
+
+
+
+
+
 
 // Student portal routes
 app.use('/api/student', studentPortalRoutes);
+
+// CMS & Subscription routes
+app.use('/api/cms', cmsRoutes);
+app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/events', eventRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -117,7 +161,10 @@ app.get('/api/health', (req, res) => {
       '/api/messages',
       '/api/online-classes',
       '/api/leave-requests',
-      '/api/student'
+      '/api/leave-requests',
+      '/api/student',
+      '/api/cms',
+      '/api/subscription'
     ]
   });
 });
@@ -148,3 +195,4 @@ app.listen(PORT, () => {
   console.log('   GET  /api/hostel - Hostel management');
   console.log('\n🔐 OTP-based authentication enabled');
 });
+// Server verified and active
