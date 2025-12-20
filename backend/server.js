@@ -170,9 +170,11 @@ app.get('/api/health', (req, res) => {
 });
 
 // Seed database after a delay
-setTimeout(() => {
-  seedDatabase();
-}, 2000);
+// Seed database after a delay
+// DISABLE SEEDING AS PER REQUEST - Relying on actual registration flow
+// setTimeout(() => {
+//   seedDatabase();
+// }, 2000);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

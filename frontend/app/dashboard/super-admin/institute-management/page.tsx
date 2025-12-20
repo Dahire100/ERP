@@ -9,6 +9,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
   Building2,
   Users,
   Search,
@@ -25,7 +33,8 @@ import {
   Download,
   RefreshCw,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Copy
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -69,6 +78,8 @@ export default function InstituteManagement() {
   const [activeTab, setActiveTab] = useState("all")
   const [isLoading, setIsLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [credentials, setCredentials] = useState<any>(null)
+  const [showCredentials, setShowCredentials] = useState(false)
 
   // Fetch schools from backend
   const fetchSchools = async () => {
@@ -167,9 +178,17 @@ export default function InstituteManagement() {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success("School Approved Successfully", {
-          description: "Login credentials have been sent to the administrator."
-        })
+        if (data.data && data.data.adminPassword) {
+          setCredentials(data.data)
+          setShowCredentials(true)
+          toast.success("School Approved", {
+            description: "Email failed to send. Please copy credentials manually."
+          })
+        } else {
+          toast.success("School Approved Successfully", {
+            description: "Login credentials have been sent to the administrator."
+          })
+        }
         fetchSchools()
       } else {
         toast.error("Approval Failed", {
@@ -487,6 +506,58 @@ export default function InstituteManagement() {
           </Card>
         </div>
       </div>
+
+      {/* Credentials Dialog */}
+      <Dialog open={showCredentials} onOpenChange={setShowCredentials}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>School Credentials Generated</DialogTitle>
+            <DialogDescription>
+              The approval email failed to send. Please manually share these credentials with the school administrator.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-slate-100 p-4 rounded-md space-y-3">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <span className="text-sm font-medium text-slate-500 text-right">School:</span>
+              <span className="col-span-3 font-medium text-slate-900">{credentials?.schoolName}</span>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <span className="text-sm font-medium text-slate-500 text-right">Email:</span>
+              <span className="col-span-3 font-mono text-sm text-slate-700">{credentials?.adminEmail}</span>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <span className="text-sm font-medium text-slate-500 text-right">Password:</span>
+              <span className="col-span-3 font-mono font-bold bg-white px-2 py-1 rounded border text-red-600">{credentials?.adminPassword}</span>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <span className="text-sm font-medium text-slate-500 text-right">Login URL:</span>
+              <span className="col-span-3 text-sm text-blue-600 truncate underline">{credentials?.loginUrl}</span>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowCredentials(false)}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const text = `School: ${credentials?.schoolName}\nURL: ${credentials?.loginUrl}\nEmail: ${credentials?.adminEmail}\nPassword: ${credentials?.adminPassword}`;
+                navigator.clipboard.writeText(text);
+                toast.success("Credentials copied to clipboard");
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Details
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </DashboardLayout>
   )
 }

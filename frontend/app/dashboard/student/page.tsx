@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,35 +35,61 @@ export default function StudentDashboard() {
 
 function StudentDashboardContent() {
   const router = useRouter()
-  const studentInfo = {
-    name: "Alice Student",
-    rollNo: "2024001",
-    class: "10-A",
-    gpa: 3.8,
-    attendance: 94,
-    img: "/placeholder-avatar.jpg"
+  const [studentInfo, setStudentInfo] = useState<any>(null)
+  const [dashboardData, setDashboardData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('http://localhost:5000/api/student/dashboard', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (data.success) {
+          setDashboardData(data.data)
+          setStudentInfo({
+            name: `${data.data.student.firstName} ${data.data.student.lastName}`,
+            rollNo: data.data.student.rollNumber,
+            class: `${data.data.student.class?.name || ''}-${data.data.student.class?.section || ''}`,
+            gpa: 3.8, // GPA calculation logic might be needed backend side or mocked for now
+            attendance: data.data.attendance.percentage,
+            img: "/placeholder-avatar.jpg"
+          })
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDashboard()
+  }, [])
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading dashboard...</div>
   }
 
-  const courses = [
-    { name: "Mathematics", grade: "A", progress: 85, teacher: "Mr. Smith", nextClass: "Tomorrow, 9:00 AM", color: "text-blue-600 bg-blue-50" },
-    { name: "English", grade: "B+", progress: 78, teacher: "Ms. Johnson", nextClass: "Today, 2:00 PM", color: "text-purple-600 bg-purple-50" },
-    { name: "Science", grade: "A-", progress: 82, teacher: "Dr. Williams", nextClass: "Tomorrow, 11:00 AM", color: "text-green-600 bg-green-50" },
-    { name: "History", grade: "B", progress: 75, teacher: "Mr. Brown", nextClass: "Friday, 10:00 AM", color: "text-orange-600 bg-orange-50" },
-  ]
+  if (!studentInfo || !dashboardData) {
+    return <div className="p-8 text-center">Failed to load student data.</div>
+  }
 
-  const assignments = [
-    { id: 1, title: "Math Assignment 5", subject: "Mathematics", dueDate: "2024-11-15", status: "Pending", priority: "High" },
-    { id: 2, title: "English Essay", subject: "English", dueDate: "2024-11-18", status: "Submitted", priority: "Medium" },
-    { id: 3, title: "Science Project", subject: "Science", dueDate: "2024-11-20", status: "Pending", priority: "High" },
-  ]
+  // Map API data to UI structures
+  const courses = dashboardData.todaySchedule?.timetable?.periods?.map((p: any) => ({
+    name: p.subject,
+    grade: "A", // Placeholder as timetable doesn't have grades
+    progress: 75, // Placeholder
+    teacher: p.teacherId ? `${p.teacherId.firstName} ${p.teacherId.lastName}` : "Unknown",
+    nextClass: `${p.startTime} - ${p.endTime}`,
+    color: "text-blue-600 bg-blue-50"
+  })) || []
 
-  const upcomingEvents = [
-    { title: "Mid-term Exams", date: "2024-11-25", type: "Exam", color: "text-red-600 bg-red-100" },
-    { title: "Sports Day", date: "2024-11-30", type: "Event", color: "text-blue-600 bg-blue-100" },
-    { title: "Parent-Teacher Meeting", date: "2024-12-05", type: "Meeting", color: "text-green-600 bg-green-100" },
-  ]
+  // Create empty arrays if undefined to avoid crashes
+  const assignments: any[] = []
+  const upcomingEvents: any[] = []
 
-  const pendingAssignmentsCount = assignments.filter(a => a.status === "Pending").length
+  const pendingAssignmentsCount = (dashboardData.academics.pendingAssignments || 0) + (dashboardData.academics.pendingHomework || 0)
 
   const quickLinks = [
     { title: "Homework", icon: FileText, href: "/dashboard/student/homework", color: "text-blue-500" },
@@ -104,7 +131,7 @@ function StudentDashboardContent() {
             <Avatar className="h-24 w-24 border-4 border-white/20 shadow-lg">
               <AvatarImage src={studentInfo.img} />
               <AvatarFallback className="bg-white/10 text-3xl font-bold text-white backdrop-blur-md">
-                {studentInfo.name.split(' ').map(n => n[0]).join('')}
+                {studentInfo.name.split(' ').map((n: string) => n[0]).join('')}
               </AvatarFallback>
             </Avatar>
           </div>
@@ -220,7 +247,7 @@ function StudentDashboardContent() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {courses.map((course) => (
+                  {courses.map((course: any) => (
                     <div key={course.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors gap-4">
                       <div className="flex items-start gap-4">
                         <div className={`p-3 rounded-lg ${course.color}`}>

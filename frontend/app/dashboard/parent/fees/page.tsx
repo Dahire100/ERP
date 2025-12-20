@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -26,25 +26,77 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export default function ParentFees() {
-  const [selectedChild, setSelectedChild] = useState<"all" | "child1" | "child2">("all")
+  const [selectedChild, setSelectedChild] = useState<string>("all")
   const [activeTab, setActiveTab] = useState("pending")
 
-  const children = {
-    child1: { name: "Alice Student", class: "10-A", id: "2024001" },
-    child2: { name: "Bob Student", class: "8-B", id: "2024045" }
-  }
+  const [children, setChildren] = useState<any[]>([])
+  const [fees, setFees] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const allPendingFees = [
-    { id: 1, childId: "child1", childName: "Alice Student", title: "Term 2 Tuition Fee", amount: 12500, dueDate: "2024-12-15", status: "Overdue", invoice: "INV-2024-001" },
-    { id: 2, childId: "child1", childName: "Alice Student", title: "Annual Sports Fee", amount: 2000, dueDate: "2025-01-10", status: "Due Soon", invoice: "INV-2024-045" },
-    { id: 3, childId: "child2", childName: "Bob Student", title: "Term 2 Tuition Fee", amount: 11000, dueDate: "2024-12-15", status: "Overdue", invoice: "INV-2024-002" },
-  ]
+  // Fetch children and then their fees
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const headers = { 'Authorization': `Bearer ${token}` }
 
-  const allPaidFees = [
-    { id: 101, childId: "child1", childName: "Alice Student", title: "Term 1 Tuition Fee", amount: 12500, date: "2024-08-10", method: "Online", receipt: "RCP-1092" },
-    { id: 102, childId: "child1", childName: "Alice Student", title: "Admission Fee", amount: 25000, date: "2024-04-01", method: "Bank Transfer", receipt: "RCP-0045" },
-    { id: 103, childId: "child2", childName: "Bob Student", title: "Term 1 Tuition Fee", amount: 11000, date: "2024-08-12", method: "Card", receipt: "RCP-1105" },
-  ]
+        // 1. Fetch Dashboard to get children list
+        const dashRes = await fetch('http://localhost:5000/api/parent/dashboard', { headers })
+        const dashData = await dashRes.json()
+
+        if (dashData.success) {
+          const kids = dashData.data.children
+          setChildren(kids)
+
+          // 2. Fetch Fees for each child
+          const feePromises = kids.map(async (child: any) => {
+            const feeRes = await fetch(`http://localhost:5000/api/parent/child/${child._id}/fees`, { headers })
+            const feeData = await feeRes.json()
+            if (feeData.success) {
+              return feeData.data.fees.map((f: any) => ({
+                ...f,
+                childId: child._id,
+                childName: `${child.firstName} ${child.lastName}`
+              }))
+            }
+            return []
+          })
+
+          const allFeesArrays = await Promise.all(feePromises)
+          const combinedFees = allFeesArrays.flat()
+          setFees(combinedFees)
+        }
+      } catch (error) {
+        console.error("Failed to fetch parent fees data", error)
+        toast.error("Failed to load fees")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const allPendingFees = fees.filter(f => f.status === 'pending' || f.status === 'partial' || f.status === 'overdue').map(f => ({
+    id: f._id,
+    childId: f.childId,
+    childName: f.childName,
+    title: f.title || "Tuition Fee",
+    amount: f.amount - f.paidAmount,
+    dueDate: f.dueDate,
+    status: new Date(f.dueDate) < new Date() ? "Overdue" : "Pending",
+    invoice: f.invoiceNumber || "INV-MISSING"
+  }))
+
+  const allPaidFees = fees.filter(f => f.status === 'paid').map(f => ({
+    id: f._id,
+    childId: f.childId,
+    childName: f.childName,
+    title: f.title || "Tuition Fee",
+    amount: f.paidAmount,
+    date: f.updatedAt,
+    method: f.paymentMethod || "Online",
+    receipt: f.receiptNumber || "RCP-MISSING"
+  }))
 
   const filteredPendingFees = selectedChild === "all"
     ? allPendingFees
@@ -177,6 +229,12 @@ export default function ParentFees() {
     }
   }
 
+  const getSelectedChildName = () => {
+    if (selectedChild === "all") return "All Children"
+    const child = children.find(c => c._id === selectedChild)
+    return child ? `${child.firstName} ${child.lastName}` : "Unknown Child"
+  }
+
   return (
     <DashboardLayout title="Fees Collection">
       <div className="space-y-6">
@@ -196,7 +254,7 @@ export default function ParentFees() {
               <Button variant="outline" className="min-w-[180px] justify-between">
                 <span className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  {selectedChild === "all" ? "All Children" : children[selectedChild].name}
+                  {getSelectedChildName()}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
@@ -205,12 +263,11 @@ export default function ParentFees() {
               <DropdownMenuItem onClick={() => setSelectedChild("all")}>
                 All Children
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedChild("child1")}>
-                Alice Student
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedChild("child2")}>
-                Bob Student
-              </DropdownMenuItem>
+              {children.map(child => (
+                <DropdownMenuItem key={child._id} onClick={() => setSelectedChild(child._id)}>
+                  {child.firstName} {child.lastName}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -225,7 +282,7 @@ export default function ParentFees() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-red-900">Total Pending Dues</h3>
-                  <p className="text-sm text-red-700">Accumulated dues for {selectedChild === "all" ? "all children" : children[selectedChild].name}</p>
+                  <p className="text-sm text-red-700">Accumulated dues for {getSelectedChildName()}</p>
                 </div>
               </div>
               <div className="text-right">

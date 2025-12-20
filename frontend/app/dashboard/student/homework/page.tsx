@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -18,24 +18,52 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 
 export default function StudentHomework() {
+  const [assignments, setAssignments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [filterSubject, setFilterSubject] = useState("all")
   const [submissionOpen, setSubmissionOpen] = useState(false)
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null)
 
-  const assignments = [
-    { id: 1, title: "Algebra Problems", subject: "Mathematics", dueDate: "2024-11-18", status: "Pending", priority: "High", description: "Complete exercises 1-10 from page 42. Show all working steps.", score: null },
-    { id: 2, title: "Essay Writing", subject: "English", dueDate: "2024-11-15", status: "Submitted", priority: "Low", description: "Write a 500-word essay on environmental conservation.", score: null },
-    { id: 3, title: "Lab Report", subject: "Science", dueDate: "2024-11-20", status: "Pending", priority: "Medium", description: "Submit the chemistry experiment report including observation tables.", score: null },
-    { id: 4, title: "Chapter Summary", subject: "History", dueDate: "2024-11-12", status: "Graded", priority: "Low", description: "Summarize chapter 3: The Industrial Revolution.", score: 88 },
-    { id: 5, title: "Geometry Assignment", subject: "Mathematics", dueDate: "2024-11-10", status: "Graded", priority: "Medium", description: "Solve geometry problems on triangles.", score: 95 },
-  ]
+  useEffect(() => {
+    const fetchHomework = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('http://localhost:5000/api/student/homework', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (data.success) {
+          // Map API data to UI format
+          const mappedAssignments = data.data.map((hw: any) => ({
+            id: hw._id,
+            title: hw.title,
+            subject: hw.subject?.name || hw.subject || "General", // Handle populated subject or string
+            dueDate: hw.dueDate,
+            status: hw.submission ? capitalize(hw.submission.status) : (new Date(hw.dueDate) < new Date() ? "Overdue" : "Pending"),
+            priority: "Medium", // Default, or add priority to backend model
+            description: hw.description,
+            score: hw.submission?.marks || null
+          }))
+          setAssignments(mappedAssignments)
+        }
+      } catch (error) {
+        console.error("Failed to fetch homework", error)
+        toast.error("Failed to load homework")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchHomework()
+  }, [])
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
   const subjects = Array.from(new Set(assignments.map(a => a.subject)))
 
   const filteredAssignments = assignments.filter(a => filterSubject === "all" || a.subject === filterSubject)
 
-  const pendingCount = assignments.filter(a => a.status === "Pending").length
-  const submittedCount = assignments.filter(a => a.status === "Submitted").length
+  const pendingCount = assignments.filter(a => a.status === "Pending" || a.status === "Overdue").length
+  const submittedCount = assignments.filter(a => a.status === "Submitted" || a.status === "Graded" || a.status === "Late").length
   const gradedAssignments = assignments.filter(a => a.status === "Graded" && a.score)
   const averageScore = gradedAssignments.length > 0
     ? gradedAssignments.reduce((sum, a) => sum + (a.score || 0), 0) / gradedAssignments.length
@@ -50,10 +78,38 @@ export default function StudentHomework() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmissionOpen(false)
-    toast.success("Assignment Submitted", { description: `Successfully submitted ${selectedAssignment?.title}` })
+    try {
+      const token = localStorage.getItem('token')
+      // Mock submission for now as file upload requires more setup
+      const res = await fetch(`http://localhost:5000/api/student/homework/${selectedAssignment.id}/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: "Submitted via portal", // Placeholder
+          fileUrl: "" // Placeholder
+        })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setSubmissionOpen(false)
+        toast.success("Assignment Submitted", { description: `Successfully submitted ${selectedAssignment?.title}` })
+        // Refresh list
+        const updatedAssignments = assignments.map(a =>
+          a.id === selectedAssignment.id ? { ...a, status: "Submitted" } : a
+        )
+        setAssignments(updatedAssignments)
+      } else {
+        toast.error(data.error || "Submission failed")
+      }
+    } catch (error) {
+      toast.error("Submission failed")
+    }
   }
 
   const renderAssignmentList = (statusFilter: string) => {

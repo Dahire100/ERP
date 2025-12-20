@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -46,42 +46,54 @@ export default function ParentDashboard() {
 function ParentDashboardContent() {
   const router = useRouter()
   const [activeChild, setActiveChild] = useState("all")
+  const [children, setChildren] = useState<any[]>([])
+  const [stats, setStats] = useState<any>({})
+  const [loading, setLoading] = useState(true)
 
-  // Mock Data
-  const children = [
-    {
-      id: "child1",
-      name: "Alice Student",
-      class: "10-A",
-      rollNo: "2024001",
-      avatar: "/avatars/alice.jpg",
-      gpa: 3.8,
-      attendance: 94,
-      nextExam: "Mathematics - 12 Dec",
-      pendingFees: 500,
-      assignments: 2,
-      teacher: "Mrs. Johnson"
-    },
-    {
-      id: "child2",
-      name: "Bob Student",
-      class: "8-B",
-      rollNo: "2024045",
-      avatar: "/avatars/bob.jpg",
-      gpa: 3.5,
-      attendance: 88,
-      nextExam: "Science - 14 Dec",
-      pendingFees: 1200,
-      assignments: 4,
-      teacher: "Mr. Smith"
-    },
-  ]
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('http://localhost:5000/api/parent/dashboard', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (data.success) {
+          setStats(data.data.stats)
+          const mappedChildren = data.data.children.map((child: any) => ({
+            id: child._id,
+            name: `${child.firstName} ${child.lastName}`,
+            class: child.class ? `${child.class.name}-${child.class.section}` : 'N/A',
+            rollNo: child.rollNumber,
+            avatar: "/placeholder-avatar.jpg",
+            gpa: child.latestResult ? (child.latestResult.percentage / 25).toFixed(1) : "0.0", // Approx GPA from %
+            attendance: child.attendance?.percentage || 0,
+            nextExam: "Upcoming Exams", // Placeholder
+            pendingFees: child.pendingFees || 0,
+            assignments: child.pendingHomework || 0,
+            teacher: "Class Teacher" // Placeholder
+          }))
+          setChildren(mappedChildren)
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDashboard()
+  }, [])
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading dashboard...</div>
+  }
 
   const notices = [
     { id: 1, title: "Winter Vacation Annual Notification", date: "2024-12-18", category: "Holiday", priority: "High" },
     { id: 2, title: "Parent-Teacher Meeting Schedule", date: "2024-12-15", category: "Meeting", priority: "Medium" },
     { id: 3, title: "Annual Sports Day Registration", date: "2024-12-10", category: "Events", priority: "Low" },
   ]
+
 
   const quickLinks = [
     { title: "Pay Fees", icon: CreditCard, href: "/dashboard/parent/fees", color: "text-green-600", bg: "bg-green-100" },

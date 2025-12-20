@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,49 +16,84 @@ import {
 import { toast } from "sonner"
 
 export default function ParentAttendance() {
-  const [selectedChild, setSelectedChild] = useState<"child1" | "child2">("child1")
+  const [selectedChild, setSelectedChild] = useState<string>("")
+  const [children, setChildren] = useState<any[]>([])
+  const [attendanceData, setAttendanceData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  const children = {
-    child1: { name: "Alice Student", class: "10-A" },
-    child2: { name: "Bob Student", class: "8-B" }
-  }
-
-  // Mock Data per child
-  const attendanceData = {
-    child1: {
-      totalDays: 180,
-      present: 172,
-      absent: 5,
-      late: 3,
-      percentage: 95.5,
-      recent: [
-        { date: "2024-12-18", status: "Present", time: "08:05 AM" },
-        { date: "2024-12-17", status: "Present", time: "08:10 AM" },
-        { date: "2024-12-16", status: "Late", time: "08:45 AM" },
-        { date: "2024-12-13", status: "Present", time: "08:12 AM" },
-        { date: "2024-12-12", status: "Present", time: "08:00 AM" },
-      ]
-    },
-    child2: {
-      totalDays: 180,
-      present: 160,
-      absent: 15,
-      late: 5,
-      percentage: 88.8,
-      recent: [
-        { date: "2024-12-18", status: "Present", time: "08:20 AM" },
-        { date: "2024-12-17", status: "Absent", time: "-" },
-        { date: "2024-12-16", status: "Present", time: "08:15 AM" },
-        { date: "2024-12-13", status: "Late", time: "08:40 AM" },
-        { date: "2024-12-12", status: "Present", time: "08:10 AM" },
-      ]
+  // Fetch children on mount
+  useEffect(() => {
+    const fetchChildren = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('http://localhost:5000/api/parent/dashboard', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (data.success && data.data.children.length > 0) {
+          setChildren(data.data.children)
+          setSelectedChild(data.data.children[0]._id) // Default to first child
+        }
+      } catch (error) {
+        console.error("Failed to fetch children", error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    fetchChildren()
+  }, [])
 
-  const currentData = attendanceData[selectedChild]
+  // Fetch attendance when selected child changes
+  useEffect(() => {
+    if (!selectedChild) return
+
+    const fetchAttendance = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(`http://localhost:5000/api/parent/child/${selectedChild}/attendance`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+
+        if (data.success) {
+          const stats = data.data.statistics
+          const records = data.data.records.slice(0, 5) // Last 5 days for "recent"
+
+          setAttendanceData({
+            totalDays: stats.total,
+            present: stats.present,
+            absent: stats.absent,
+            // API doesn't separate "late", so assume 0 or derived from remarks if needed. 
+            // For now we just map 'present' status.
+            late: 0,
+            percentage: stats.percentage,
+            recent: records.map((r: any) => ({
+              date: r.date,
+              status: r.status === 'present' ? 'Present' : (r.status === 'absent' ? 'Absent' : 'Late'),
+              time: r.status === 'present' ? '08:00 AM' : '-' // Placeholder time as API might not return exact time yet
+            }))
+          })
+        }
+      } catch (error) {
+        console.error("Failed to fetch attendance", error)
+        toast.error("Failed to load attendance")
+      }
+    }
+    fetchAttendance()
+  }, [selectedChild])
+
+  const currentData = attendanceData || {
+    totalDays: 0, present: 0, absent: 0, late: 0, percentage: 0, recent: []
+  }
 
   const handleViewReport = () => {
-    toast.info("Downloading Full Attendance Report", { description: `Generating PDF report for ${children[selectedChild].name}` })
+    const childName = children.find(c => c._id === selectedChild)?.firstName || "Child"
+    toast.info("Downloading Full Attendance Report", { description: `Generating PDF report for ${childName}` })
+  }
+
+  const getSelectedChildName = () => {
+    const child = children.find(c => c._id === selectedChild)
+    return child ? `${child.firstName} ${child.lastName}` : "Loading..."
   }
 
   return (
@@ -71,7 +106,7 @@ export default function ParentAttendance() {
               Attendance Tracking
             </h2>
             <p className="text-muted-foreground mt-1">
-              Monitor attendance and punctuality for {children[selectedChild].name}
+              Monitor attendance and punctuality for {getSelectedChildName()}
             </p>
           </div>
 
@@ -80,18 +115,17 @@ export default function ParentAttendance() {
               <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
                 <span className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-blue-600" />
-                  {children[selectedChild].name}
+                  {getSelectedChildName()}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
-              <DropdownMenuItem onClick={() => setSelectedChild("child1")}>
-                Alice Student (10-A)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedChild("child2")}>
-                Bob Student (8-B)
-              </DropdownMenuItem>
+              {children.map(child => (
+                <DropdownMenuItem key={child._id} onClick={() => setSelectedChild(child._id)}>
+                  {child.firstName} {child.lastName}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -177,11 +211,11 @@ export default function ParentAttendance() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {currentData.recent.map((record, index) => (
+                {currentData.recent.map((record: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 border rounded-xl hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${record.status === "Present" ? "bg-green-100" :
-                          record.status === "Absent" ? "bg-red-100" : "bg-orange-100"
+                        record.status === "Absent" ? "bg-red-100" : "bg-orange-100"
                         }`}>
                         {record.status === "Present" ? (
                           <CheckCircle className="h-4 w-4 text-green-600" />
@@ -197,7 +231,7 @@ export default function ParentAttendance() {
                       </div>
                     </div>
                     <span className={`px-2 py-1 rounded-md text-xs font-semibold ${record.status === "Present" ? "bg-green-100 text-green-700" :
-                        record.status === "Absent" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                      record.status === "Absent" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
                       }`}>
                       {record.status}
                     </span>

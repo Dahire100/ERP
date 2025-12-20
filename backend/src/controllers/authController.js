@@ -60,24 +60,8 @@ exports.login = async (req, res) => {
       }
     }
 
-    // Special handling for super admin with default password (for demo)
-    let passwordValid = false;
-
-    if (user.email === 'superadmin@frontierlms.com' && password === 'admin123') {
-      console.log('⚠️  Using default super admin password (demo mode)');
-
-      // Verify against stored hash
-      passwordValid = bcrypt.compareSync(password, user.passwordHash);
-
-      if (!passwordValid) {
-        console.log('❌ Super admin password mismatch - hash may be incorrect');
-        // For demo purposes, still allow login with default password
-        passwordValid = true;
-      }
-    } else {
-      // Normal password verification
-      passwordValid = bcrypt.compareSync(password, user.passwordHash);
-    }
+    // Verify password against stored hash
+    const passwordValid = bcrypt.compareSync(password, user.passwordHash);
 
     if (!passwordValid) {
       console.log('❌ Invalid password for:', email);
@@ -136,13 +120,13 @@ exports.login = async (req, res) => {
 
 // Get current user profile
 exports.getProfile = async (req, res) => {
-  console.log('👤 Profile request for user:', req.user.id);
+  console.log('👤 Profile request for user:', req.user._id);
 
   try {
-    const user = await User.findById(req.user.id).populate('schoolId');
+    const user = await User.findById(req.user._id).populate('schoolId');
 
     if (!user) {
-      console.log('❌ User not found for profile:', req.user.id);
+      console.log('❌ User not found for profile:', req.user._id);
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -176,7 +160,7 @@ exports.getProfile = async (req, res) => {
 // Change password
 exports.changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  const userId = req.user.id;
+  const userId = req.user._id;
 
   console.log('🔑 Password change request for user:', userId);
 
@@ -205,17 +189,8 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // Special handling for super admin default password
-    let currentPasswordValid = false;
-
-    if (user.email === 'superadmin@frontierlms.com' && currentPassword === 'admin123') {
-      console.log('⚠️  Super admin changing from default password');
-      // For demo, allow changing from default password without hash check
-      currentPasswordValid = true;
-    } else {
-      // Normal password verification
-      currentPasswordValid = bcrypt.compareSync(currentPassword, user.passwordHash);
-    }
+    // Verify current password
+    const currentPasswordValid = bcrypt.compareSync(currentPassword, user.passwordHash);
 
     if (!currentPasswordValid) {
       console.log('❌ Password change - current password incorrect for:', user.email);
@@ -256,7 +231,7 @@ exports.verifyToken = (req, res) => {
     success: true,
     message: 'Token is valid',
     user: {
-      id: req.user.id,
+      id: req.user._id,
       email: req.user.email,
       role: req.user.role,
       schoolId: req.user.schoolId

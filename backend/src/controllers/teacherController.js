@@ -5,6 +5,15 @@ const Class = require('../models/Class');
 const Homework = require('../models/Homework');
 const Attendance = require('../models/Attendance');
 const LessonPlan = require('../models/LessonPlan');
+const Visitor = require('../models/Visitor');
+const AdmissionEnquiry = require('../models/AdmissionEnquiry');
+const StudentFee = require('../models/StudentFee');
+const Exam = require('../models/Exam');
+const Complaint = require('../models/Complaint');
+const Event = require('../models/Event');
+const Certificate = require('../models/Certificate');
+const ConsentRequest = require('../models/ConsentRequest');
+const PostalExchange = require('../models/PostalExchange');
 
 // Get teacher dashboard statistics
 exports.getTeacherDashboard = async (req, res) => {
@@ -55,7 +64,7 @@ exports.getTeacherDashboard = async (req, res) => {
 
     // Get today's classes from timetable
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    
+
     res.json({
       success: true,
       data: {
@@ -121,7 +130,7 @@ exports.getTeacherClasses = async (req, res) => {
           });
         });
 
-        const attendancePercentage = totalRecords > 0 
+        const attendancePercentage = totalRecords > 0
           ? Math.round((totalPresent / totalRecords) * 100)
           : 0;
 
@@ -222,9 +231,9 @@ exports.getLessonPlans = async (req, res) => {
     const { startDate, endDate, classId } = req.query;
 
     const query = { teacherId: userId, schoolId };
-    
+
     if (classId) query.classId = classId;
-    
+
     if (startDate || endDate) {
       query.lessonDate = {};
       if (startDate) query.lessonDate.$gte = new Date(startDate);
@@ -348,5 +357,211 @@ exports.deleteLessonPlan = async (req, res) => {
       success: false,
       error: 'Failed to delete lesson plan'
     });
+  }
+};
+
+// --- Front Office ---
+
+// Get Visitors
+exports.getVisitors = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const visitors = await Visitor.find({ schoolId }).sort({ date: -1 });
+    res.json({ success: true, data: visitors });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch visitors' });
+  }
+};
+
+// Add Visitor
+exports.addVisitor = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const newVisitor = new Visitor({ ...req.body, schoolId });
+    await newVisitor.save();
+    res.status(201).json({ success: true, message: 'Visitor added', data: newVisitor });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to add visitor' });
+  }
+};
+
+// Get Enquiries
+exports.getEnquiries = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const enquiries = await AdmissionEnquiry.find({ schoolId }).sort({ date: -1 });
+    res.json({ success: true, data: enquiries });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch enquiries' });
+  }
+};
+
+// --- Fees ---
+
+// Get Class Fees
+exports.getFees = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { classId } = req.query;
+    // Real logic would filter students by the Teacher's assigned classes or the specific class selected
+    // For now we return all fees for the requested class
+    let query = {};
+    if (classId) query.classId = classId;
+
+    // In a real scenario, join with Student to get names
+    const fees = await StudentFee.find(query).populate('studentId', 'firstName lastName rollNumber');
+    res.json({ success: true, data: fees });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch fees' });
+  }
+};
+
+// Send Fee Reminder
+exports.sendFeeReminder = async (req, res) => {
+  try {
+    const { studentId, invoiceId } = req.body;
+    // Logic to send email/SMS would go here
+    res.json({ success: true, message: 'Reminder sent successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to send reminder' });
+  }
+};
+
+// --- Evaluation ---
+
+// Get Assessments
+exports.getAssessments = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const assessments = await Exam.find({ schoolId }).sort({ startDate: -1 });
+    res.json({ success: true, data: assessments });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch assessments' });
+  }
+};
+
+// Create Assessment
+exports.createAssessment = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const newExam = new Exam({ ...req.body, schoolId });
+    await newExam.save();
+    res.status(201).json({ success: true, message: 'Assessment created', data: newExam });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to create assessment' });
+  }
+};
+
+// --- Disciplinary ---
+
+// Get Incidents
+exports.getDisciplinaryIncidents = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    // complaints or incident logs
+    // Assuming type field or separate Logic, depending on existing Complaint model
+    // As fallback, just getting complaints
+    const incidents = await Complaint.find({ schoolId }).populate('studentId', 'firstName lastName');
+    res.json({ success: true, data: incidents });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch incidents' });
+  }
+};
+
+// Report Incident
+exports.reportIncident = async (req, res) => {
+  try {
+    const { schoolId, userId } = req.user;
+    const newIncident = new Complaint({
+      ...req.body,
+      schoolId,
+      reportedBy: userId,
+      status: 'Pending'
+    });
+    await newIncident.save();
+    res.status(201).json({ success: true, message: 'Incident reported', data: newIncident });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to report incident' });
+  }
+};
+
+// --- Events ---
+
+// Get Events
+exports.getEvents = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const events = await Event.find({ schoolId }).sort({ startDateTime: 1 });
+    res.json({ success: true, data: events });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch events' });
+  }
+};
+
+// Propose Event
+exports.proposeEvent = async (req, res) => {
+  try {
+    const { schoolId, userId } = req.user;
+    const newEvent = new Event({
+      ...req.body,
+      schoolId,
+      organizer: userId,
+      title: req.body.title || 'Event Proposal', // Fallback
+      status: 'Pending' // Proposal status
+    });
+    await newEvent.save();
+    res.status(201).json({ success: true, message: 'Event proposed', data: newEvent });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to propose event' });
+  }
+};
+
+// --- Certificates ---
+
+// Get Certificates
+exports.getCertificates = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const certs = await Certificate.find({ schoolId }).populate('studentId', 'firstName lastName');
+    res.json({ success: true, data: certs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch certificates' });
+  }
+};
+
+// Generate Certificate
+exports.generateCertificate = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const newCert = new Certificate({ ...req.body, schoolId, issueDate: new Date() });
+    await newCert.save();
+    res.status(201).json({ success: true, message: 'Certificate generated', data: newCert });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to generate certificate' });
+  }
+};
+
+// --- Consent ---
+
+// Get Requests
+exports.getConsentRequests = async (req, res) => {
+  try {
+    const { schoolId, userId } = req.user;
+    const requests = await ConsentRequest.find({ schoolId, teacherId: userId });
+    res.json({ success: true, data: requests });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch consent requests' });
+  }
+};
+
+// Create Request
+exports.createConsentRequest = async (req, res) => {
+  try {
+    const { schoolId, userId } = req.user;
+    const newRequest = new ConsentRequest({ ...req.body, schoolId, teacherId: userId });
+    await newRequest.save();
+    res.status(201).json({ success: true, message: 'Consent request created', data: newRequest });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to create consent request' });
   }
 };

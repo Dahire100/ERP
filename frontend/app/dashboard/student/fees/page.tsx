@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,19 +12,47 @@ import { toast } from "sonner"
 
 export default function StudentFees() {
     const [activeTab, setActiveTab] = useState("pending")
+    const [fees, setFees] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
 
-    const pendingFees = [
-        { id: 1, title: "Term 2 Tuition Fee", amount: 12500, dueDate: "2024-12-15", status: "Overdue", invoice: "INV-2024-001" },
-        { id: 2, title: "Annual Sports Fee", amount: 2000, dueDate: "2025-01-10", status: "Due Soon", invoice: "INV-2024-045" },
-        { id: 3, title: "Lab Material Charges", amount: 1500, dueDate: "2025-01-15", status: "Upcoming", invoice: "INV-2024-052" },
-    ]
+    useEffect(() => {
+        const fetchFees = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch('http://localhost:5000/api/student/fees', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+                if (data.success) {
+                    setFees(data.data.fees)
+                }
+            } catch (error) {
+                console.error("Failed to fetch fees", error)
+                toast.error("Failed to load fees")
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchFees()
+    }, [])
 
-    const paidFees = [
-        { id: 101, title: "Term 1 Tuition Fee", amount: 12500, date: "2024-08-10", method: "Online", receipt: "RCP-1092" },
-        { id: 102, title: "Admission Fee", amount: 25000, date: "2024-04-01", method: "Bank Transfer", receipt: "RCP-0045" },
-        { id: 103, title: "Uniform Charges", amount: 4500, date: "2024-04-05", method: "Card", receipt: "RCP-0098" },
-        { id: 104, title: "Transport Fee (Q1)", amount: 6000, date: "2024-08-15", method: "Online", receipt: "RCP-1156" },
-    ]
+    const pendingFees = fees.filter(f => f.status === 'pending' || f.status === 'partial' || f.status === 'overdue').map(f => ({
+        id: f._id,
+        title: f.title || "Tuition Fee", // Fallback title
+        amount: f.amount - f.paidAmount,
+        dueDate: f.dueDate,
+        status: new Date(f.dueDate) < new Date() ? "Overdue" : "Pending",
+        invoice: f.invoiceNumber || "INV-MISSING"
+    }))
+
+    const paidFees = fees.filter(f => f.status === 'paid').map(f => ({
+        id: f._id,
+        title: f.title || "Tuition Fee",
+        amount: f.paidAmount,
+        date: f.updatedAt,
+        method: f.paymentMethod || "Online",
+        receipt: f.receiptNumber || "RCP-MISSING"
+    }))
 
     const handlePayNow = (amount: number, feeTitle: string) => {
         toast.success("Payment Initiated", { description: `Redirecting to payment gateway for ${feeTitle} (₹${amount})...` })

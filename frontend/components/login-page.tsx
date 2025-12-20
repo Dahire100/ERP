@@ -17,20 +17,15 @@ interface School {
 }
 
 type UserRole = "super_admin" | "school_admin" | "teacher" | "parent" | "student"
-type AuthMethod = "otp" | "password"
+type AuthMethod = "password"
 
 export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("password")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [otpSent, setOtpSent] = useState(false)
-  const [devOTP, setDevOTP] = useState("") // For development mode
 
   const router = useRouter()
 
@@ -42,17 +37,11 @@ export default function LoginPage() {
     { id: "student" as UserRole, name: "Student", icon: UserCircle, color: "from-green-600 to-blue-600", description: "Access courses" },
   ]
 
-  // Set auth method based on role - All roles now use OTP
+  // Reset form when role changes
   useEffect(() => {
-    setAuthMethod("otp")
-    // Reset form when role changes
     setEmail("")
     setPassword("")
-    setOtp("")
     setError("")
-    setSuccess("")
-    setOtpSent(false)
-    setDevOTP("")
   }, [selectedRole])
 
   // Handle password-based login
@@ -95,7 +84,7 @@ export default function LoginPage() {
 
       const redirectRoute = roleRoutes[data.user.role] || "/dashboard"
       console.log("🔀 Password login - Redirecting to:", redirectRoute)
-      
+
       // Use window.location for hard navigation
       window.location.href = redirectRoute
     } catch (err) {
@@ -105,150 +94,11 @@ export default function LoginPage() {
     }
   }
 
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setSuccess("")
-    setIsLoading(true)
-
-    try {
-      const response = await fetch("http://localhost:5000/api/otp/send-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          email,
-          role: selectedRole // Pass role to backend for role-specific OTP
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send OTP")
-      }
-
-      setOtpSent(true)
-      setSuccess("OTP sent successfully! Check your email.")
-
-      // In dev mode, show OTP in UI if email is not configured
-      if (data.devOTP) {
-        setDevOTP(data.devOTP)
-        setSuccess(`OTP sent! (Dev Mode - OTP: ${data.devOTP})`)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send OTP")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
-
-    try {
-      const response = await fetch("http://localhost:5000/api/otp/verify-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          email, 
-          otp,
-          role: selectedRole // Pass role for verification
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Invalid OTP")
-      }
-
-      // Store token and user data
-      localStorage.setItem("token", data.token)
-      localStorage.setItem("user", JSON.stringify(data.user))
-
-      // Debug: Log user role
-      console.log("✅ Login successful. User role:", data.user.role)
-
-      // Redirect based on actual user role from backend (not selectedRole)
-      const roleRoutes: Record<string, string> = {
-        super_admin: "/dashboard/super-admin",
-        school_admin: "/dashboard/admin",
-        teacher: "/dashboard/teacher",
-        student: "/dashboard/student",
-        parent: "/dashboard/parent",
-      }
-
-      const redirectRoute = roleRoutes[data.user.role] || "/dashboard"
-      console.log("🔀 OTP login - Redirecting to:", redirectRoute)
-      
-      // Use window.location for hard navigation
-      window.location.href = redirectRoute
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "OTP verification failed")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleResendOTP = async () => {
-    setError("")
-    setSuccess("")
-    setIsLoading(true)
-
-    try {
-      const response = await fetch("http://localhost:5000/api/otp/resend-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          email,
-          role: selectedRole // Pass role for resend
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to resend OTP")
-      }
-
-      setSuccess("OTP resent successfully!")
-
-      if (data.devOTP) {
-        setDevOTP(data.devOTP)
-        setSuccess(`OTP resent! (Dev Mode - OTP: ${data.devOTP})`)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resend OTP")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleBackToEmail = () => {
-    setOtpSent(false)
-    setOtp("")
-    setError("")
-    setSuccess("")
-    setDevOTP("")
-  }
-
   const handleBackToRoleSelection = () => {
     setSelectedRole(null)
     setEmail("")
     setPassword("")
-    setOtp("")
     setError("")
-    setSuccess("")
-    setOtpSent(false)
-    setDevOTP("")
   }
 
   // Role Selection View
@@ -351,143 +201,83 @@ export default function LoginPage() {
             </div>
 
             <CardTitle className="text-2xl lg:text-3xl font-bold text-gray-900">
-              {otpSent ? "Enter OTP" : "Welcome Back"}
+              Welcome Back
             </CardTitle>
             <CardDescription className="text-base text-gray-600">
-              {otpSent
-                ? "Enter the 6-digit code sent to your email"
-                : "Sign in with OTP verification"}
+              Sign in with your email and password
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {!otpSent ? (
-              // OTP request form (for all roles)
-              <form onSubmit={handleSendOTP} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                    <Mail className="w-4 h-4 text-gray-500" />
-                    <span>Email Address</span>
-                  </label>
+            <form onSubmit={handlePasswordLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-gray-500" />
+                  <span>Email Address</span>
+                </label>
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                  <Lock className="w-4 h-4 text-gray-500" />
+                  <span>Password</span>
+                </label>
+                <div className="relative">
                   <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
                   />
-                </div>
-
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {success && (
-                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-                    {success}
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  className={`w-full h-12 bg-gradient-to-r ${currentRole.color} hover:opacity-90 text-white font-semibold shadow-lg`}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center justify-center space-x-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Sending OTP...</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center space-x-2">
-                      <span>Send OTP</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </span>
-                  )}
-                </Button>
-              </form>
-            ) : (
-              // OTP Verification Form
-              <form onSubmit={handleVerifyOTP} className="space-y-5">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                  <p className="font-medium mb-1">OTP sent to:</p>
-                  <p className="text-blue-900">{email}</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                    <KeyRound className="w-4 h-4 text-gray-500" />
-                    <span>Enter OTP</span>
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Enter 6-digit OTP"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    required
-                    maxLength={6}
-                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-center text-2xl tracking-widest font-mono"
-                  />
-                </div>
-
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {success && (
-                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-                    {success}
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  className={`w-full h-12 bg-gradient-to-r ${currentRole.color} hover:opacity-90 text-white font-semibold shadow-lg`}
-                  disabled={isLoading || otp.length !== 6}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center justify-center space-x-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Verifying...</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center space-x-2">
-                      <Lock className="w-5 h-5" />
-                      <span>Verify & Login</span>
-                    </span>
-                  )}
-                </Button>
-
-                <div className="flex items-center justify-between text-sm">
                   <button
                     type="button"
-                    onClick={handleBackToEmail}
-                    className="text-gray-600 hover:text-gray-900 font-medium"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    ← Change Email
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResendOTP}
-                    disabled={isLoading}
-                    className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                  >
-                    Resend OTP
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-              </form>
-            )}
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                className={`w-full h-12 bg-gradient-to-r ${currentRole.color} hover:opacity-90 text-white font-semibold shadow-lg`}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center space-x-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Logging in...</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center space-x-2">
+                    <span>Login</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </span>
+                )}
+              </Button>
+            </form>
 
             <div className="text-center pt-4">
               <p className="text-xs text-gray-500">
-                🔒 Secure OTP-based authentication • Valid for 10 minutes
+                🔒 Secure authentication • Protected by SSL
               </p>
             </div>
           </CardContent>

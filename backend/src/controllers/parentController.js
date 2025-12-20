@@ -102,6 +102,13 @@ exports.getParentDashboard = async (req, res) => {
           'submissions.studentId': { $ne: child._id }
         });
 
+        // Get pending fees
+        const childFees = await StudentFee.find({
+          studentId: child._id,
+          status: 'pending'
+        });
+        const childPendingFees = childFees.reduce((sum, fee) => sum + fee.amount, 0);
+
         // Get latest exam results
         const latestResult = await ExamResult.findOne({
           studentId: child._id
@@ -118,6 +125,7 @@ exports.getParentDashboard = async (req, res) => {
             percentage: attendancePercentage
           },
           pendingHomework,
+          pendingFees: childPendingFees,
           latestResult: latestResult ? {
             examName: latestResult.examId.examName,
             totalMarks: latestResult.totalMarks,

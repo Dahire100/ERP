@@ -78,6 +78,81 @@ export default function TeacherAcademics() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Weekly Timetable Grid */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />Weekly Timetable</CardTitle>
+            <CardDescription>Your weekly teaching schedule</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px] border rounded-lg bg-slate-50">
+                <div className="grid grid-cols-6 gap-px bg-slate-200">
+                  {/* Header Row */}
+                  <div className="bg-slate-100 p-3 text-center font-medium text-slate-500">Time</div>
+                  {["Mon", "Tue", "Wed", "Thu", "Fri"].map(day => (
+                    <div key={day} className="bg-slate-100 p-3 text-center font-bold text-slate-700">{day}</div>
+                  ))}
+
+                  {/* 09:00 AM Slot */}
+                  <div className="bg-white p-4 text-center text-sm font-medium text-slate-500 flex items-center justify-center">09:00 AM</div>
+                  <div className="bg-purple-100 p-3 border-l-4 border-l-purple-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-purple-900 text-sm">10-A Math</p>
+                    <p className="text-xs text-purple-600">Room 101</p>
+                  </div>
+                  <div className="bg-white m-1"></div>
+                  <div className="bg-blue-100 p-3 border-l-4 border-l-blue-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-blue-900 text-sm">9-A Math</p>
+                    <p className="text-xs text-blue-600">Room 102</p>
+                  </div>
+                  <div className="bg-white m-1"></div>
+                  <div className="bg-purple-100 p-3 border-l-4 border-l-purple-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-purple-900 text-sm">10-A Math</p>
+                    <p className="text-xs text-purple-600">Room 101</p>
+                  </div>
+
+                  {/* 10:00 AM Slot */}
+                  <div className="bg-white p-4 text-center text-sm font-medium text-slate-500 flex items-center justify-center">10:00 AM</div>
+                  <div className="bg-white m-1"></div>
+                  <div className="bg-pink-100 p-3 border-l-4 border-l-pink-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-pink-900 text-sm">10-B Math</p>
+                    <p className="text-xs text-pink-600">Room 103</p>
+                  </div>
+                  <div className="bg-white m-1"></div>
+                  <div className="bg-purple-100 p-3 border-l-4 border-l-purple-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-purple-900 text-sm">10-A Math</p>
+                    <p className="text-xs text-purple-600">Room 101</p>
+                  </div>
+                  <div className="bg-white m-1"></div>
+
+                  {/* 11:00 AM Slot */}
+                  <div className="bg-white p-4 text-center text-sm font-medium text-slate-500 flex items-center justify-center">11:00 AM</div>
+                  <div className="bg-blue-100 p-3 border-l-4 border-l-blue-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-blue-900 text-sm">9-A Math</p>
+                    <p className="text-xs text-blue-600">Room 102</p>
+                  </div>
+                  <div className="bg-white m-1"></div>
+                  <div className="bg-pink-100 p-3 border-l-4 border-l-pink-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-pink-900 text-sm">10-B Math</p>
+                    <p className="text-xs text-pink-600">Room 103</p>
+                  </div>
+                  <div className="bg-white m-1"></div>
+                  <div className="bg-blue-100 p-3 border-l-4 border-l-blue-500 m-1 rounded shadow-sm">
+                    <p className="font-bold text-blue-900 text-sm">9-A Math</p>
+                    <p className="text-xs text-blue-600">Room 102</p>
+                  </div>
+
+                  {/* 12:00 PM Slot */}
+                  <div className="bg-white p-4 text-center text-sm font-medium text-slate-500 flex items-center justify-center">12:00 PM</div>
+                  <div className="bg-slate-100 col-span-5 p-3 flex items-center justify-center text-slate-400 text-sm italic m-1 rounded border-2 border-dashed border-slate-200">
+                    Lunch Break
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   )

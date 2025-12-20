@@ -125,7 +125,53 @@ exports.getDashboardData = async (req, res) => {
   try {
     switch (userRole) {
       case 'super_admin':
-        await exports.getSuperAdminStats(req, res);
+        const totalSchools = await School.countDocuments({ status: 'approved' });
+        const pendingRegistrations = await School.countDocuments({ status: 'pending' });
+        const totalSAStudents = await Student.countDocuments();
+        const totalSATeachers = await Teacher.countDocuments();
+
+        // Recent Schools
+        const recentSchools = await School.find()
+          .sort({ createdAt: -1 })
+          .limit(5);
+
+        // Recent Activity (New Schools)
+        const newSchools = await School.find()
+          .sort({ createdAt: -1 })
+          .limit(5);
+
+        const saRecentActivity = newSchools.map(s => ({
+          type: 'new_school',
+          title: 'New School Registration',
+          message: `${s.name} registered`,
+          time: s.createdAt,
+          icon: 'Building2',
+          iconBg: 'bg-blue-100',
+          iconColor: 'text-blue-600'
+        }));
+
+        res.json({
+          stats: {
+            totalSchools,
+            totalStudents: totalSAStudents,
+            activeSubscriptions: 0, // Placeholder
+            monthlyRevenue: 0 // Placeholder
+          },
+          schools: recentSchools.map(s => ({
+            id: s._id,
+            name: s.name,
+            logo: "/placeholder.svg",
+            students: 0, // Need aggregation for real numbers
+            teachers: 0, // Need aggregation
+            status: s.status,
+            plan: "Standard",
+            revenue: "₹0",
+            lastActive: "Now",
+            growth: "0%"
+          })),
+          recentActivity: saRecentActivity,
+          role: 'super_admin'
+        });
         break;
 
       case 'school_admin':

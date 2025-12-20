@@ -250,7 +250,22 @@ exports.approveRegistration = async (req, res) => {
     });
 
     try {
-      await sendSchoolApprovalEmail(school.email, school.schoolName, adminEmail, adminPassword);
+      // Send to Admin Email (Principal's personal email)
+      const emailResultAdmin = await sendSchoolApprovalEmail(adminEmail, school.schoolName, adminEmail, adminPassword);
+
+      // Also send a copy to the School's official email if different
+      if (school.email && school.email !== adminEmail) {
+        try {
+          await sendSchoolApprovalEmail(school.email, school.schoolName, adminEmail, adminPassword);
+        } catch (copyError) {
+          console.log('Could not send copy to school email, but admin email was attempted.');
+        }
+      }
+
+      if (emailResultAdmin && emailResultAdmin.success === false) {
+        throw new Error(emailResultAdmin.message || 'Email configuration missing');
+      }
+
       res.json({
         success: true,
         message: 'School approved successfully! Login credentials have been sent to the school.',
@@ -262,6 +277,7 @@ exports.approveRegistration = async (req, res) => {
         }
       });
     } catch (emailError) {
+      console.error('Email sending failed:', emailError);
       res.json({
         success: true,
         message: 'School approved but email failed to send.',
@@ -403,7 +419,12 @@ exports.autoApproveSchool = async (req, res) => {
     // Send approval email with credentials
     try {
       console.log('📧 Sending approval email with credentials to:', adminEmail);
-      await sendSchoolApprovalEmail(adminEmail, school.schoolName, adminEmail, adminPassword);
+      const emailResult = await sendSchoolApprovalEmail(adminEmail, school.schoolName, adminEmail, adminPassword);
+
+      if (emailResult && emailResult.success === false) {
+        throw new Error(emailResult.message || 'Email configuration missing or failed');
+      }
+
       console.log('✅ Approval email sent to:', adminEmail);
 
       res.json({

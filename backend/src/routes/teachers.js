@@ -22,6 +22,13 @@ const getAllTeachers = async (req, res) => {
 // Add teacher
 const addTeacher = async (req, res) => {
   const { schoolId } = req.user;
+  console.log('➕ Add Teacher Request:', { user: req.user.email, role: req.user.role, schoolId });
+
+  if (!schoolId) {
+    console.error('❌ Missing School ID for user:', req.user._id);
+    return res.status(400).json({ error: 'User is not associated with a school. Cannot add teacher.' });
+  }
+
   const {
     firstName, lastName, email, phone, qualification, subjects,
     joiningDate, address, salary
@@ -42,7 +49,13 @@ const addTeacher = async (req, res) => {
     await newTeacher.save();
 
     // Create user account for teacher
-    const teacherPassword = 'teacher123';
+    // Generate random password
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let teacherPassword = '';
+    for (let i = 0; i < 10; i++) {
+      teacherPassword += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+
     const hashedPassword = bcrypt.hashSync(teacherPassword, 10);
 
     await User.create({
@@ -55,18 +68,50 @@ const addTeacher = async (req, res) => {
       isActive: true
     });
 
+    // Send credentials via email
+    let emailStatus = 'skipped';
+    if (email) {
+      try {
+        const { sendTeacherCredentials } = require('../utils/emailService');
+        const emailResult = await sendTeacherCredentials(email, `${firstName} ${lastName}`, teacherId, teacherPassword);
+
+        // If email fails, we still want to proceed but notify the frontend
+        if (emailResult && emailResult.success === false) {
+          emailStatus = 'failed';
+        } else {
+          emailStatus = 'sent';
+        }
+      } catch (emailError) {
+        console.error('Failed to send teacher credentials email:', emailError);
+        emailStatus = 'failed';
+      }
+    }
+
     res.status(201).json({
-      message: 'Teacher added successfully',
+      message: emailStatus === 'sent'
+        ? 'Teacher added successfully! Credentials sent via email.'
+        : 'Teacher added. Email failed to send, please share credentials manually.',
       teacher: {
         id: newTeacher._id,
         teacherId,
         name: `${firstName} ${lastName}`,
         email
-      }
+      },
+      // ALWAYS Return credentials so frontend can show them in fallback dialog
+      credentials: {
+        email,
+        password: teacherPassword,
+        teacherId: teacherId
+      },
+      emailStatus: emailStatus
     });
   } catch (err) {
-    console.error('Error adding teacher:', err);
-    res.status(500).json({ error: 'Failed to add teacher' });
+    console.error('❌ Error adding teacher:', err);
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'A teacher or user with this email already exists.' });
+    }
+    // Return actual error message for debugging
+    res.status(500).json({ error: `Failed to add teacher: ${err.message}` });
   }
 };
 

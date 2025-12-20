@@ -150,9 +150,11 @@ export default function StaffDirectoryPage() {
                         <CardTitle className="text-lg font-medium flex items-center gap-2">
                             <Search className="h-4 w-4" /> Select Criteria
                         </CardTitle>
-                        <Button size="sm" className="bg-[#0b1c48] hover:bg-[#1a2d65]">
-                            <Plus className="h-4 w-4 mr-1" /> Add Staff
-                        </Button>
+                        <Link href="/dashboard/admin/human-resource/staff-directory/add">
+                            <Button size="sm" className="bg-[#0b1c48] hover:bg-[#1a2d65]">
+                                <Plus className="h-4 w-4 mr-1" /> Add Staff
+                            </Button>
+                        </Link>
                     </CardHeader>
                     <CardContent className="p-6">
                         <div className="grid md:grid-cols-2 gap-6">
