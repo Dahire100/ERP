@@ -68,10 +68,14 @@ const studentPortalRoutes = require('./src/routes/studentPortal');
 // Certificate routes
 const certificateRoutes = require('./src/routes/certificates');
 
+
 // CMS & Subscription routes
 const cmsRoutes = require('./src/routes/cms');
 const subscriptionRoutes = require('./src/routes/subscription');
 const eventRoutes = require('./src/routes/events');
+
+// Super Admin routes
+const superAdminRoutes = require('./src/routes/superAdmin');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -112,6 +116,7 @@ app.use('/api/postal-exchange', postalExchangeRoutes);
 app.use('/api/front-office-setup', frontOfficeSetupRoutes);
 app.use('/api/gate-pass', gatePassRoutes);
 app.use('/api/entrance-exam', entranceExamRoutes);
+app.use('/api/student-categories', require('./src/routes/studentCategory'));
 
 
 
@@ -128,6 +133,9 @@ app.use('/api/student', studentPortalRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/events', eventRoutes);
+
+// Super Admin routes
+app.use('/api/super-admin', superAdminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -178,6 +186,7 @@ app.get('/api/health', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🕒 Started at ${new Date().toISOString()}`);
   console.log(`🍃 MongoDB initialized`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
   console.log('\n📋 Core API Routes:');
