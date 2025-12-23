@@ -1,11 +1,13 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Clock, MapPin, User } from "lucide-react"
+import { toast } from "sonner"
 
 export default function StudentTimetable() {
     const timeSlots = [
@@ -22,37 +24,75 @@ export default function StudentTimetable() {
 
     const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
-    // Mock data structure for timetable
-    const timetableData: Record<string, any[]> = {
-        "Monday": [
-            { subject: "Mathematics", teacher: "Mr. Smith", room: "Room 101", type: "Clas", color: "bg-blue-100 text-blue-700 border-blue-200" },
-            { subject: "Physics", teacher: "Ms. Johnson", room: "Lab 2", type: "Lab", color: "bg-purple-100 text-purple-700 border-purple-200" },
-            { subject: "Chemistry", teacher: "Dr. Brown", room: "Lab 1", type: "Lab", color: "bg-green-100 text-green-700 border-green-200" },
-            { type: "Break", subject: "Short Break" },
-            { subject: "English", teacher: "Mrs. Davis", room: "Room 102", type: "Class", color: "bg-orange-100 text-orange-700 border-orange-200" },
-            { subject: "History", teacher: "Mr. Wilson", room: "Room 103", type: "Class", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-            { type: "Lunch", subject: "Lunch Break" },
-            { subject: "Computer Sci", teacher: "Ms. Clark", room: "Comp Lab", type: "Lab", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-            { subject: "Library", teacher: "-", room: "Library", type: "Activity", color: "bg-gray-100 text-gray-700 border-gray-200" }
-        ],
-        "Tuesday": [
-            { subject: "Physics", teacher: "Ms. Johnson", room: "Room 101", type: "Class", color: "bg-purple-100 text-purple-700 border-purple-200" },
-            { subject: "Mathematics", teacher: "Mr. Smith", room: "Room 101", type: "Class", color: "bg-blue-100 text-blue-700 border-blue-200" },
-            { subject: "Biology", teacher: "Mrs. White", room: "Lab 3", type: "Lab", color: "bg-pink-100 text-pink-700 border-pink-200" },
-            { type: "Break", subject: "Short Break" },
-            { subject: "Geography", teacher: "Mr. Black", room: "Room 104", type: "Class", color: "bg-amber-100 text-amber-700 border-amber-200" },
-            { subject: "English", teacher: "Mrs. Davis", room: "Room 102", type: "Class", color: "bg-orange-100 text-orange-700 border-orange-200" },
-            { type: "Lunch", subject: "Lunch Break" },
-            { subject: "Physical Ed", teacher: "Coach Mike", room: "Ground", type: "Activity", color: "bg-red-100 text-red-700 border-red-200" },
-            { subject: "Art", teacher: "Ms. Green", room: "Art Room", type: "Activity", color: "bg-indigo-100 text-indigo-700 border-indigo-200" }
-        ],
-        // ... we can fill others similarly, keeping it simple for now
+    const [timetableData, setTimetableData] = useState<Record<string, any[]>>({})
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchTimetable = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch('http://127.0.0.1:5000/api/student/timetable', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+                if (data.success) {
+                    // Start with empty structure
+                    const newTimetable: Record<string, any[]> = {}
+                    weekDays.forEach(day => newTimetable[day] = [])
+
+                    // Backend returns array of Timetable objects (one per day? or one per class?)
+                    // Assuming one document per Day for the class, with a 'periods' array
+                    // Check schema in controllers if possible, but let's assume standard structure:
+                    // [{ dayOfWeek: 'Monday', periods: [{ subject, teacherId, startTime, endTime, type, room }] }]
+                    // Or if backend returns flattened list, we group.
+                    // Controller: `Timetable.find({ schoolId, classId }).populate('periods.teacherId')`
+
+                    data.data.forEach((daySchedule: any) => {
+                        const dayName = daySchedule.dayOfWeek
+                        if (newTimetable[dayName] !== undefined) {
+                            newTimetable[dayName] = daySchedule.periods.map((period: any) => ({
+                                subject: period.subject,
+                                teacher: period.teacherId ? `${period.teacherId.firstName} ${period.teacherId.lastName}` : "Vt. Teacher", // Virtual Teacher fallback
+                                room: period.roomNo || "Room N/A",
+                                type: period.type || "Class", // Class, Lab, Break, etc.
+                                color: getSubjectColor(period.subject)
+                            }))
+                        }
+                    })
+
+                    setTimetableData(newTimetable)
+                }
+            } catch (error) {
+                console.error("Failed to fetch timetable", error)
+                toast.error("Failed to load timetable")
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchTimetable()
+    }, [])
+
+    const getSubjectColor = (subject: string) => {
+        const colors = [
+            "bg-blue-100 text-blue-700 border-blue-200",
+            "bg-purple-100 text-purple-700 border-purple-200",
+            "bg-green-100 text-green-700 border-green-200",
+            "bg-orange-100 text-orange-700 border-orange-200",
+            "bg-yellow-100 text-yellow-700 border-yellow-200",
+            "bg-pink-100 text-pink-700 border-pink-200",
+            "bg-cyan-100 text-cyan-700 border-cyan-200",
+            "bg-indigo-100 text-indigo-700 border-indigo-200"
+        ]
+        let hash = 0;
+        for (let i = 0; i < subject.length; i++) {
+            hash = subject.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash) % colors.length];
     }
 
-    // Populate other days with partial data for demo
-    weekDays.slice(2).forEach(day => {
-        timetableData[day] = timetableData["Monday"] // Reusing monday for demo
-    })
+    if (loading) {
+        return <div className="p-8 text-center">Loading Timetable...</div>
+    }
 
     return (
         <DashboardLayout title="Class Timetable">

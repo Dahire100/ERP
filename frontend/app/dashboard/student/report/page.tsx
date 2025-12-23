@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,40 +12,62 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { toast } from "sonner"
 
 export default function StudentReport() {
-  const [activeTerm, setActiveTerm] = useState("term1")
+  const [activeTerm, setActiveTerm] = useState("")
+  const [terms, setTerms] = useState<any>({})
+  const [loading, setLoading] = useState(true)
 
-  const terms = {
-    term1: {
-      name: "Term 1 - 2024-25",
-      subjects: [
-        { name: "Mathematics", marks: 95, grade: "A+", remarks: "Excellent", fullMark: 100 },
-        { name: "Science", marks: 88, grade: "A", remarks: "Good understanding", fullMark: 100 },
-        { name: "English", marks: 92, grade: "A+", remarks: "Outstanding essay", fullMark: 100 },
-        { name: "History", marks: 85, grade: "A", remarks: "Very good", fullMark: 100 },
-        { name: "Computer", marks: 98, grade: "O", remarks: "Exceptional", fullMark: 100 },
-      ],
-      overallPercentage: 91.6,
-      overallGrade: "A+",
-      rank: 3,
-      totalStudents: 45
-    },
-    term2: {
-      name: "Term 2 - 2024-25",
-      subjects: [
-        { name: "Mathematics", marks: 98, grade: "O", remarks: "Perfect", fullMark: 100 },
-        { name: "Science", marks: 92, grade: "A+", remarks: "Excellent improvement", fullMark: 100 },
-        { name: "English", marks: 90, grade: "A+", remarks: "Consistent", fullMark: 100 },
-        { name: "History", marks: 88, grade: "A", remarks: "Good effort", fullMark: 100 },
-        { name: "Computer", marks: 95, grade: "O", remarks: "Great coding skills", fullMark: 100 },
-      ],
-      overallPercentage: 92.6,
-      overallGrade: "O",
-      rank: 2,
-      totalStudents: 45
+  useEffect(() => {
+    fetchProgress()
+  }, [])
+
+  const fetchProgress = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/student/progress', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success && data.data && data.data.length > 0) {
+        const termsData: any = {}
+        data.data.forEach((report: any) => {
+          const key = `term${report.term}` // Assuming term is 1, 2 etc.
+          // Transform subjects if needed, or use as is
+          // Backend StudentProgress might have 'subjects' array with {subjectName, marks, totalMarks, grade, remarks}
+          termsData[key] = {
+            name: `Term ${report.term} - ${report.academicYear}`,
+            subjects: report.subjects.map((s: any) => ({
+              name: s.subjectName || s.subject || "Unknown",
+              marks: s.marksObtained || s.marks,
+              fullMark: s.totalMarks,
+              grade: s.grade,
+              remarks: s.remarks || "Good"
+            })),
+            overallPercentage: report.percentage || 0,
+            overallGrade: report.grade || "-",
+            rank: report.rank || 0,
+            totalStudents: report.totalStudents || 0
+          }
+        })
+        setTerms(termsData)
+        // Set first available term as active
+        if (Object.keys(termsData).length > 0) {
+          setActiveTerm(Object.keys(termsData)[0])
+        } else {
+          setActiveTerm("no_data")
+        }
+      } else {
+        setTerms({})
+        setActiveTerm("no_data")
+      }
+    } catch (error) {
+      console.error("Failed to fetch reports", error)
+      toast.error("Failed to load progress reports")
+    } finally {
+      setLoading(false)
     }
   }
 
-  const currentData = activeTerm === "term1" ? terms.term1 : terms.term2
+  const currentData = terms[activeTerm]
 
   const handleDownload = () => {
     toast.success("Downloading report card...", {
@@ -53,10 +75,25 @@ export default function StudentReport() {
     })
   }
 
-  const chartData = currentData.subjects.map(s => ({
+  if (loading) {
+    return <div className="p-8 text-center">Loading academic reports...</div>
+  }
+
+  if (activeTerm === "no_data" || !currentData) {
+    return (
+      <DashboardLayout title="Report">
+        <div className="p-8 text-center">
+          <h2 className="text-xl font-bold">No Reports Available</h2>
+          <p className="text-muted-foreground">Progress reports have not been published yet.</p>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  const chartData = currentData.subjects.map((s: any) => ({
     name: s.name,
     marks: s.marks,
-    fullMark: 100,
+    fullMark: s.fullMark,
   }))
 
   return (
@@ -79,17 +116,18 @@ export default function StudentReport() {
           </div>
         </div>
 
-        <Tabs defaultValue="term1" className="space-y-6" onValueChange={setActiveTerm}>
+        <Tabs value={activeTerm} className="space-y-6" onValueChange={setActiveTerm}>
           <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-            <TabsTrigger value="term1">Term 1</TabsTrigger>
-            <TabsTrigger value="term2">Term 2</TabsTrigger>
+            {Object.keys(terms).sort().map(key => (
+              <TabsTrigger key={key} value={key}>{terms[key].name}</TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value={activeTerm} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <StatCard title="Overall Grade" value={currentData.overallGrade} icon={Award} iconColor="text-green-600" iconBgColor="bg-green-100" />
               <StatCard title="Percentage" value={`${currentData.overallPercentage}%`} icon={TrendingUp} iconColor="text-blue-600" iconBgColor="bg-blue-100" />
-              <StatCard title="Class Rank" value={`#${currentData.rank}`} icon={Award} iconColor="text-purple-600" iconBgColor="bg-purple-100" />
+              <StatCard title="Class Rank" value={currentData.rank ? `#${currentData.rank}` : 'N/A'} icon={Award} iconColor="text-purple-600" iconBgColor="bg-purple-100" />
               <StatCard title="Total Subjects" value={currentData.subjects.length.toString()} icon={FileText} iconColor="text-orange-600" iconBgColor="bg-orange-100" />
             </div>
 
@@ -104,7 +142,7 @@ export default function StudentReport() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-5">
-                    {currentData.subjects.map((subject, i) => (
+                    {currentData.subjects.map((subject: any, i: number) => (
                       <div key={i} className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <div className="font-semibold">{subject.name}</div>
@@ -113,7 +151,7 @@ export default function StudentReport() {
                             <span className="font-bold text-blue-600">{subject.marks}/{subject.fullMark}</span>
                           </div>
                         </div>
-                        <Progress value={subject.marks} className="h-2.5" />
+                        <Progress value={(subject.marks / subject.fullMark) * 100} className="h-2.5" />
                       </div>
                     ))}
                     <div className="mt-8 p-4 bg-gray-50 rounded-lg border flex justify-between items-center">

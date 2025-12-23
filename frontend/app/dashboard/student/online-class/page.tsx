@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,27 +12,82 @@ import { toast } from "sonner"
 
 export default function StudentOnlineClass() {
   const [activeTab, setActiveTab] = useState("live")
+  const [loading, setLoading] = useState(true)
+  const [liveClasses, setLiveClasses] = useState<any[]>([])
+  const [recordings, setRecordings] = useState<any[]>([])
 
-  const liveClasses = [
-    { id: 1, subject: "Mathematics", topic: "Calculus II", teacher: "Mr. Smith", time: "10:00 AM", date: "2024-11-06", duration: "45 min", status: "Live Now", participants: 28, link: "https://zoom.us/test" },
-    { id: 2, subject: "Science", topic: "Organic Chemistry", teacher: "Dr. Williams", time: "02:00 PM", date: "2024-11-06", duration: "45 min", status: "Upcoming", participants: 0, link: "https://zoom.us/test" },
-    { id: 3, subject: "English", topic: "Shakespeare", teacher: "Ms. Johnson", time: "11:00 AM", date: "2024-11-07", duration: "45 min", status: "Scheduled", participants: 0, link: "https://zoom.us/test" },
-    { id: 4, subject: "History", topic: "World War I", teacher: "Mr. Brown", time: "09:00 AM", date: "2024-11-08", duration: "45 min", status: "Scheduled", participants: 0, link: "https://zoom.us/test" },
-  ]
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('http://127.0.0.1:5000/api/student/online-classes', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (data.success) {
+          // Determine status logic: Live if now is between start and end time?
+          // Or use explicit 'status' field from backend if reliable.
+          // Assuming backend 'status': 'scheduled', 'ongoing', 'completed'
+          const now = new Date()
 
-  const recordings = [
-    { id: 1, subject: "Mathematics", topic: "Algebra Basics", teacher: "Mr. Smith", date: "2024-11-05", duration: "42 min", views: 45 },
-    { id: 2, subject: "Science", topic: "Chemical Reactions", teacher: "Dr. Williams", date: "2024-11-04", duration: "38 min", views: 52 },
-    { id: 3, subject: "History", topic: "World War II", teacher: "Mr. Brown", date: "2024-11-03", duration: "40 min", views: 38 },
-    { id: 4, subject: "English", topic: "Poetry Analysis", teacher: "Ms. Johnson", date: "2024-11-02", duration: "35 min", views: 20 },
-  ]
+          const live = data.data.filter((c: any) => c.status !== "completed").map((c: any) => {
+            let status = "Scheduled"
+            const start = new Date(c.scheduledDate + ' ' + c.startTime)
+            // Note: Date parsing depends on backend format. Assuming simplified check for now or using c.status directly
+            if (c.status === 'ongoing') status = "Live Now"
+            else if (c.status === 'scheduled') status = "Upcoming" // Simplified
+
+            return {
+              id: c._id,
+              subject: c.subject || "General",
+              topic: c.title || c.description || "Class Session",
+              teacher: c.teacherId ? `${c.teacherId.firstName} ${c.teacherId.lastName}` : "Teacher",
+              time: c.startTime || "N/A",
+              date: c.scheduledDate,
+              duration: c.duration ? `${c.duration} min` : "45 min",
+              status: status,
+              participants: 0, // Not available in basic endpoint
+              link: c.joinUrl || "#"
+            }
+          })
+          setLiveClasses(live)
+
+          const past = data.data.filter((c: any) => c.status === "completed").map((c: any) => ({
+            id: c._id,
+            subject: c.subject || "General",
+            topic: c.title || "Class Session",
+            teacher: c.teacherId ? `${c.teacherId.firstName} ${c.teacherId.lastName}` : "Teacher",
+            date: c.scheduledDate,
+            duration: c.duration ? `${c.duration} min` : "45 min",
+            views: 0,
+            link: c.joinUrl || "#" // Might be recording link if supported
+          }))
+          setRecordings(past)
+        }
+      } catch (error) {
+        console.error("Failed to fetch online classes", error)
+        toast.error("Failed to load classes")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchClasses()
+  }, [])
 
   const liveNow = liveClasses.filter(c => c.status === "Live Now").length
   const upcoming = liveClasses.filter(c => c.status === "Upcoming" || c.status === "Scheduled").length
 
   const handleJoin = (link: string) => {
-    window.open(link, "_blank")
-    toast.success("Joining class...", { description: "Redirecting to video platform." })
+    if (link && link !== "#") {
+      window.open(link, "_blank")
+      toast.success("Joining class...", { description: "Redirecting to video platform." })
+    } else {
+      toast.error("Invalid Link", { description: "Class link is not available." })
+    }
+  }
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading Online Classes...</div>
   }
 
   return (
@@ -73,7 +128,7 @@ export default function StudentOnlineClass() {
           />
           <StatCard
             title="Attended"
-            value="24"
+            value="-" // Placeholder
             icon={Users}
             iconColor="text-green-600"
             iconBgColor="bg-green-100"
@@ -94,7 +149,9 @@ export default function StudentOnlineClass() {
           </div>
 
           <TabsContent value="live" className="space-y-4">
-            {liveClasses.map((classItem) => (
+            {liveClasses.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">No live or upcoming classes found.</div>
+            ) : liveClasses.map((classItem) => (
               <div key={classItem.id} className="p-4 border rounded-xl hover:shadow-md transition-shadow bg-white">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1">
@@ -138,7 +195,9 @@ export default function StudentOnlineClass() {
 
           <TabsContent value="recordings" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recordings.map((recording) => (
+              {recordings.length === 0 ? (
+                <div className="col-span-2 text-center py-10 text-muted-foreground">No past recordings found.</div>
+              ) : recordings.map((recording) => (
                 <Card key={recording.id} className="hover:shadow-md transition-all cursor-pointer group">
                   <CardContent className="p-4 flex gap-4">
                     <div className="relative h-24 w-40 bg-gray-900 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">

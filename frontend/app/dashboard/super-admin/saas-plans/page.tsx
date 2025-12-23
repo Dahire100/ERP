@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
+import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
 import { PlanCard } from "@/components/super-admin/plan-card"
 import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import FormModal from "@/components/form-modal"
@@ -23,119 +25,168 @@ interface Plan {
 }
 
 export default function SaaSPlans() {
-  const [plans, setPlans] = useState<Plan[]>([
-    { 
-      id: "1", 
-      name: "Basic", 
-      price: "₹9,900", 
-      description: "Perfect for small schools",
-      features: [
-        "Up to 100 students",
-        "5 GB storage",
-        "Basic reporting",
-        "Email support",
-        "Mobile app access"
-      ],
-      subscribers: 8,
-      status: "Active",
-      revenue: 792,
-      isPopular: false
-    },
-    { 
-      id: "2", 
-      name: "Premium", 
-      price: "₹29,900", 
-      description: "Ideal for growing institutions",
-      features: [
-        "Up to 500 students",
-        "50 GB storage",
-        "Advanced analytics",
-        "Priority support",
-        "Custom branding",
-        "API access",
-        "Automated workflows"
-      ],
-      subscribers: 12,
-      status: "Active",
-      revenue: 3588,
-      isPopular: true
-    },
-    { 
-      id: "3", 
-      name: "Enterprise", 
-      price: "Custom", 
-      description: "For large educational networks",
-      features: [
-        "Unlimited students",
-        "Unlimited storage",
-        "Advanced security",
-        "Dedicated support",
-        "Custom integrations",
-        "SLA guarantee",
-        "Training & onboarding",
-        "Multi-campus support"
-      ],
-      subscribers: 4,
-      status: "Active",
-      revenue: 34000,
-      isPopular: false
-    },
-  ])
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ 
-    open: false, 
-    id: null 
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null
   })
+  const { toast } = useToast()
 
-  const handleAdd = (data: any) => {
-    const newPlan: Plan = { 
-      id: Date.now().toString(), 
-      ...data,
-      features: data.features.split('\n').filter((f: string) => f.trim()),
-      subscribers: 0,
-      revenue: 0
+  useEffect(() => {
+    fetchPlans()
+  }, [])
+
+  const fetchPlans = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/super-admin/plans', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      // Check if response is JSON
+      const contentType = res.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Backend API not available, using empty state')
+        setPlans([])
+        setLoading(false)
+        return
+      }
+
+      const data = await res.json()
+      if (data.success) {
+        setPlans(data.data)
+      } else {
+        setPlans([])
+      }
+    } catch (error) {
+      console.error('Failed to fetch plans:', error)
+      // Don't show error toast if backend isn't ready, just use empty state
+      setPlans([])
+    } finally {
+      setLoading(false)
     }
-    setPlans([...plans, newPlan])
-    setIsModalOpen(false)
   }
 
-  const handleEdit = (id: string, data: any) => {
-    setPlans(plans.map((p) => (p.id === id ? { 
-      ...p, 
-      ...data,
-      features: typeof data.features === 'string' 
-        ? data.features.split('\n').filter((f: string) => f.trim())
-        : data.features
-    } : p)))
-    setIsModalOpen(false)
-    setEditingId(null)
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/super-admin/plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      const result = await res.json()
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Plan created successfully"
+        })
+        fetchPlans()
+        setIsModalOpen(false)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create plan",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`http://127.0.0.1:5000/api/super-admin/plans/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      const result = await res.json()
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Plan updated successfully"
+        })
+        fetchPlans()
+        setIsModalOpen(false)
+        setEditingId(null)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update plan",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ open: true, id })
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteConfirm.id) {
-      setPlans(plans.filter((p) => p.id !== deleteConfirm.id))
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(`http://127.0.0.1:5000/api/super-admin/plans/${deleteConfirm.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const result = await res.json()
+        if (result.success) {
+          toast({
+            title: "Success",
+            description: "Plan deleted successfully"
+          })
+          fetchPlans()
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete plan",
+          variant: "destructive"
+        })
+      }
     }
     setDeleteConfirm({ open: false, id: null })
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout title="SaaS Plan Management">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      </DashboardLayout>
+    )
   }
 
   const formFields = [
     { name: "name", label: "Plan Name", type: "text" as const, required: true },
     { name: "price", label: "Price", type: "number" as const, required: true },
-    { name: "interval", label: "Billing Interval", type: "select" as const, options: [
-      { value: "Monthly", label: "Monthly" },
-      { value: "Yearly", label: "Yearly" }
-    ], required: true },
+    {
+      name: "interval", label: "Billing Interval", type: "select" as const, options: [
+        { value: "Monthly", label: "Monthly" },
+        { value: "Yearly", label: "Yearly" }
+      ], required: true
+    },
     { name: "maxStudents", label: "Max Students", type: "number" as const, required: true },
     { name: "maxTeachers", label: "Max Teachers", type: "number" as const, required: true },
-    { name: "status", label: "Status", type: "select" as const, options: [
-      { value: "Active", label: "Active" },
-      { value: "Inactive", label: "Inactive" }
-    ], required: true },
+    {
+      name: "status", label: "Status", type: "select" as const, options: [
+        { value: "Active", label: "Active" },
+        { value: "Inactive", label: "Inactive" }
+      ], required: true
+    },
   ]
 
   // Calculate stats
@@ -227,7 +278,7 @@ export default function SaaSPlans() {
             <TabsTrigger value="cards">Card View</TabsTrigger>
             <TabsTrigger value="comparison">Feature Comparison</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="cards" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {plans.map((plan) => (
@@ -248,7 +299,7 @@ export default function SaaSPlans() {
               ))}
             </div>
           </TabsContent>
-          
+
           <TabsContent value="comparison" className="mt-6">
             <Card>
               <CardHeader>

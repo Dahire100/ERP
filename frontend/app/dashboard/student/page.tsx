@@ -43,7 +43,7 @@ function StudentDashboardContent() {
     const fetchDashboard = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch('http://localhost:5000/api/student/dashboard', {
+        const res = await fetch('http://127.0.0.1:5000/api/student/dashboard', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await res.json()

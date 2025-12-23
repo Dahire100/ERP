@@ -1,37 +1,39 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
+import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
 import { AdvancedTable } from "@/components/super-admin/advanced-table"
 import { StatusBadge } from "@/components/super-admin/status-badge"
 import { ConfirmationDialog } from "@/components/super-admin/confirmation-dialog"
 import FormModal from "@/components/form-modal"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { 
-  IndianRupee, 
-  TrendingUp, 
-  AlertCircle, 
+import {
+  IndianRupee,
+  TrendingUp,
+  AlertCircle,
   CheckCircle,
   Clock,
   Download,
   Send,
   Calendar
 } from "lucide-react"
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   LineChart,
   Line
@@ -49,91 +51,138 @@ interface Invoice {
 }
 
 export default function Billing() {
-  const [invoices, setInvoices] = useState<Invoice[]>([
-    { 
-      id: "1", 
-      institute: "Central High School", 
-      amount: 5000, 
-      dueDate: "2025-02-01", 
-      status: "Paid",
-      invoiceNumber: "INV-2025-001",
-      issuedDate: "2025-01-01",
-      plan: "Premium"
-    },
-    { 
-      id: "2", 
-      institute: "North Academy", 
-      amount: 3500, 
-      dueDate: "2025-02-01", 
-      status: "Pending",
-      invoiceNumber: "INV-2025-002",
-      issuedDate: "2025-01-01",
-      plan: "Basic"
-    },
-    { 
-      id: "3", 
-      institute: "South Institute", 
-      amount: 2800, 
-      dueDate: "2025-01-15", 
-      status: "Overdue",
-      invoiceNumber: "INV-2025-003",
-      issuedDate: "2024-12-15",
-      plan: "Enterprise"
-    },
-    { 
-      id: "4", 
-      institute: "East Valley School", 
-      amount: 1200, 
-      dueDate: "2025-02-10", 
-      status: "Pending",
-      invoiceNumber: "INV-2025-004",
-      issuedDate: "2025-01-10",
-      plan: "Basic"
-    },
-    { 
-      id: "5", 
-      institute: "West Point Academy", 
-      amount: 4800, 
-      dueDate: "2025-01-25", 
-      status: "Paid",
-      invoiceNumber: "INV-2025-005",
-      issuedDate: "2024-12-25",
-      plan: "Premium"
-    },
-  ])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({ 
-    open: false, 
-    id: null 
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null
   })
   const [dateFilter, setDateFilter] = useState("all")
+  const { toast } = useToast()
 
-  const handleAdd = (data: any) => {
-    const newInvoice: Invoice = { 
-      id: Date.now().toString(), 
-      ...data,
-      amount: parseFloat(data.amount),
-      invoiceNumber: `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
-      issuedDate: new Date().toISOString().split('T')[0]
+  useEffect(() => {
+    fetchInvoices()
+  }, [])
+
+  const fetchInvoices = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/super-admin/invoices', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      // Check if response is JSON
+      const contentType = res.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Backend API not available, using empty state')
+        setInvoices([])
+        setLoading(false)
+        return
+      }
+
+      const data = await res.json()
+      if (data.success) {
+        setInvoices(data.data)
+      } else {
+        setInvoices([])
+      }
+    } catch (error) {
+      console.error('Failed to fetch invoices:', error)
+      // Don't show error toast if backend isn't ready, just use empty state
+      setInvoices([])
+    } finally {
+      setLoading(false)
     }
-    setInvoices([...invoices, newInvoice])
-    setIsModalOpen(false)
   }
 
-  const handleEdit = (id: string, data: any) => {
-    setInvoices(invoices.map((i) => (i.id === id ? { ...i, ...data, amount: parseFloat(data.amount) } : i)))
-    setIsModalOpen(false)
-    setEditingId(null)
+  const handleAdd = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/super-admin/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      const result = await res.json()
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Invoice created successfully"
+        })
+        fetchInvoices()
+        setIsModalOpen(false)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create invoice",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleEdit = async (id: string, data: any) => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`http://127.0.0.1:5000/api/super-admin/invoices/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      const result = await res.json()
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Invoice updated successfully"
+        })
+        fetchInvoices()
+        setIsModalOpen(false)
+        setEditingId(null)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update invoice",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleDelete = (item: any) => {
     setDeleteConfirm({ open: true, id: item.id })
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteConfirm.id) {
-      setInvoices(invoices.filter((i) => i.id !== deleteConfirm.id))
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(`http://127.0.0.1:5000/api/super-admin/invoices/${deleteConfirm.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const result = await res.json()
+        if (result.success) {
+          toast({
+            title: "Success",
+            description: "Invoice deleted successfully"
+          })
+          fetchInvoices()
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete invoice",
+          variant: "destructive"
+        })
+      }
     }
     setDeleteConfirm({ open: false, id: null })
   }
@@ -144,9 +193,19 @@ export default function Billing() {
     }
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout title="Billing & Invoicing">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   const columns = [
-    { 
-      key: "invoiceNumber", 
+    {
+      key: "invoiceNumber",
       label: "Invoice #",
       render: (value: string, row: Invoice) => (
         <div>
@@ -155,24 +214,24 @@ export default function Billing() {
         </div>
       )
     },
-    { 
-      key: "plan", 
-      label: "Plan" 
+    {
+      key: "plan",
+      label: "Plan"
     },
-    { 
-      key: "amount", 
+    {
+      key: "amount",
       label: "Amount",
       render: (value: number) => (
         <span className="font-semibold">₹{value.toLocaleString()}</span>
       )
     },
-    { 
-      key: "issuedDate", 
+    {
+      key: "issuedDate",
       label: "Issued Date",
       render: (value: string) => new Date(value).toLocaleDateString()
     },
-    { 
-      key: "dueDate", 
+    {
+      key: "dueDate",
       label: "Due Date",
       render: (value: string, row: Invoice) => {
         const daysUntilDue = Math.ceil((new Date(value).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
@@ -186,8 +245,8 @@ export default function Billing() {
         )
       }
     },
-    { 
-      key: "status", 
+    {
+      key: "status",
       label: "Status",
       render: (value: string) => <StatusBadge status={value} />
     },
@@ -196,11 +255,13 @@ export default function Billing() {
   const formFields = [
     { name: "institute", label: "Institute", type: "text" as const, required: true },
     { name: "amount", label: "Amount", type: "number" as const, required: true },
-    { name: "status", label: "Status", type: "select" as const, options: [
-      { value: "Paid", label: "Paid" },
-      { value: "Pending", label: "Pending" },
-      { value: "Overdue", label: "Overdue" }
-    ], required: true },
+    {
+      name: "status", label: "Status", type: "select" as const, options: [
+        { value: "Paid", label: "Paid" },
+        { value: "Pending", label: "Pending" },
+        { value: "Overdue", label: "Overdue" }
+      ], required: true
+    },
     { name: "dueDate", label: "Due Date", type: "date" as const, required: true },
     { name: "plan", label: "Plan", type: "text" as const, required: true },
   ]

@@ -1,29 +1,106 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, XCircle, Clock, Calendar as CalendarIcon, AlertCircle } from "lucide-react"
+import { toast } from "sonner"
 
 export default function StudentAttendance() {
     const [date, setDate] = useState<Date | undefined>(new Date())
+    const [loading, setLoading] = useState(true)
+    const [attendanceData, setAttendanceData] = useState<{
+        present: Date[],
+        absent: Date[],
+        late: Date[],
+        holidays: Date[]
+    }>({
+        present: [],
+        absent: [],
+        late: [],
+        holidays: []
+    })
+    const [statsData, setStatsData] = useState({
+        total: 0,
+        present: 0,
+        absent: 0,
+        percentage: 0
+    })
+    const [remarks, setRemarks] = useState<any[]>([])
 
-    // Mock attendance data
-    const attendanceData = {
-        present: [new Date(2024, 11, 2), new Date(2024, 11, 3), new Date(2024, 11, 4), new Date(2024, 11, 5), new Date(2024, 11, 6)],
-        absent: [new Date(2024, 11, 9)],
-        late: [new Date(2024, 11, 10)],
-        holidays: [new Date(2024, 11, 25)]
-    }
+    useEffect(() => {
+        const fetchAttendance = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                // Fetch attendance for the current year or a wide range
+                // For simplicity, we fetch all available history or default to backend logic (last 30 days if params missing? No, backend logic sorts by date)
+                // Let's assume backend returns all if no date range, or we can specify a range.
+                // Looking at backend code: if (startDate || endDate) filter, else return all?
+                // Backend: "const attendanceRecords = await Attendance.find(query).sort({ date: -1 });" -> Returns all if no dates provided.
+
+                const res = await fetch('http://127.0.0.1:5000/api/student/attendance', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+
+                if (data.success) {
+                    const records = data.data.attendance
+                    const stats = data.data.statistics
+
+                    const newAttendanceData: any = {
+                        present: [],
+                        absent: [],
+                        late: [],
+                        holidays: []
+                    }
+                    const newRemarks: any[] = []
+
+                    records.forEach((record: any) => {
+                        const recordDate = new Date(record.date)
+                        const status = record.status.toLowerCase()
+
+                        if (status === 'present') newAttendanceData.present.push(recordDate)
+                        else if (status === 'absent') newAttendanceData.absent.push(recordDate)
+                        else if (status === 'late') newAttendanceData.late.push(recordDate)
+                        else if (status === 'holiday') newAttendanceData.holidays.push(recordDate)
+
+                        if (record.remarks || status === 'absent' || status === 'late') {
+                            newRemarks.push({
+                                date: recordDate.toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }),
+                                type: status.charAt(0).toUpperCase() + status.slice(1),
+                                remark: record.remarks || (status === 'absent' ? 'Absent' : 'Late Arrival')
+                            })
+                        }
+                    })
+
+                    setAttendanceData(newAttendanceData)
+                    setStatsData({
+                        total: stats.totalDays,
+                        present: stats.presentDays,
+                        absent: stats.absentDays,
+                        percentage: stats.percentage
+                    })
+                    setRemarks(newRemarks.slice(0, 5)) // Top 5 remarks
+                }
+            } catch (error) {
+                console.error("Failed to fetch attendance", error)
+                toast.error("Failed to load attendance")
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchAttendance()
+    }, [])
 
     const stats = [
-        { label: "Total Days", value: "24", icon: CalendarIcon, color: "text-blue-600", bg: "bg-blue-100" },
-        { label: "Present", value: "21", icon: CheckCircle, color: "text-green-600", bg: "bg-green-100" },
-        { label: "Absent", value: "2", icon: XCircle, color: "text-red-600", bg: "bg-red-100" },
-        { label: "Late", value: "1", icon: Clock, color: "text-orange-600", bg: "bg-orange-100" },
+        { label: "Total Days", value: statsData.total.toString(), icon: CalendarIcon, color: "text-blue-600", bg: "bg-blue-100" },
+        { label: "Present", value: statsData.present.toString(), icon: CheckCircle, color: "text-green-600", bg: "bg-green-100" },
+        { label: "Absent", value: statsData.absent.toString(), icon: XCircle, color: "text-red-600", bg: "bg-red-100" },
+        { label: "Percentage", value: `${statsData.percentage}%`, icon: Clock, color: "text-orange-600", bg: "bg-orange-100" },
     ]
 
     // Function to style dates in the calendar
@@ -39,6 +116,10 @@ export default function StudentAttendance() {
         absent: { color: 'white', backgroundColor: '#ef4444' }, // red-500
         late: { color: 'white', backgroundColor: '#f97316' }, // orange-500
         holiday: { color: 'white', backgroundColor: '#8b5cf6' } // violet-500
+    }
+
+    if (loading) {
+        return <div className="p-8 text-center">Loading attendance...</div>
     }
 
     return (
@@ -82,7 +163,7 @@ export default function StudentAttendance() {
                                     modifiersStyles={modifiersStyles}
                                 />
                             </CardContent>
-                            <div className="flex justify-center gap-6 pb-6 text-sm text-gray-600">
+                            <div className="flex justify-center gap-6 pb-6 text-sm text-gray-600 flex-wrap">
                                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500"></div> Present</div>
                                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500"></div> Absent</div>
                                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-orange-500"></div> Late</div>
@@ -97,21 +178,21 @@ export default function StudentAttendance() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {[
-                                    { date: "10 Dec 2024", type: "Late", remark: "Arrived 15 mins late due to traffic" },
-                                    { date: "09 Dec 2024", type: "Absent", remark: "Medical Leave (Sick)" },
-                                    { date: "25 Dec 2024", type: "Holiday", remark: "Christmas Holiday" },
-                                ].map((item, idx) => (
-                                    <div key={idx} className="p-3 border rounded-lg bg-gray-50">
-                                        <div className="flex justify-between items-start">
-                                            <span className="font-semibold text-sm">{item.date}</span>
-                                            <Badge variant={item.type === "Late" ? "secondary" : item.type === "Absent" ? "destructive" : "default"}>
-                                                {item.type}
-                                            </Badge>
+                                {remarks.length === 0 ? (
+                                    <p className="text-sm text-center text-muted-foreground">No remarks found.</p>
+                                ) : (
+                                    remarks.map((item, idx) => (
+                                        <div key={idx} className="p-3 border rounded-lg bg-gray-50">
+                                            <div className="flex justify-between items-start">
+                                                <span className="font-semibold text-sm">{item.date}</span>
+                                                <Badge variant={item.type === "Late" ? "secondary" : item.type === "Absent" ? "destructive" : "default"}>
+                                                    {item.type}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2">{item.remark}</p>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-2">{item.remark}</p>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </CardContent>
                         </Card>
                     </div>

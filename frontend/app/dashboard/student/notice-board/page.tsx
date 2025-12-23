@@ -1,77 +1,64 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Pin, Calendar, Bell } from "lucide-react"
+import { Search, Pin, Calendar } from "lucide-react"
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import { toast } from "sonner"
 
 export default function StudentNoticeBoard() {
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedNotice, setSelectedNotice] = useState<any>(null)
+    const [notices, setNotices] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
 
-    const notices = [
-        {
-            id: 1,
-            title: "Annual Sports Day 2024",
-            date: "2024-11-20",
-            category: "Sports",
-            content: "The annual sports day will be held on December 15th. Students interested in participating in track and field events must register with their sports teachers by next Friday. The event will include...",
-            priority: "High",
-            pinned: true
-        },
-        {
-            id: 2,
-            title: "Winter Vacation Schedule",
-            date: "2024-11-18",
-            category: "Academic",
-            content: "The school will remain closed for winter vacation from December 24th to January 2nd. Classes will resume on January 3rd. Holiday homework will be uploaded to the portal.",
-            priority: "Medium",
-            pinned: true
-        },
-        {
-            id: 3,
-            title: "Science Exhibition Registration",
-            date: "2024-11-15",
-            category: "Events",
-            content: "Registration for the Inter-School Science Exhibition is now open. Teams of up to 3 students can participate. Submit your project abstracts to the Science Department Head.",
-            priority: "Medium",
-            pinned: false
-        },
-        {
-            id: 4,
-            title: "Library Book Return Reminder",
-            date: "2024-11-10",
-            category: "Library",
-            content: "All students are requested to return borrowed library books before the commencement of the mid-term evaluations. Late fines will be applicable after the due date.",
-            priority: "Low",
-            pinned: false
-        },
-        {
-            id: 5,
-            title: "New Canteen Menu",
-            date: "2024-11-05",
-            category: "General",
-            content: "We are exciting to announce a new, healthier menu in the school canteen starting next week. Options include fresh fruit bowls, salads, and whole wheat wraps.",
-            priority: "Low",
-            pinned: false
+    useEffect(() => {
+        const fetchNotices = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch('http://127.0.0.1:5000/api/student/notices', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+                if (data.success) {
+                    const formattedNotices = data.data.map((notice: any) => ({
+                        id: notice._id,
+                        title: notice.title,
+                        date: notice.noticeDate,
+                        category: "General", // Default as category might not be in basic schema or is 'type'
+                        content: notice.message || "",
+                        priority: "Medium", // Default
+                        pinned: false // Default
+                    }))
+                    setNotices(formattedNotices)
+                }
+            } catch (error) {
+                console.error("Failed to fetch notices", error)
+                toast.error("Failed to load notices")
+            } finally {
+                setLoading(false)
+            }
         }
-    ]
+        fetchNotices()
+    }, [])
 
     const filteredNotices = notices.filter(notice =>
         notice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         notice.category.toLowerCase().includes(searchTerm.toLowerCase())
     )
+
+    if (loading) {
+        return <div className="p-8 text-center">Loading Notices...</div>
+    }
 
     return (
         <DashboardLayout title="Notice Board">
@@ -98,7 +85,9 @@ export default function StudentNoticeBoard() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredNotices.map((notice) => (
+                    {filteredNotices.length === 0 ? (
+                        <p className="col-span-3 text-center text-muted-foreground py-10">No notices found.</p>
+                    ) : filteredNotices.map((notice) => (
                         <Card
                             key={notice.id}
                             className={`hover:shadow-lg transition-all cursor-pointer group bg-white border-l-4 ${notice.priority === "High" ? "border-l-red-500" :
@@ -147,13 +136,6 @@ export default function StudentNoticeBoard() {
                                     <ScrollArea className="h-[300px] pr-4">
                                         <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                                             {selectedNotice.content}
-                                            {/* Simulating longer content */}
-                                            {selectedNotice.content.length < 200 && (
-                                                <>
-                                                    <br /><br />
-                                                    This is a system generated notice. For verified details, please contact the school administration office during working hours.
-                                                </>
-                                            )}
                                         </div>
                                     </ScrollArea>
                                 </div>

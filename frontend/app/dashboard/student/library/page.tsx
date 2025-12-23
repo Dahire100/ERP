@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,19 +13,49 @@ import { toast } from "sonner"
 
 export default function StudentLibrary() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [issuedBooks, setIssuedBooks] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const issuedBooks = [
-    { id: 1, title: "Mathematics Textbook", author: "John Doe", issueDate: "2024-10-15", dueDate: "2024-11-15", status: "Active" },
-    { id: 2, title: "Science Lab Manual", author: "Jane Smith", issueDate: "2024-10-20", dueDate: "2024-11-20", status: "Active" },
-    { id: 3, title: "English Literature", author: "Bob Johnson", issueDate: "2024-10-10", dueDate: "2024-11-10", status: "Overdue" },
-  ]
+  useEffect(() => {
+    const fetchLibrary = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('http://127.0.0.1:5000/api/student/library/history', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (data.success) {
+          const books = data.data.map((record: any) => ({
+            id: record._id,
+            title: record.bookId ? record.bookId.title : "Unknown Book",
+            author: record.bookId ? record.bookId.author : "Unknown Author",
+            issueDate: record.issueDate,
+            dueDate: record.dueDate,
+            status: record.status || (record.returnDate ? "Returned" : "Active") // logic if status not explicit
+          }))
+          setIssuedBooks(books)
+        }
+      } catch (error) {
+        console.error("Failed to fetch library history", error)
+        toast.error("Failed to load library records")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchLibrary()
+  }, [])
 
-  const activeBooks = issuedBooks.filter(b => b.status === "Active").length
-  const overdueBooks = issuedBooks.filter(b => b.status === "Overdue").length
+  const activeBooks = issuedBooks.filter(b => b.status === "Active" || b.status === "Issued").length
+  const overdueBooks = issuedBooks.filter(b => b.status === "Overdue").length // Logic might need date comparison if backend doesn't update status automatically
 
   const handleRequestBook = (e: React.FormEvent) => {
     e.preventDefault()
     toast.success("Book Requested", { description: "You will be notified when it's available." })
+    // Implement API call later if available
+  }
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading Library Details...</div>
   }
 
   return (
@@ -84,7 +114,9 @@ export default function StudentLibrary() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {issuedBooks.map((book) => (
+                  {issuedBooks.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No books currently issued.</p>
+                  ) : issuedBooks.map((book) => (
                     <div key={book.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow gap-4">
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${book.status === "Overdue" ? "bg-red-100" : "bg-green-100"}`}>

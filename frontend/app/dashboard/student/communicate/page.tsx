@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,47 +24,117 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-// Mock Data
-const users = [
-  { id: 1, name: "Mr. Smith", role: "Mathematics", email: "smith@school.edu", avatar: "/teachers/smith.jpg", status: "online" },
-  { id: 2, name: "Ms. Johnson", role: "English", email: "johnson@school.edu", avatar: "/teachers/johnson.jpg", status: "offline" },
-  { id: 3, name: "Dr. Williams", role: "Science", email: "williams@school.edu", avatar: "/teachers/williams.jpg", status: "busy" },
-  { id: 4, name: "Admin Office", role: "Administration", email: "admin@school.edu", avatar: "/logo.png", status: "online" },
-]
-
-const initialMessages = [
-  { id: 1, fromId: 1, subject: "Algebra Assignment Feedback", body: "Hi John, great work on your recent assignment. I noticed you struggled a bit with quadratic equations. Let's discuss it in the next class.", date: "2024-11-06T10:30:00", read: false, tags: ["Academic"] },
-  { id: 2, fromId: 2, subject: "Essay Submission Deadline", body: "Dear Students, please remember that the final draft of your essay is due this Friday. No extensions will be granted.", date: "2024-11-05T14:15:00", read: true, tags: ["Important"] },
-  { id: 3, fromId: 4, subject: "Annual Sports Day", body: "The Annual Sports Day is scheduled for next week. Please register for events by tomorrow.", date: "2024-11-04T09:00:00", read: true, tags: ["Event"] },
-  { id: 4, fromId: 3, subject: "Lab Report Corrections", body: "Please correct the observation table in your lab report and resubmit.", date: "2024-11-03T16:45:00", read: true, tags: ["Academic"] },
-]
-
 import { toast } from "sonner"
 
+// Static placeholders for valid recipients since we don't have a getTeachers API handy
+// In a real app, we would fetch this list from /api/teachers or /api/users/recipients
+const recipientOptions = [
+  { email: "admin@school.edu", name: "School Admin", role: "Administration" },
+  { email: "principal@school.edu", name: "Mrs. Principal", role: "Principal" },
+  // Ideally this list comes from backend
+]
+
 export default function StudentCommunicate() {
-  const [selectedMessage, setSelectedMessage] = useState(initialMessages[0])
+  const [messages, setMessages] = useState<any[]>([])
+  const [selectedMessage, setSelectedMessage] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false)
   const [replyText, setReplyText] = useState("")
+  const [loading, setLoading] = useState(true)
 
-  const filteredMessages = initialMessages.filter(m =>
-    users.find(u => u.id === m.fromId)?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // New Message State
+  const [newMessage, setNewMessage] = useState({ to: "", subject: "", body: "" })
 
-  const getSender = (id: number) => users.find(u => u.id === id)
+  useEffect(() => {
+    fetchMessages()
+  }, [])
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsNewMessageOpen(false)
-    toast.success("Message Sent", { description: "Your message has been sent successfully." })
+  const fetchMessages = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/messages/inbox', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setMessages(data.data)
+        if (data.data.length > 0) {
+          setSelectedMessage(data.data[0])
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch messages", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSendReply = () => {
-    if (!replyText.trim()) return
-    setReplyText("")
-    toast.success("Reply Sent", { description: "Your reply has been sent." })
+  const filteredMessages = messages.filter(m =>
+    (m.sender?.firstName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+    (m.subject?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+  )
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          recipientEmail: newMessage.to, // Backend needs to support email lookup or ID
+          subject: newMessage.subject,
+          body: newMessage.body
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success("Message Sent", { description: "Your message has been sent successfully." })
+        setIsNewMessageOpen(false)
+        setNewMessage({ to: "", subject: "", body: "" })
+        fetchMessages() // Refresh
+      } else {
+        toast.error("Send Failed", { description: data.error || "Could not send message" })
+      }
+    } catch (error) {
+      toast.error("Error sending message")
+    }
+  }
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !selectedMessage) return
+
+    try {
+      const token = localStorage.getItem('token')
+      // Inferring reply flow (create new message with Re: subject)
+      const recipientEmail = selectedMessage.sender?.email // Assuming populated
+
+      const res = await fetch('http://127.0.0.1:5000/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          recipientEmail: recipientEmail,
+          subject: `Re: ${selectedMessage.subject}`,
+          body: replyText
+        })
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        toast.success("Reply Sent", { description: "Your reply has been sent." })
+        setReplyText("")
+      } else {
+        toast.error("Reply Failed")
+      }
+    } catch (error) {
+      toast.error("Error sending reply")
+    }
   }
 
   return (
@@ -99,24 +169,37 @@ export default function StudentCommunicate() {
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
                     <Label htmlFor="recipient">To</Label>
-                    <Select>
+                    <Select onValueChange={(v) => setNewMessage({ ...newMessage, to: v })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select Recipient" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map(u => (
-                          <SelectItem key={u.id} value={u.email}>{u.name} ({u.role})</SelectItem>
+                        {recipientOptions.map(u => (
+                          <SelectItem key={u.email} value={u.email}>{u.name} ({u.role})</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="subject">Subject</Label>
-                    <Input id="subject" placeholder="Enter subject" required />
+                    <Input
+                      id="subject"
+                      placeholder="Enter subject"
+                      required
+                      value={newMessage.subject}
+                      onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="message">Message</Label>
-                    <Textarea id="message" placeholder="Type your message here..." rows={5} required />
+                    <Textarea
+                      id="message"
+                      placeholder="Type your message here..."
+                      rows={5}
+                      required
+                      value={newMessage.body}
+                      onChange={(e) => setNewMessage({ ...newMessage, body: e.target.value })}
+                    />
                   </div>
                 </div>
                 <DialogFooter>
@@ -139,45 +222,46 @@ export default function StudentCommunicate() {
               </h3>
             </div>
             <ScrollArea className="flex-1">
-              <div className="flex flex-col gap-1 p-2">
-                {filteredMessages.map((message) => {
-                  const sender = getSender(message.fromId)
-                  return (
-                    <button
-                      key={message.id}
-                      onClick={() => setSelectedMessage(message)}
-                      className={cn(
-                        "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent",
-                        selectedMessage.id === message.id ? "bg-blue-50 border-blue-200" : "bg-white",
-                        !message.read && "font-semibold"
-                      )}
-                    >
-                      <div className="flex w-full flex-col gap-1">
-                        <div className="flex items-center">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">{sender?.name}</span>
-                            {!message.read && (
-                              <span className="flex h-2 w-2 rounded-full bg-blue-600" />
-                            )}
+              {loading ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">Loading...</div>
+              ) : filteredMessages.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">No messages found</div>
+              ) : (
+                <div className="flex flex-col gap-1 p-2">
+                  {filteredMessages.map((message) => {
+                    const senderName = message.sender ? `${message.sender.firstName} ${message.sender.lastName}` : "Unknown"
+                    return (
+                      <button
+                        key={message._id}
+                        onClick={() => setSelectedMessage(message)}
+                        className={cn(
+                          "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent",
+                          selectedMessage && selectedMessage._id === message._id ? "bg-blue-50 border-blue-200" : "bg-white",
+                          !message.read && "font-semibold"
+                        )}
+                      >
+                        <div className="flex w-full flex-col gap-1">
+                          <div className="flex items-center">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{senderName}</span>
+                              {!message.read && (
+                                <span className="flex h-2 w-2 rounded-full bg-blue-600" />
+                              )}
+                            </div>
+                            <div className="ml-auto text-xs text-muted-foreground">
+                              {new Date(message.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </div>
                           </div>
-                          <div className="ml-auto text-xs text-muted-foreground">
-                            {new Date(message.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          <div className="text-xs font-medium">{message.subject}</div>
+                          <div className="line-clamp-2 text-xs text-muted-foreground">
+                            {message.body ? message.body.substring(0, 50) : ""}...
                           </div>
                         </div>
-                        <div className="text-xs font-medium">{message.subject}</div>
-                        <div className="line-clamp-2 text-xs text-muted-foreground">
-                          {message.body.substring(0, 300)}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {message.tags.map(tag => (
-                            <Badge key={tag} variant="outline" className="text-[10px] px-1 py-0 h-5">{tag}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </ScrollArea>
           </Card>
 
@@ -188,16 +272,22 @@ export default function StudentCommunicate() {
                 <div className="flex items-center justify-between p-6 border-b">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback>{getSender(selectedMessage.fromId)?.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>
+                        {selectedMessage.sender?.firstName ? selectedMessage.sender.firstName.charAt(0) : "U"}
+                      </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-semibold">{getSender(selectedMessage.fromId)?.name}</div>
-                      <div className="text-xs text-muted-foreground">{getSender(selectedMessage.fromId)?.role}</div>
+                      <div className="font-semibold">
+                        {selectedMessage.sender ? `${selectedMessage.sender.firstName} ${selectedMessage.sender.lastName}` : "Unknown Sender"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {selectedMessage.sender?.role || "Sender"}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="text-gray-500" onClick={() => toast.info("Archived", { description: "Message moved to archive" })}><Archive className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => toast.error("Deleted", { description: "Message moved to trash" })}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-gray-500" onClick={() => toast.info("Archived")}><Archive className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => toast.error("Deleted")}><Trash2 className="h-4 w-4" /></Button>
                     <Separator orientation="vertical" className="h-6" />
 
                     <DropdownMenu>
@@ -207,9 +297,7 @@ export default function StudentCommunicate() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => toast.success("Marked as Unread")}>Mark as Unread</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.success("Starred", { description: "Message added to favorites" })}>Star Message</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600" onClick={() => toast.error("Reported", { description: "Message reported as spam" })}>Report Spam</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.success("Starred")}>Star Message</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -220,7 +308,7 @@ export default function StudentCommunicate() {
                     <div>
                       <h2 className="text-2xl font-bold text-gray-800">{selectedMessage.subject}</h2>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(selectedMessage.date).toLocaleString()}
+                        {new Date(selectedMessage.createdAt).toLocaleString()}
                       </p>
                     </div>
                     <Separator />

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -9,24 +10,76 @@ import { Bus, MapPin, Clock, User, Phone, Navigation, AlertTriangle } from "luci
 import { toast } from "sonner"
 
 export default function StudentTransport() {
-  const transportInfo = {
-    busNumber: "BUS-12",
-    route: "North Route - Morning",
-    pickupTime: "7:30 AM",
-    dropTime: "3:30 PM",
-    driver: { name: "Mr. Johnson", phone: "+1-555-0199" },
-    assistant: { name: "Ms. Sarah", phone: "+1-555-0200" }
-  }
+  const [transportInfo, setTransportInfo] = useState<any>(null)
+  const [routeStops, setRouteStops] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const routeStops = [
-    { stop: "Green Park", time: "7:30 AM", status: "Passed", color: "text-gray-400 bg-gray-100" },
-    { stop: "Central Square", time: "7:45 AM", status: "Passed", color: "text-gray-400 bg-gray-100" },
-    { stop: "Willow Street", time: "7:50 AM", status: "Current", color: "text-blue-600 bg-blue-100 animate-pulse" },
-    { stop: "School Gate", time: "8:00 AM", status: "Next", color: "text-green-600 bg-green-100" },
-  ]
+  useEffect(() => {
+    fetchTransport()
+  }, [])
+
+  const fetchTransport = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://127.0.0.1:5000/api/student/transport', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success && data.data) {
+        const info = data.data
+        setTransportInfo({
+          busNumber: info.vehicleNumber || "N/A",
+          route: info.routeName,
+          pickupTime: info.pickupTime || "TBD",
+          dropTime: info.dropTime || "TBD",
+          // Mocking driver/assistant if not in basic route object, or using placeholders
+          driver: { name: info.driverName || "Assigned Driver", phone: info.driverPhone || "N/A" },
+          assistant: { name: info.assistantName || "Assigned Assistant", phone: info.assistantPhone || "N/A" }
+        })
+
+        if (info.stops) {
+          const formattedStops = info.stops.map((stop: any, index: number) => ({
+            stop: stop.location,
+            time: stop.time,
+            status: index < 2 ? "Passed" : (index === 2 ? "Current" : "Next"), // Mock status logic for now
+            color: index === 2 ? "text-blue-600 bg-blue-100 animate-pulse" : (index < 2 ? "text-gray-400 bg-gray-100" : "text-green-600 bg-green-100")
+          }))
+          setRouteStops(formattedStops)
+        } else {
+          // Fallback stops if none
+          setRouteStops([
+            { stop: "Start Point", time: "7:00 AM", status: "Passed", color: "text-gray-400 bg-gray-100" },
+            { stop: "School", time: "8:00 AM", status: "Next", color: "text-green-600 bg-green-100" }
+          ])
+        }
+      } else {
+        setTransportInfo(null)
+      }
+    } catch (error) {
+      console.error("Failed to fetch transport", error)
+      toast.error("Failed to load transport details")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleNotifyAbsence = () => {
     toast.success("Notification Sent", { description: "Transport admin has been notified of your absence." })
+  }
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading Transport Details...</div>
+  }
+
+  if (!transportInfo) {
+    return (
+      <DashboardLayout title="Transport">
+        <div className="p-8 text-center">
+          <h2 className="text-xl font-bold">No Transport Assigned</h2>
+          <p className="text-muted-foreground">You are not subscribed to any transport route.</p>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -55,7 +108,9 @@ export default function StudentTransport() {
           <div className="lg:col-span-2 space-y-6">
             <Card className="overflow-hidden">
               <div className="h-48 bg-slate-100 relative w-full flex items-center justify-center">
-                <div className="absolute inset-0 bg-[url('https://maps.googleapis.com/maps/api/staticmap?center=40.714728,-73.998672&zoom=12&size=800x400&key=YOUR_API_KEY')] bg-cover bg-center opacity-50 grayscale" />
+                <div className="absolute inset-0 bg-slate-200 bg-cover bg-center opacity-50 grayscale flex items-center justify-center text-slate-400">
+                  Map View Unavailable
+                </div>
                 <div className="z-10 text-center">
                   <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl shadow-sm mb-2 inline-flex items-center gap-2">
                     <span className="relative flex h-3 w-3">

@@ -1,30 +1,86 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Calendar, Award, Clock, BookOpen } from "lucide-react"
-
 import { toast } from "sonner"
 
 export default function StudentExaminations() {
-  const upcomingExams = [
-    { id: 1, subject: "Mathematics", date: "2024-11-20", time: "09:00 AM", duration: "3 hours", syllabus: "Chapters 1-5", daysLeft: 5 },
-    { id: 2, subject: "Science", date: "2024-11-22", time: "09:00 AM", duration: "3 hours", syllabus: "Chapters 1-6", daysLeft: 7 },
-    { id: 3, subject: "English", date: "2024-11-24", time: "09:00 AM", duration: "3 hours", syllabus: "Full syllabus", daysLeft: 9 },
-    { id: 4, subject: "History", date: "2024-11-26", time: "09:00 AM", duration: "2 hours", syllabus: "Chapters 1-4", daysLeft: 11 },
-  ]
+  const [upcomingExams, setUpcomingExams] = useState<any[]>([])
+  const [recentResults, setRecentResults] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const recentResults = [
-    { subject: "Mathematics", marks: 95, total: 100, grade: "A+", percentage: 95 },
-    { subject: "Science", marks: 88, total: 100, grade: "A", percentage: 88 },
-    { subject: "English", marks: 92, total: 100, grade: "A+", percentage: 92 },
-    { subject: "History", marks: 85, total: 100, grade: "A", percentage: 85 },
-  ]
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const headers = { 'Authorization': `Bearer ${token}` }
 
-  const averagePercentage = recentResults.reduce((sum, r) => sum + r.percentage, 0) / recentResults.length
+        const [examsRes, resultsRes] = await Promise.all([
+          fetch('http://127.0.0.1:5000/api/student/exams', { headers }), // filtered by backend logic potentially
+          fetch('http://127.0.0.1:5000/api/student/results', { headers })
+        ])
+
+        const examsData = await examsRes.json()
+        const resultsData = await resultsRes.json()
+
+        if (examsData.success) {
+          // Filter for upcoming future exams
+          const today = new Date()
+          const upcoming = examsData.data.filter((e: any) => new Date(e.examDate) >= today).map((e: any) => {
+            const examDate = new Date(e.examDate)
+            const diffTime = Math.abs(examDate.getTime() - today.getTime())
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            return {
+              id: e._id,
+              subject: e.name || "General", // Exam name or subject
+              date: e.examDate,
+              time: e.startTime || "09:00 AM", // Fallback
+              duration: e.duration ? `${e.duration} mins` : "3 hours",
+              syllabus: e.description || "N/A",
+              daysLeft: diffDays
+            }
+          }).slice(0, 5) // Limit to 5
+          setUpcomingExams(upcoming)
+        }
+
+        if (resultsData.success) {
+          const results = resultsData.data.map((r: any) => ({
+            subject: r.examId?.name || "Result",
+            marks: r.marksObtained,
+            total: r.examId?.totalMarks || 100,
+            grade: r.grade || calculateGrade(r.marksObtained, r.examId?.totalMarks || 100),
+            percentage: ((r.marksObtained / (r.examId?.totalMarks || 100)) * 100).toFixed(1)
+          })).slice(0, 5)
+          setRecentResults(results)
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch examination data", error)
+        toast.error("Failed to load examination data")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const calculateGrade = (marks: number, total: number) => {
+    const p = (marks / total) * 100
+    if (p >= 90) return "A+"
+    if (p >= 80) return "A"
+    if (p >= 70) return "B+"
+    if (p >= 60) return "B"
+    return "C"
+  }
+
+  const averagePercentage = recentResults.length > 0
+    ? recentResults.reduce((sum, r) => sum + Number(r.percentage), 0) / recentResults.length
+    : 0
 
   const handleDownloadReport = () => {
     toast.success("Downloading Report Card", { description: "Your report card download has started." })
@@ -32,6 +88,10 @@ export default function StudentExaminations() {
 
   const handleViewSchedule = () => {
     toast.info("Opening Schedule", { description: "Redirecting to full exam schedule..." })
+  }
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading Examinations...</div>
   }
 
   return (
@@ -73,7 +133,7 @@ export default function StudentExaminations() {
           />
           <StatCard
             title="Next Exam In"
-            value={`${upcomingExams[0]?.daysLeft} days`}
+            value={upcomingExams.length > 0 ? `${upcomingExams[0]?.daysLeft} days` : "N/A"}
             icon={Clock}
             iconColor="text-orange-600"
             iconBgColor="bg-orange-100"
@@ -92,7 +152,9 @@ export default function StudentExaminations() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {upcomingExams.map((exam) => (
+                {upcomingExams.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">No upcoming exams</p>
+                ) : upcomingExams.map((exam) => (
                   <div key={exam.id} className="p-4 border rounded-lg hover:shadow-sm transition-shadow">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -125,7 +187,9 @@ export default function StudentExaminations() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentResults.map((result, index) => (
+                {recentResults.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">No recent results</p>
+                ) : recentResults.map((result, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">{result.subject}</span>
@@ -134,15 +198,17 @@ export default function StudentExaminations() {
                         <span className="text-sm text-muted-foreground">{result.marks}/{result.total}</span>
                       </div>
                     </div>
-                    <Progress value={result.percentage} className="h-2" />
+                    <Progress value={Number(result.percentage)} className="h-2" />
                   </div>
                 ))}
-                <div className="pt-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Overall Average</span>
-                    <span className="text-2xl font-bold text-green-600">{Math.round(averagePercentage)}%</span>
+                {recentResults.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Overall Average</span>
+                      <span className="text-2xl font-bold text-green-600">{Math.round(averagePercentage)}%</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

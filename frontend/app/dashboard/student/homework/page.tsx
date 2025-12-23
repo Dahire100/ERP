@@ -28,7 +28,7 @@ export default function StudentHomework() {
     const fetchHomework = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch('http://localhost:5000/api/student/homework', {
+        const res = await fetch('http://127.0.0.1:5000/api/student/homework', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await res.json()
@@ -83,7 +83,7 @@ export default function StudentHomework() {
     try {
       const token = localStorage.getItem('token')
       // Mock submission for now as file upload requires more setup
-      const res = await fetch(`http://localhost:5000/api/student/homework/${selectedAssignment.id}/submit`, {
+      const res = await fetch(`http://127.0.0.1:5000/api/student/homework/${selectedAssignment.id}/submit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

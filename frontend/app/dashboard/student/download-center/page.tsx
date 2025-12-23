@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,26 +13,50 @@ import { toast } from "sonner"
 
 export default function StudentDownloadCenter() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [materials, setMaterials] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const materials = [
-    { id: 1, title: "Mathematics Chapter 5 Notes", subject: "Mathematics", type: "PDF", size: "2.5 MB", uploadedBy: "Mr. Smith", date: "2024-11-05", downloads: 45 },
-    { id: 2, title: "English Grammar Guide", subject: "English", type: "PDF", size: "1.8 MB", uploadedBy: "Ms. Johnson", date: "2024-11-04", downloads: 38 },
-    { id: 3, title: "Science Lab Manual", subject: "Science", type: "DOCX", size: "3.2 MB", uploadedBy: "Dr. Williams", date: "2024-11-03", downloads: 52 },
-    { id: 4, title: "History Timeline Chart", subject: "History", type: "PNG", size: "1.2 MB", uploadedBy: "Mr. Brown", date: "2024-11-02", downloads: 30 },
-    { id: 5, title: "Math Practice Problems", subject: "Mathematics", type: "PDF", size: "900 KB", uploadedBy: "Mr. Smith", date: "2024-11-01", downloads: 42 },
-  ]
+  useEffect(() => {
+    const fetchDownloads = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('http://127.0.0.1:5000/api/student/downloads', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        if (data.success) {
+          // Backend returns StudyMaterial objects
+          const formattedMaterials = data.data.map((m: any) => ({
+            id: m._id,
+            title: m.title,
+            subject: m.subject || "General", // subject field in StudyMaterial?
+            type: m.type ? m.type.toUpperCase() : "FILE",
+            size: "N/A", // Size not always tracked
+            uploadedBy: "Admin", // or fetch teacher name if populated
+            date: m.createdAt,
+            downloads: 0, // Not tracked in basic schema
+            link: m.fileUrl
+          }))
+          setMaterials(formattedMaterials)
+        }
+      } catch (error) {
+        console.error("Failed to fetch downloads", error)
+        toast.error("Failed to load study materials")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDownloads()
+  }, [])
 
   const categories = [
-    { name: "Study Notes", count: 12, icon: FileText, color: "bg-blue-100 text-blue-600" },
-    { name: "Assignments", count: 8, icon: File, color: "bg-green-100 text-green-600" },
-    { name: "Previous Papers", count: 15, icon: FolderOpen, color: "bg-orange-100 text-orange-600" },
+    { name: "Study Notes", count: materials.filter(m => m.type === 'PDF').length, icon: FileText, color: "bg-blue-100 text-blue-600" },
+    { name: "Assignments", count: materials.filter(m => m.type === 'DOC' || m.type === 'DOCX').length, icon: File, color: "bg-green-100 text-green-600" },
+    { name: "Other", count: materials.length, icon: FolderOpen, color: "bg-orange-100 text-orange-600" },
   ]
 
   const totalFiles = materials.length
-  const totalSize = materials.reduce((sum, m) => {
-    const size = parseFloat(m.size)
-    return sum + (m.size.includes('MB') ? size : size / 1024)
-  }, 0)
+
 
   const getFileIcon = (type: string) => {
     switch (type) {
@@ -43,14 +67,29 @@ export default function StudentDownloadCenter() {
     }
   }
 
-  const handleDownload = (title: string) => {
-    toast.success("Download started", { description: `${title} is downloading...` })
+  const handleDownload = (link: string, title: string) => {
+    if (link) {
+      const a = document.createElement('a')
+      a.href = link
+      a.target = "_blank"
+      // a.download = title // Cross-origin might block download attribute
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      toast.success("Download started", { description: `${title} is downloading...` })
+    } else {
+      toast.error("File not available")
+    }
   }
 
   const filteredMaterials = materials.filter(m =>
     m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.subject.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading Download Center...</div>
+  }
 
   return (
     <DashboardLayout title="Download Center">
@@ -82,7 +121,12 @@ export default function StudentDownloadCenter() {
         </div>
 
         {/* Stats Cards */}
-        {/* ... (existing stats cards code) ... */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {categories.map((cat) => (
+            <StatCard key={cat.name} title={cat.name} value={cat.count.toString()} icon={cat.icon} iconColor={cat.color.split(" ")[1]} iconBgColor={cat.color.split(" ")[0]} />
+          ))}
+        </div>
+
 
         {/* Materials List */}
         <Card className="border-none shadow-md">
@@ -95,18 +139,13 @@ export default function StudentDownloadCenter() {
                 </CardTitle>
                 <CardDescription>Download resources shared by teachers</CardDescription>
               </div>
-              <Button
-                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-blue-200 shadow-lg"
-                onClick={() => toast.success("Download Started", { description: "Downloading all visible files as ZIP..." })}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Download All
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {filteredMaterials.map((material) => (
+              {filteredMaterials.length === 0 ? (
+                <p className="text-center text-muted-foreground py-10">No materials found.</p>
+              ) : filteredMaterials.map((material) => (
                 <div key={material.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-xl hover:bg-gray-50/80 hover:border-gray-300 transition-all bg-white gap-4">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="p-3 bg-gray-50 rounded-xl border">
@@ -127,7 +166,7 @@ export default function StudentDownloadCenter() {
                       <p className="text-sm font-medium text-gray-900">{material.size}</p>
                       <p className="text-xs text-muted-foreground">{material.downloads} downloads</p>
                     </div>
-                    <Button size="sm" variant="outline" className="hover:bg-blue-50 hover:text-blue-600 border-gray-200" onClick={() => handleDownload(material.title)}>
+                    <Button size="sm" variant="outline" className="hover:bg-blue-50 hover:text-blue-600 border-gray-200" onClick={() => handleDownload(material.link, material.title)}>
                       <Download className="h-3 w-3 mr-1" />
                       Download
                     </Button>
