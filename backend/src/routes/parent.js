@@ -7,30 +7,34 @@ const { verifyRole } = require('../middleware/roleAuth');
 
 // Dashboard
 router.get('/dashboard', verifyToken, verifyRole(['parent']), parentController.getParentDashboard);
+router.put('/profile', verifyToken, verifyRole(['parent']), parentController.updateParentProfile);
 
 // Child Information
-router.get('/child/:childId', verifyToken, verifyRole(['parent']), parentController.getChildDetails);
+router.get('/child/:studentId', verifyToken, verifyRole(['parent']), parentController.getChildDetails);
 
 // Attendance
-router.get('/child/:childId/attendance', verifyToken, verifyRole(['parent']), parentController.getChildAttendance);
+router.get('/child/:studentId/attendance', verifyToken, verifyRole(['parent']), parentController.getChildAttendance);
 
 // Homework
-router.get('/child/:childId/homework', verifyToken, verifyRole(['parent']), parentController.getChildHomework);
+router.get('/child/:studentId/homework', verifyToken, verifyRole(['parent']), parentController.getChildHomework);
 
 // Exam Results
-router.get('/child/:childId/results', verifyToken, verifyRole(['parent']), parentController.getChildExamResults);
+router.get('/child/:studentId/results', verifyToken, verifyRole(['parent']), parentController.getChildExamResults);
 
 // Fees
-router.get('/child/:childId/fees', verifyToken, verifyRole(['parent']), parentController.getChildFees);
+router.get('/child/:studentId/fees', verifyToken, verifyRole(['parent']), parentController.getChildFees);
 
 // Progress Reports
-router.get('/child/:childId/progress', verifyToken, verifyRole(['parent']), parentController.getChildProgress);
+router.get('/child/:studentId/progress', verifyToken, verifyRole(['parent']), parentController.getChildProgress);
 
 // Notices
 router.get('/notices', verifyToken, verifyRole(['parent']), parentController.getParentNotices);
 
 // Timetable
 router.get('/child/:studentId/timetable', verifyToken, verifyRole(['parent']), parentController.getChildTimetable);
+
+// Online Classes
+router.get('/child/:studentId/online-classes', verifyToken, verifyRole(['parent']), parentController.getChildOnlineClasses);
 
 // Library History
 router.get('/child/:studentId/library/history', verifyToken, verifyRole(['parent']), parentController.getChildLibraryHistory);

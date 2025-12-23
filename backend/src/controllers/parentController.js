@@ -15,6 +15,8 @@ const StudyMaterial = require('../models/StudyMaterial');
 const HostelOutpass = require('../models/HostelOutpass');
 const LeaveRequest = require('../models/LeaveRequest');
 const Timetable = require('../models/Timetable');
+const OnlineClass = require('../models/OnlineClass');
+const User = require('../models/User');
 
 // Get parent dashboard
 exports.getParentDashboard = async (req, res) => {
@@ -667,4 +669,56 @@ exports.applyChildOutpass = async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to apply outpass' });
   }
 };
+
+
+// Get child online classes
+exports.getChildOnlineClasses = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { studentId } = req.params;
+
+    const student = await Student.findOne({ _id: studentId, schoolId, $or: [{ parentEmail: req.user.email }, { 'parent.email': req.user.email }] });
+    if (!student) return res.status(403).json({ error: 'Access denied' });
+
+    const classId = student.class && student.class._id ? student.class._id : student.class;
+
+    // Check if OnlineClass model exists, if not, this will fail. 
+    // Assuming OnlineClass model is available as imported.
+    const onlineClasses = await OnlineClass.find({
+      schoolId,
+      classId
+    }).populate('teacherId', 'firstName lastName')
+      .sort({ scheduledDate: 1 }); // Sorted by date ascending
+
+    res.json({ success: true, data: onlineClasses });
+  } catch (err) {
+    console.error('Error fetching online classes:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch online classes' });
+  }
+};
+
+// Update parent profile
+exports.updateParentProfile = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { name, phone } = req.body;
+    // Basic splitting of name
+    const parts = name ? name.trim().split(' ') : [];
+    const firstName = parts.length > 0 ? parts[0] : undefined;
+    const lastName = parts.length > 1 ? parts.slice(1).join(' ') : undefined;
+
+    const updateData = {};
+    if (firstName) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (phone) updateData.phone = phone;
+
+    await User.findByIdAndUpdate(userId, updateData);
+
+    res.json({ success: true, message: 'Profile updated successfully' });
+  } catch (err) {
+    console.error('Error updating parent profile:', err);
+    res.status(500).json({ success: false, error: 'Failed to update profile' });
+  }
+};
+
 

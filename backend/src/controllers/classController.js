@@ -213,11 +213,11 @@ exports.getClassStats = async (req, res) => {
 
     const totalClasses = await Class.countDocuments({ schoolId });
     const totalStudents = await Student.countDocuments({ schoolId });
-    
+
     const classes = await Class.find({ schoolId });
     const totalCapacity = classes.reduce((sum, c) => sum + (c.capacity || 0), 0);
-    
-    const avgOccupancy = totalCapacity > 0 
+
+    const avgOccupancy = totalCapacity > 0
       ? Math.round((totalStudents / totalCapacity) * 100)
       : 0;
 
@@ -235,6 +235,167 @@ exports.getClassStats = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch statistics'
+    });
+  }
+};
+
+// Assign subjects to class
+exports.assignSubjects = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { id } = req.params;
+    const { subjects } = req.body;
+
+    if (!Array.isArray(subjects)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Subjects must be an array'
+      });
+    }
+
+    const classItem = await Class.findOneAndUpdate(
+      { _id: id, schoolId },
+      { $set: { subjects } },
+      { new: true, runValidators: true }
+    ).populate('subjects', 'name code type');
+
+    if (!classItem) {
+      return res.status(404).json({
+        success: false,
+        error: 'Class not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Subjects assigned successfully',
+      data: classItem
+    });
+  } catch (err) {
+    console.error('Error assigning subjects:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to assign subjects'
+    });
+  }
+};
+
+// Get students in a class
+exports.getClassStudents = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { id } = req.params;
+
+    const students = await Student.find({ schoolId, class: id })
+      .sort({ rollNumber: 1, firstName: 1 })
+      .select('studentId firstName lastName rollNumber email phone section');
+
+    res.json({
+      success: true,
+      data: students
+    });
+  } catch (err) {
+    console.error('Error fetching class students:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch students'
+    });
+  }
+};
+
+// Promote students to next class
+exports.promoteClass = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { fromClassId, toClassId, studentIds, academicYear } = req.body;
+
+    if (!fromClassId || !toClassId || !academicYear) {
+      return res.status(400).json({
+        success: false,
+        error: 'From class, to class, and academic year are required'
+      });
+    }
+
+    // Verify both classes exist
+    const [fromClass, toClass] = await Promise.all([
+      Class.findOne({ _id: fromClassId, schoolId }),
+      Class.findOne({ _id: toClassId, schoolId })
+    ]);
+
+    if (!fromClass || !toClass) {
+      return res.status(404).json({
+        success: false,
+        error: 'One or both classes not found'
+      });
+    }
+
+    // Build student filter
+    const studentFilter = { schoolId, class: fromClassId };
+    if (studentIds && studentIds.length > 0) {
+      studentFilter._id = { $in: studentIds };
+    }
+
+    // Update students
+    const result = await Student.updateMany(
+      studentFilter,
+      {
+        $set: {
+          class: toClassId,
+          academicYear
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} students promoted successfully`,
+      promotedCount: result.modifiedCount
+    });
+  } catch (err) {
+    console.error('Error promoting class:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to promote students'
+    });
+  }
+};
+
+// Get class by name and section
+exports.getClassByName = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { name, section } = req.query;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Class name is required'
+      });
+    }
+
+    const query = { schoolId, name };
+    if (section) query.section = section;
+
+    const classItem = await Class.findOne(query)
+      .populate('classTeacher', 'firstName lastName')
+      .populate('subjects', 'name code');
+
+    if (!classItem) {
+      return res.status(404).json({
+        success: false,
+        error: 'Class not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: classItem
+    });
+  } catch (err) {
+    console.error('Error fetching class:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch class'
     });
   }
 };

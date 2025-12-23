@@ -25,6 +25,20 @@ router.post('/lesson-plans', teacherController.createLessonPlan);
 router.put('/lesson-plans/:id', teacherController.updateLessonPlan);
 router.delete('/lesson-plans/:id', teacherController.deleteLessonPlan);
 
+// Attendance
+router.get('/attendance', teacherController.getAttendance);
+router.post('/attendance', teacherController.markAttendance);
+
+// Exams & Marks
+router.get('/exams', teacherController.getTeacherExams);
+router.get('/exams/:examId/results', teacherController.getExamResults);
+router.post('/exams/results/bulk', teacherController.saveBulkResults);
+
+// Leave
+router.get('/leaves', teacherController.getTeacherLeaves);
+router.post('/leaves', teacherController.applyLeave);
+router.put('/leaves/:id/cancel', teacherController.cancelLeave);
+
 // --- New Modules ---
 
 // Front Office
@@ -55,5 +69,32 @@ router.post('/certificates', teacherController.generateCertificate);
 // Consent Letters
 router.get('/consent', teacherController.getConsentRequests);
 router.post('/consent', teacherController.createConsentRequest);
+
+// Profile
+router.get('/profile', teacherController.getTeacherProfile);
+router.put('/profile', teacherController.updateTeacherProfile);
+
+// Timetable
+router.get('/timetable', teacherController.getTeacherTimetable);
+
+// Notice Board
+router.get('/notices', teacherController.getTeacherNotices);
+
+// Downloads
+router.get('/downloads', teacherController.getStudyMaterials);
+router.post('/downloads', teacherController.uploadStudyMaterial);
+
+// Library
+router.get('/library/books', teacherController.getLibraryBooks);
+router.get('/library/my-issued', teacherController.getMyIssuedBooks);
+
+// Online Exam
+router.get('/online-exams', teacherController.getAvailableQuizzes);
+
+// Inventory
+router.get('/inventory', teacherController.getInventory);
+
+// Reports
+router.get('/reports/class-performance', teacherController.getClassPerformanceReports);
 
 module.exports = router;

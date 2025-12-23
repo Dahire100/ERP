@@ -32,7 +32,7 @@ export default function ConsentLetterPage() {
         try {
             const token = localStorage.getItem('token')
             const headers = { 'Authorization': `Bearer ${token}` }
-            const res = await fetch('http://localhost:5000/api/teacher/consent', { headers })
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/consent', { headers })
             const data = await res.json()
             if (data.success) {
                 setRequests(data.data)
@@ -69,7 +69,7 @@ export default function ConsentLetterPage() {
     const handleCreateRequest = async () => {
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://localhost:5000/api/teacher/consent', {
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/consent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(formData)

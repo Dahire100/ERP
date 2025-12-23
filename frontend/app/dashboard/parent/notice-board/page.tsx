@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,33 +15,78 @@ import {
 import { toast } from "sonner"
 
 export default function ParentNoticeBoard() {
-  const [selectedChild, setSelectedChild] = useState<"child1" | "child2">("child1")
+  const [selectedChild, setSelectedChild] = useState<string>("")
+  const [children, setChildren] = useState<any[]>([])
+  const [notices, setNotices] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const children = {
-    child1: { name: "Alice Student", class: "10-A" },
-    child2: { name: "Bob Student", class: "8-B" }
+  // Fetch children and initial notices
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const headers = { 'Authorization': `Bearer ${token}` }
+
+        // Fetch Children
+        const childRes = await fetch('http://localhost:5000/api/parent/dashboard', { headers })
+        const childData = await childRes.json()
+        if (childData.success && childData.data.children.length > 0) {
+          setChildren(childData.data.children)
+          setSelectedChild(childData.data.children[0]._id)
+        }
+
+        // Fetch Notices (General for now, future can include class specific)
+        const noticesRes = await fetch('http://localhost:5000/api/parent/notices', { headers })
+        const noticesData = await noticesRes.json()
+        if (noticesData.success) {
+          setNotices(noticesData.data)
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch data", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  // Future: Could fetch class specific notices when selectedChild changes
+  // But backend /notices typically returns all relevant public notices + class specific 
+  // if implemented that way. For now, assuming static list endpoint for user.
+
+
+  const handleDownload = (attachment: any) => {
+    if (attachment && attachment.url) {
+      window.open(attachment.url, '_blank')
+      toast.success("Downloading Attachment")
+    } else {
+      toast.info("No attachment", { description: "This notice has no downloadable attachment." })
+    }
   }
 
-  const generalNotices = [
-    { id: 1, title: "School Holiday", content: "School will remain closed on 26th Jan.", date: "2025-01-20", category: "Holiday", priority: "High", isPinned: true },
-    { id: 2, title: "Annual Sports Day", content: "Sports Day scheduled for 10th Feb.", date: "2025-01-18", category: "Event", priority: "Medium", isPinned: false },
-  ]
-
-  const classNotices = {
-    child1: [
-      { id: 101, title: "Grade 10 Pre-Boards", content: "Datesheet for Pre-Board exams released.", date: "2025-01-22", category: "Exam", priority: "High", isPinned: true },
-      { id: 102, title: "Picnic to Museum", content: "Consent form for science museum visit due by Friday.", date: "2025-01-21", category: "Trip", priority: "Medium", isPinned: false },
-    ],
-    child2: [
-      { id: 201, title: "Grade 8 Project Submission", content: "Submit History projects by Monday.", date: "2025-01-22", category: "Academic", priority: "High", isPinned: false },
-    ]
+  const getSelectedChildName = () => {
+    const child = children.find(c => c._id === selectedChild)
+    return child ? `${child.firstName} ${child.lastName}` : "Loading..."
   }
 
-  const currentNotices = [...(classNotices[selectedChild] || []), ...generalNotices].sort((a, b) => (b.isPinned === a.isPinned) ? 0 : b.isPinned ? 1 : -1)
-
-  const handleDownload = (title: string) => {
-    toast.success("Downloading Circular", { description: `Downloading attachment for: ${title}` })
+  const getPriorityInfo = (type: string) => {
+    if (type === 'urgent' || type === 'exam') return { color: 'text-red-600', bg: 'bg-red-100', text: 'text-red-700', label: 'High' }
+    if (type === 'holiday' || type === 'event') return { color: 'text-purple-600', bg: 'bg-purple-100', text: 'text-purple-700', label: 'Medium' }
+    return { color: 'text-blue-600', bg: 'bg-blue-100', text: 'text-blue-700', label: 'Normal' }
   }
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Notice Board">
+        <div className="flex h-screen items-center justify-center">Loading...</div>
+      </DashboardLayout>
+    )
+  }
+
+  const pinnedCount = notices.filter(n => n.isPinned).length
+  // Assuming 'urgent' maps to high priority
+  const highPriorityCount = notices.filter(n => n.type === 'urgent' || n.type === 'exam').length
 
   return (
     <DashboardLayout title="Digital Notice Board">
@@ -53,57 +98,58 @@ export default function ParentNoticeBoard() {
               Notice Board
             </h2>
             <p className="text-muted-foreground mt-1">
-              Announcements for {children[selectedChild].name} & General Updates
+              Announcements & General Updates
             </p>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
-                <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  {children[selectedChild].name}
-                </span>
-                <ChevronDown className="h-4 w-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
-              <DropdownMenuItem onClick={() => setSelectedChild("child1")}>
-                Alice Student (10-A)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedChild("child2")}>
-                Bob Student (8-B)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {children.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    {getSelectedChildName()}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                {children.map(child => (
+                  <DropdownMenuItem key={child._id} onClick={() => setSelectedChild(child._id)}>
+                    {child.firstName} {child.lastName}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatCard
             title="Total Notices"
-            value={currentNotices.length.toString()}
+            value={notices.length.toString()}
             icon={Bell}
             iconColor="text-blue-600"
             iconBgColor="bg-blue-100"
           />
           <StatCard
             title="High Priority"
-            value={currentNotices.filter(n => n.priority === "High").length.toString()}
+            value={highPriorityCount.toString()}
             icon={AlertCircle}
             iconColor="text-red-600"
             iconBgColor="bg-red-100"
           />
           <StatCard
             title="Pinned"
-            value={currentNotices.filter(n => n.isPinned).length.toString()}
+            value={pinnedCount.toString()}
             icon={Pin}
             iconColor="text-purple-600"
             iconBgColor="bg-purple-100"
           />
           <StatCard
-            title="New (This Week)"
-            value="2"
+            title="New"
+            value="-"
             icon={Calendar}
             iconColor="text-green-600"
             iconBgColor="bg-green-100"
@@ -121,56 +167,52 @@ export default function ParentNoticeBoard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {currentNotices.map((notice) => (
-                <div key={notice.id} className={`p-4 border rounded-xl hover:shadow-md transition-all bg-white group ${notice.isPinned ? "border-l-4 border-l-purple-500 bg-purple-50/20" : ""
-                  }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg shrink-0 ${notice.priority === "High" ? "bg-red-100" :
-                        notice.priority === "Medium" ? "bg-orange-100" : "bg-green-100"
-                      }`}>
-                      {notice.priority === "High" ? (
-                        <AlertCircle className="h-5 w-5 text-red-600" />
-                      ) : notice.priority === "Medium" ? (
-                        <Bell className="h-5 w-5 text-orange-600" />
-                      ) : (
-                        <Bell className="h-5 w-5 text-green-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {notice.isPinned && <Pin className="h-3 w-3 text-purple-600 fill-current" />}
-                          <p className="font-bold text-gray-900">{notice.title}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${notice.priority === "High" ? "bg-red-100 text-red-700" :
-                              notice.priority === "Medium" ? "bg-orange-100 text-orange-700" :
-                                "bg-green-100 text-green-700"
-                            }`}>
-                            {notice.priority}
-                          </span>
-                        </div>
+              {notices.length > 0 ? notices.map((notice) => {
+                const priority = getPriorityInfo(notice.type)
+                return (
+                  <div key={notice._id} className={`p-4 border rounded-xl hover:shadow-md transition-all bg-white group ${notice.isPinned ? "border-l-4 border-l-purple-500 bg-purple-50/20" : ""
+                    }`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg shrink-0 ${priority.bg}`}>
+                        {notice.type === 'urgent' ? <AlertCircle className={`h-5 w-5 ${priority.color}`} /> : <Bell className={`h-5 w-5 ${priority.color}`} />}
                       </div>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{notice.content}</p>
-
-                      <div className="flex items-center justify-between mt-auto">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full font-medium">
-                            {notice.category}
-                          </span>
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Calendar className="h-3 w-3" />
-                            <span>{new Date(notice.date).toLocaleDateString()}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {notice.isPinned && <Pin className="h-3 w-3 text-purple-600 fill-current" />}
+                            <p className="font-bold text-gray-900">{notice.title}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${priority.bg} ${priority.text}`}>
+                              {priority.label}
+                            </span>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => handleDownload(notice.title)}>
-                          <Download className="h-4 w-4 mr-1" /> Attachment
-                        </Button>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{notice.description}</p>
+
+                        <div className="flex items-center justify-between mt-auto">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full font-medium capitalize">
+                              {notice.type}
+                            </span>
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(notice.publishedDate).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          {notice.attachments && notice.attachments.length > 0 && (
+                            <Button variant="ghost" size="sm" className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => handleDownload(notice.attachments[0])}>
+                              <Download className="h-4 w-4 mr-1" /> Attachment
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              }) : (
+                <div className="text-center py-6 text-muted-foreground">No notices found.</div>
+              )}
             </div>
           </CardContent>
         </Card>

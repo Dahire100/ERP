@@ -18,6 +18,7 @@ const studentSchema = new mongoose.Schema({
     email: String,
     parentName: String,
     parentPhone: String,
+    parentEmail: String,
     bloodGroup: String,
     transportRoute: String,
     schoolId: {

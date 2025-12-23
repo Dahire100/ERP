@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,35 +16,92 @@ import {
 import { toast } from "sonner"
 
 export default function ParentDownloadCenter() {
-    const [selectedChild, setSelectedChild] = useState<"child1" | "child2">("child1")
+    const [selectedChild, setSelectedChild] = useState<string>("")
+    const [children, setChildren] = useState<any[]>([])
+    const [downloads, setDownloads] = useState<any[]>([])
     const [searchTerm, setSearchTerm] = useState("")
+    const [loading, setLoading] = useState(true)
 
-    const children = {
-        child1: { name: "Alice Student", class: "10-A" },
-        child2: { name: "Bob Student", class: "8-B" }
-    }
+    // Fetch children on mount
+    useEffect(() => {
+        const fetchChildren = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch('http://localhost:5000/api/parent/dashboard', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+                if (data.success && data.data.children.length > 0) {
+                    setChildren(data.data.children)
+                    setSelectedChild(data.data.children[0]._id)
+                } else {
+                    setLoading(false)
+                }
+            } catch (error) {
+                console.error("Failed to fetch children", error)
+                setLoading(false)
+            }
+        }
+        fetchChildren()
+    }, [])
 
-    const downloads = {
-        child1: [
-            { id: 1, title: "Maths Syllabus Term 2", type: "Syllabus", date: "2025-01-10", size: "1.2 MB" },
-            { id: 2, title: "Physics Lab Manual", type: "Study Material", date: "2025-01-05", size: "5.4 MB" },
-            { id: 3, title: "Holiday Homework - English", type: "Assignment", date: "2024-12-25", size: "0.5 MB" },
-            { id: 4, title: "Pre-Board Date Sheet", type: "Circular", date: "2025-01-15", size: "0.8 MB" }
-        ],
-        child2: [
-            { id: 101, title: "History Project Guidelines", type: "Assignment", date: "2025-01-12", size: "2.1 MB" },
-            { id: 102, title: "Grade 8 Syllabus", type: "Syllabus", date: "2024-04-01", size: "1.0 MB" },
-            { id: 103, title: "Science Diagram Chart", type: "Study Material", date: "2025-01-08", size: "3.5 MB" }
-        ]
-    }
+    // Fetch downloads when selected child changes
+    useEffect(() => {
+        if (!selectedChild) return
 
-    const filteredDownloads = downloads[selectedChild].filter(item =>
+        const fetchDownloads = async () => {
+            // Mocking the downloads endpoint since specific endpoint wasn't confirmed but likely exists.
+            // If not, we can use a generic document endpoint or assume it is `/api/student/downloads` adapted for parent.
+            // Based on `studentPortal.js`: router.get('/downloads', ...).
+            // Based on `parent.js`: router.get('/child/:studentId/downloads', ...) - YES, this exists (Line 43).
+
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch(`http://localhost:5000/api/parent/child/${selectedChild}/downloads`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+
+                if (data.success) {
+                    setDownloads(data.data)
+                }
+            } catch (error) {
+                console.error("Failed to fetch downloads", error)
+                toast.error("Failed to load study materials")
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchDownloads()
+    }, [selectedChild])
+
+
+    const filteredDownloads = downloads.filter((item: any) =>
         item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.type.toLowerCase().includes(searchTerm.toLowerCase())
+        (item.type && item.type.toLowerCase().includes(searchTerm.toLowerCase()))
     )
 
-    const handleDownload = (filename: string) => {
-        toast.success("Download Started", { description: `Downloading ${filename}...` })
+    const handleDownload = (item: any) => {
+        // If fileUrl is present
+        if (item.fileUrl) {
+            window.open(`http://localhost:5000${item.fileUrl}`, '_blank')
+            toast.success("Download Started", { description: `Downloading ${item.title}...` })
+        } else {
+            toast.error("File not available")
+        }
+    }
+
+    const getSelectedChildName = () => {
+        const child = children.find(c => c._id === selectedChild)
+        return child ? `${child.firstName} ${child.lastName}` : "Loading..."
+    }
+
+    if (loading) {
+        return (
+            <DashboardLayout title="Download Center">
+                <div className="flex h-screen items-center justify-center">Loading...</div>
+            </DashboardLayout>
+        )
     }
 
     return (
@@ -57,29 +114,30 @@ export default function ParentDownloadCenter() {
                             Download Center
                         </h2>
                         <p className="text-muted-foreground mt-1">
-                            Access study materials for {children[selectedChild].name}
+                            Access study materials for {getSelectedChildName()}
                         </p>
                     </div>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
-                                <span className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-blue-600" />
-                                    {children[selectedChild].name}
-                                </span>
-                                <ChevronDown className="h-4 w-4 opacity-50" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[200px]">
-                            <DropdownMenuItem onClick={() => setSelectedChild("child1")}>
-                                Alice Student (10-A)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedChild("child2")}>
-                                Bob Student (8-B)
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {children.length > 0 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
+                                    <span className="flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-blue-600" />
+                                        {getSelectedChildName()}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[200px]">
+                                {children.map(child => (
+                                    <DropdownMenuItem key={child._id} onClick={() => setSelectedChild(child._id)}>
+                                        {child.firstName} {child.lastName}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-4 bg-white p-4 rounded-xl border shadow-sm">
@@ -93,8 +151,8 @@ export default function ParentDownloadCenter() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredDownloads.map((item) => (
-                        <Card key={item.id} className="hover:shadow-md transition-all group border-l-4 border-l-blue-500">
+                    {filteredDownloads.map((item: any) => (
+                        <Card key={item._id} className="hover:shadow-md transition-all group border-l-4 border-l-blue-500">
                             <CardContent className="p-4 flex items-center justify-between">
                                 <div className="flex items-start gap-4">
                                     <div className="p-3 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -103,13 +161,13 @@ export default function ParentDownloadCenter() {
                                     <div>
                                         <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{item.title}</h4>
                                         <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 font-medium">
-                                            <span className="bg-gray-100 px-2 py-0.5 rounded-full">{item.type}</span>
-                                            <span>{item.date}</span>
-                                            <span>{item.size}</span>
+                                            <span className="bg-gray-100 px-2 py-0.5 rounded-full">{item.type || "Document"}</span>
+                                            <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                                            {/* Size might not be available in standard schema, ignoring */}
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => handleDownload(item.title)}>
+                                <Button variant="ghost" size="icon" onClick={() => handleDownload(item)}>
                                     <Download className="h-5 w-5 text-gray-400 hover:text-blue-600" />
                                 </Button>
                             </CardContent>

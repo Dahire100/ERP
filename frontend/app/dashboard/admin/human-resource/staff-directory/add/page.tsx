@@ -79,13 +79,14 @@ export default function AddStaffPage() {
                 setCredentials(data.credentials);
                 setShowCredentials(true);
 
+                // Check email status but always show dialog as fallback
                 if (data.emailStatus === 'sent') {
                     toast.success("Staff Member Added", {
                         description: "Credentials have been emailed."
                     })
                 } else {
                     toast.warning("Staff Member Added", {
-                        description: "Email failed to send. Please copy credentials manually."
+                        description: `Email failed: ${data.emailStatus === 'failed' ? 'Invalid Credentials' : 'Check Console'}. Please copy credentials manually.`
                     })
                 }
             } else {

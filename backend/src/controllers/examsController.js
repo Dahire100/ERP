@@ -149,6 +149,46 @@ exports.addResult = async (req, res) => {
   }
 };
 
+// Add bulk exam results
+exports.addBulkResults = async (req, res) => {
+  const { schoolId } = req.user;
+  const { examId, results } = req.body;
+
+  if (!examId || !results || !Array.isArray(results)) {
+    return res.status(400).json({ error: 'Exam ID and results array are required' });
+  }
+
+  try {
+    const exam = await Exam.findOne({ _id: examId, schoolId });
+    if (!exam) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    const bulkOps = results.map(result => ({
+      updateOne: {
+        filter: { examId, studentId: result.studentId, schoolId },
+        update: {
+          $set: {
+            marksObtained: result.marksObtained,
+            grade: result.grade,
+            remarks: result.remarks
+          }
+        },
+        upsert: true
+      }
+    }));
+
+    if (bulkOps.length > 0) {
+      await ExamResult.bulkWrite(bulkOps);
+    }
+
+    res.json({ success: true, message: `${bulkOps.length} results processed successfully` });
+  } catch (err) {
+    console.error('Error adding bulk results:', err);
+    res.status(500).json({ error: 'Failed to add bulk results' });
+  }
+};
+
 // Get exam results
 exports.getExamResults = async (req, res) => {
   const { schoolId } = req.user;
@@ -204,5 +244,260 @@ exports.getStudentResults = async (req, res) => {
   } catch (err) {
     console.error('Error fetching student results:', err);
     res.status(500).json({ error: 'Failed to fetch student results' });
+  }
+};
+
+// Get exam schedule/timetable
+exports.getExamSchedule = async (req, res) => {
+  const { schoolId } = req.user;
+  const { class: studentClass, startDate, endDate } = req.query;
+
+  try {
+    const query = { schoolId };
+    if (studentClass) query.class = studentClass;
+
+    if (startDate && endDate) {
+      query.date = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const schedule = await Exam.find(query)
+      .sort({ date: 1, startTime: 1 })
+      .select('examName class subject date startTime endTime totalMarks');
+
+    res.json(schedule);
+  } catch (err) {
+    console.error('Error fetching exam schedule:', err);
+    res.status(500).json({ error: 'Failed to fetch exam schedule' });
+  }
+};
+
+// Get grade statistics for an exam
+exports.getExamStatistics = async (req, res) => {
+  const { schoolId } = req.user;
+  const { examId } = req.params;
+
+  try {
+    const exam = await Exam.findOne({ _id: examId, schoolId });
+    if (!exam) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    const results = await ExamResult.find({ examId, schoolId });
+
+    if (results.length === 0) {
+      return res.json({
+        examName: exam.examName,
+        totalMarks: exam.totalMarks,
+        totalStudents: 0,
+        submitted: 0,
+        pending: 0,
+        average: 0,
+        highest: 0,
+        lowest: 0,
+        passCount: 0,
+        failCount: 0,
+        passPercentage: 0
+      });
+    }
+
+    const marks = results.map(r => r.marksObtained);
+    const average = marks.reduce((a, b) => a + b, 0) / marks.length;
+    const highest = Math.max(...marks);
+    const lowest = Math.min(...marks);
+
+    const passingMarks = exam.totalMarks * 0.4; // 40% passing
+    const passCount = marks.filter(m => m >= passingMarks).length;
+    const failCount = marks.filter(m => m < passingMarks).length;
+
+    res.json({
+      examName: exam.examName,
+      subject: exam.subject,
+      class: exam.class,
+      totalMarks: exam.totalMarks,
+      totalStudents: results.length,
+      submitted: results.length,
+      average: average.toFixed(2),
+      highest,
+      lowest,
+      passCount,
+      failCount,
+      passPercentage: ((passCount / results.length) * 100).toFixed(2),
+      gradeDistribution: calculateGradeDistribution(results, exam.totalMarks)
+    });
+  } catch (err) {
+    console.error('Error fetching exam statistics:', err);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+};
+
+// Helper function for grade distribution
+function calculateGradeDistribution(results, totalMarks) {
+  const distribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+
+  results.forEach(result => {
+    const percentage = (result.marksObtained / totalMarks) * 100;
+    if (percentage >= 90) distribution.A++;
+    else if (percentage >= 75) distribution.B++;
+    else if (percentage >= 60) distribution.C++;
+    else if (percentage >= 40) distribution.D++;
+    else distribution.F++;
+  });
+
+  return distribution;
+}
+
+// Get class performance report
+exports.getClassPerformanceReport = async (req, res) => {
+  const { schoolId } = req.user;
+  const { class: studentClass, subject } = req.query;
+
+  if (!studentClass) {
+    return res.status(400).json({ error: 'Class is required' });
+  }
+
+  try {
+    const query = { schoolId, class: studentClass };
+    if (subject) query.subject = subject;
+
+    const exams = await Exam.find(query);
+    const examIds = exams.map(e => e._id);
+
+    const results = await ExamResult.find({
+      schoolId,
+      examId: { $in: examIds }
+    }).populate('examId studentId');
+
+    // Group by exam
+    const examPerformance = {};
+    results.forEach(result => {
+      const examId = result.examId._id.toString();
+      if (!examPerformance[examId]) {
+        examPerformance[examId] = {
+          examName: result.examId.examName,
+          subject: result.examId.subject,
+          totalMarks: result.examId.totalMarks,
+          marks: []
+        };
+      }
+      examPerformance[examId].marks.push(result.marksObtained);
+    });
+
+    // Calculate statistics for each exam
+    const report = Object.values(examPerformance).map(exam => {
+      const avg = exam.marks.reduce((a, b) => a + b, 0) / exam.marks.length;
+      return {
+        examName: exam.examName,
+        subject: exam.subject,
+        totalMarks: exam.totalMarks,
+        studentsAppeared: exam.marks.length,
+        averageMarks: avg.toFixed(2),
+        averagePercentage: ((avg / exam.totalMarks) * 100).toFixed(2)
+      };
+    });
+
+    res.json(report);
+  } catch (err) {
+    console.error('Error fetching class performance:', err);
+    res.status(500).json({ error: 'Failed to fetch class report' });
+  }
+};
+
+// Get top performers
+exports.getTopPerformers = async (req, res) => {
+  const { schoolId } = req.user;
+  const { examId, limit = 10 } = req.query;
+
+  try {
+    const query = { schoolId };
+    if (examId) query.examId = examId;
+
+    const results = await ExamResult.find(query)
+      .populate('studentId', 'firstName lastName studentId class section')
+      .populate('examId', 'examName subject totalMarks')
+      .sort({ marksObtained: -1 })
+      .limit(parseInt(limit));
+
+    const topPerformers = results.map(r => ({
+      studentId: r.studentId.studentId,
+      studentName: `${r.studentId.firstName} ${r.studentId.lastName}`,
+      class: r.studentId.class,
+      section: r.studentId.section,
+      examName: r.examId.examName,
+      subject: r.examId.subject,
+      marksObtained: r.marksObtained,
+      totalMarks: r.examId.totalMarks,
+      percentage: ((r.marksObtained / r.examId.totalMarks) * 100).toFixed(2),
+      grade: r.grade
+    }));
+
+    res.json(topPerformers);
+  } catch (err) {
+    console.error('Error fetching top performers:', err);
+    res.status(500).json({ error: 'Failed to fetch top performers' });
+  }
+};
+
+// Get exam by ID
+exports.getExamById = async (req, res) => {
+  const { schoolId } = req.user;
+  const { id } = req.params;
+
+  try {
+    const exam = await Exam.findOne({ _id: id, schoolId });
+
+    if (!exam) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    res.json(exam);
+  } catch (err) {
+    console.error('Error fetching exam:', err);
+    res.status(500).json({ error: 'Failed to fetch exam' });
+  }
+};
+
+// Update exam result
+exports.updateResult = async (req, res) => {
+  const { schoolId } = req.user;
+  const { id } = req.params;
+  const { marksObtained, grade, remarks } = req.body;
+
+  try {
+    const result = await ExamResult.findOneAndUpdate(
+      { _id: id, schoolId },
+      { marksObtained, grade, remarks },
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({ error: 'Result not found' });
+    }
+
+    res.json({ message: 'Result updated successfully', result });
+  } catch (err) {
+    console.error('Error updating result:', err);
+    res.status(500).json({ error: 'Failed to update result' });
+  }
+};
+
+// Delete exam result
+exports.deleteResult = async (req, res) => {
+  const { schoolId } = req.user;
+  const { id } = req.params;
+
+  try {
+    const result = await ExamResult.findOneAndDelete({ _id: id, schoolId });
+
+    if (!result) {
+      return res.status(404).json({ error: 'Result not found' });
+    }
+
+    res.json({ message: 'Result deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting result:', err);
+    res.status(500).json({ error: 'Failed to delete result' });
   }
 };

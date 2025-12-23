@@ -8,21 +8,45 @@ const {
   updateExam,
   deleteExam,
   addResult,
+  addBulkResults,
   getExamResults,
-  getStudentResults
+  getStudentResults,
+  getExamSchedule,
+  getExamStatistics,
+  getClassPerformanceReport,
+  getTopPerformers,
+  getExamById,
+  updateResult,
+  deleteResult
 } = require('../controllers/examsController');
 
 router.use(authenticateToken);
+
+// Get exam schedule/timetable (before :id routes)
+router.get('/schedule', getExamSchedule);
+
+// Get class performance report (before :id routes)
+router.get('/reports/class-performance', getClassPerformanceReport);
+
+// Get top performers (before :id routes)
+router.get('/reports/top-performers', getTopPerformers);
 
 // School admin only routes
 router.post('/', requireSchoolAdmin, addExam);
 router.put('/:id', requireSchoolAdmin, updateExam);
 router.delete('/:id', requireSchoolAdmin, deleteExam);
-router.post('/results', requireSchoolAdmin, addResult);
+
+// Results management
+router.post('/results', addResult);
+router.post('/results/bulk', addBulkResults);
+router.put('/results/:id', updateResult);
+router.delete('/results/:id', deleteResult);
 
 // Accessible by school admin, teachers, and students
 router.get('/', getAllExams);
+router.get('/:id', getExamById);
 router.get('/:examId/results', getExamResults);
+router.get('/:examId/statistics', getExamStatistics);
 router.get('/student/:studentId/results', getStudentResults);
 
 module.exports = router;

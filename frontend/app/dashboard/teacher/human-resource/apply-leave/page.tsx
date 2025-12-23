@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -13,7 +13,24 @@ import {
     TableHeader,
     TableRow
 } from "@/components/ui/table"
-import { Plus, Calendar, FileText, CheckCircle2, XCircle, AlertCircle, Trash2 } from "lucide-react"
+import {
+    Plus,
+    Calendar,
+    FileText,
+    CheckCircle2,
+    XCircle,
+    AlertCircle,
+    Trash2,
+    Loader2,
+    ChevronRight,
+    MapPin,
+    Clock,
+    User,
+    ArrowRight,
+    Search,
+    Filter,
+    LifeBuoy
+} from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -33,254 +50,315 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
+
+interface LeaveRecord {
+    _id: string;
+    leaveType: string;
+    startDate: string;
+    endDate: string;
+    totalDays: number;
+    reason: string;
+    status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+    createdAt: string;
+}
 
 export default function ApplyLeavePage() {
+    const { toast } = useToast()
+    const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [leaveHistory, setLeaveHistory] = useState<LeaveRecord[]>([])
+    const [submitting, setSubmitting] = useState(false)
 
-    // State for Leave History
-    const [leaveHistory, setLeaveHistory] = useState([
-        { id: "L-2023-001", type: "Sick Leave", from: "2023-11-10", to: "2023-11-11", days: 2, reason: "Flu and Fever", status: "Approved", appliedOn: "2023-11-09" },
-        { id: "L-2023-002", type: "Casual Leave", from: "2023-12-01", to: "2023-12-01", days: 1, reason: "Personal work", status: "Pending", appliedOn: "2023-11-28" },
-        { id: "L-2023-003", type: "Paid Leave", from: "2023-09-15", to: "2023-09-20", days: 5, reason: "Family Vacation", status: "Rejected", appliedOn: "2023-09-01" },
-    ])
-
-    // Form State
     const [formData, setFormData] = useState({
-        type: "",
-        from: "",
-        to: "",
+        leaveType: "",
+        startDate: "",
+        endDate: "",
         reason: ""
     })
 
-    const leaveBalances = [
-        { type: "Casual Leave", total: 12, used: 8, balance: 4, color: "text-blue-600 bg-blue-50" },
-        { type: "Sick Leave", total: 10, used: 2, balance: 8, color: "text-red-600 bg-red-50" },
-        { type: "Paid Leave", total: 15, used: 5, balance: 10, color: "text-green-600 bg-green-50" },
-    ]
+    useEffect(() => {
+        fetchLeaveHistory()
+    }, [])
 
-    const handleSubmit = () => {
-        // Simple logic to calculate days (mock)
-        const diffTime = Math.abs(new Date(formData.to).getTime() - new Date(formData.from).getTime())
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1 || 1
-
-        const newLeave = {
-            id: `L-2024-${Math.floor(Math.random() * 1000)}`,
-            type: formData.type === 'casual' ? 'Casual Leave' : formData.type === 'sick' ? 'Sick Leave' : 'Paid Leave',
-            from: formData.from,
-            to: formData.to,
-            days: diffDays,
-            reason: formData.reason,
-            status: "Pending",
-            appliedOn: new Date().toISOString().split('T')[0]
-        }
-
-        setLeaveHistory([newLeave, ...leaveHistory])
-        setIsDialogOpen(false)
-        setFormData({ type: "", from: "", to: "", reason: "" })
-    }
-
-    const handleCancelLeave = (id: string) => {
-        if (confirm("Are you sure you want to cancel this leave request?")) {
-            setLeaveHistory(leaveHistory.map(leave =>
-                leave.id === id ? { ...leave, status: "Cancelled" } : leave
-            ))
+    const fetchLeaveHistory = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/leaves', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await res.json()
+            if (data.success) {
+                setLeaveHistory(data.data)
+            }
+        } catch (err) {
+            toast({ title: "Error", description: "Failed to fetch leave history", variant: "destructive" })
+        } finally {
+            setLoading(false)
         }
     }
 
-    const handleDeleteLeave = (id: string) => {
-        if (confirm("Delete this record permanently?")) {
-            setLeaveHistory(leaveHistory.filter(leave => leave.id !== id))
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSubmitting(true)
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/leaves', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(formData)
+            })
+
+            const data = await res.json()
+            if (data.success) {
+                toast({ title: "Application Decoupled", description: "Your leave request has been queued for administrative review." })
+                setIsDialogOpen(false)
+                fetchLeaveHistory()
+                setFormData({ leaveType: "", startDate: "", endDate: "", reason: "" })
+            }
+        } catch (err) {
+            toast({ title: "Submission Failed", description: "Failed to apply for leave", variant: "destructive" })
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    const handleCancelLeave = async (id: string) => {
+        try {
+            const token = localStorage.getItem('token')
+            const res = await fetch(`http://127.0.0.1:5000/api/teacher/leaves/${id}/cancel`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await res.json()
+            if (data.success) {
+                toast({ title: "Request Terminated", description: "The leave application has been cancelled successfully." })
+                fetchLeaveHistory()
+            }
+        } catch (err) {
+            toast({ title: "Error", description: "Failed to cancel request", variant: "destructive" })
         }
     }
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case "Approved": return <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Approved</Badge>
-            case "Pending": return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200">Pending</Badge>
-            case "Rejected": return <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-red-200">Rejected</Badge>
-            case "Cancelled": return <Badge variant="secondary" className="bg-gray-100 text-gray-700">Cancelled</Badge>
-            default: return <Badge variant="outline">{status}</Badge>
+            case "approved": return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black h-6 rounded-lg">APPROVED</Badge>
+            case "pending": return <Badge className="bg-amber-50 text-amber-700 border-amber-100 font-black h-6 rounded-lg">PENDING</Badge>
+            case "rejected": return <Badge className="bg-red-50 text-red-700 border-red-100 font-black h-6 rounded-lg">REJECTED</Badge>
+            case "cancelled": return <Badge variant="secondary" className="font-black h-6 rounded-lg text-gray-400">CANCELLED</Badge>
+            default: return <Badge variant="outline" className="font-black h-6 rounded-lg">{status.toUpperCase()}</Badge>
         }
     }
 
+    if (loading) {
+        return (
+            <DashboardLayout title="Occupancy Registry">
+                <div className="flex items-center justify-center min-h-[50vh]">
+                    <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+                </div>
+            </DashboardLayout>
+        )
+    }
+
     return (
-        <DashboardLayout title="Apply Leave">
-            <div className="space-y-6 max-w-7xl mx-auto">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Apply Leave</h1>
-                        <p className="text-gray-500 mt-1">Manage all your leave requests and check balances.</p>
+        <DashboardLayout title="Presence Governance">
+            <div className="space-y-8 max-w-[1400px] mx-auto pb-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-1">
+                        <h2 className="text-3xl font-black text-gray-900 tracking-tight">Leave Audit & Governance</h2>
+                        <p className="text-muted-foreground font-medium">Request, track and manage your institutional absence records.</p>
                     </div>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Apply New Leave
+                            <Button className="bg-indigo-600 hover:bg-indigo-700 h-14 px-8 rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all active:scale-95 text-white">
+                                <Plus className="w-5 h-5 mr-3" /> Execute Leave Request
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px]">
-                            <DialogHeader>
-                                <DialogTitle>Apply for Leave</DialogTitle>
-                                <DialogDescription>
-                                    Submit a new leave request for approval.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Leave Type</Label>
-                                        <Select onValueChange={(val) => setFormData({ ...formData, type: val })}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select type" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="casual">Casual Leave</SelectItem>
-                                                <SelectItem value="sick">Sick Leave</SelectItem>
-                                                <SelectItem value="paid">Paid Leave</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                        <DialogContent className="sm:max-w-[600px] p-0 rounded-3xl overflow-hidden border-none shadow-2xl">
+                            <form onSubmit={handleSubmit}>
+                                <DialogHeader className="bg-gray-50/50 p-8 border-b">
+                                    <DialogTitle className="text-2xl font-black tracking-tight text-gray-900">Application Dispatch</DialogTitle>
+                                    <DialogDescription className="text-gray-500 font-medium">Configure your absence parameters for administrative auditing.</DialogDescription>
+                                </DialogHeader>
+                                <div className="p-8 space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label className="font-black text-[10px] uppercase tracking-widest text-gray-400">Leave Taxonomy</Label>
+                                            <Select value={formData.leaveType} onValueChange={(val) => setFormData({ ...formData, leaveType: val })}>
+                                                <SelectTrigger className="h-14 rounded-xl border-none bg-gray-50 focus:ring-4 focus:ring-indigo-100 font-bold">
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="casual" className="font-medium">Casual Leave</SelectItem>
+                                                    <SelectItem value="sick" className="font-medium">Sick Leave</SelectItem>
+                                                    <SelectItem value="medical" className="font-medium">Medical Leave</SelectItem>
+                                                    <SelectItem value="emergency" className="font-medium">Emergency Leave</SelectItem>
+                                                    <SelectItem value="vacation" className="font-medium">Vacation</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="font-black text-[10px] uppercase tracking-widest text-gray-400">Balance Integrity</Label>
+                                            <div className="h-14 flex items-center px-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-500 mr-2" />
+                                                <span className="text-sm font-black text-emerald-700 uppercase tracking-tighter">Verified Active</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Available Balance</Label>
-                                        <Input value="Checking..." disabled className="bg-gray-50" />
-                                    </div>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>From Date</Label>
-                                        <Input type="date" onChange={(e) => setFormData({ ...formData, from: e.target.value })} />
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label className="font-black text-[10px] uppercase tracking-widest text-gray-400">Inception Date</Label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-4 top-4.5 h-5 w-5 text-gray-300 pointer-events-none" />
+                                                <Input
+                                                    type="date"
+                                                    className="h-14 pl-12 rounded-xl border-none bg-gray-50 focus:ring-4 focus:ring-indigo-100 font-bold"
+                                                    value={formData.startDate}
+                                                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="font-black text-[10px] uppercase tracking-widest text-gray-400">Termination Date</Label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-4 top-4.5 h-5 w-5 text-gray-300 pointer-events-none" />
+                                                <Input
+                                                    type="date"
+                                                    className="h-14 pl-12 rounded-xl border-none bg-gray-50 focus:ring-4 focus:ring-indigo-100 font-bold"
+                                                    value={formData.endDate}
+                                                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
+
                                     <div className="space-y-2">
-                                        <Label>To Date</Label>
-                                        <Input type="date" onChange={(e) => setFormData({ ...formData, to: e.target.value })} />
+                                        <Label className="font-black text-[10px] uppercase tracking-widest text-gray-400">Evaluative Rationale (Reason)</Label>
+                                        <Textarea
+                                            placeholder="Provide comprehensive detail for leave audit..."
+                                            className="min-h-[120px] rounded-2xl border-none bg-gray-50 focus:ring-4 focus:ring-indigo-100 font-medium p-4"
+                                            value={formData.reason}
+                                            onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                            required
+                                        />
                                     </div>
                                 </div>
-
-                                <div className="space-y-2">
-                                    <Label>Reason</Label>
-                                    <Textarea
-                                        placeholder="Enter detailed reason for leave..."
-                                        onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>Attach Document (Optional)</Label>
-                                    <Input type="file" className="cursor-pointer" />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                                <Button type="submit" className="bg-indigo-600 text-white" onClick={handleSubmit}>Submit Request</Button>
-                            </DialogFooter>
+                                <DialogFooter className="bg-gray-50/50 p-8 border-t">
+                                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-12 px-6 font-black uppercase tracking-widest text-xs text-gray-400">Abort Request</Button>
+                                    <Button type="submit" disabled={submitting} className="h-12 px-10 bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest text-xs shadow-lg shadow-indigo-100 rounded-xl">
+                                        {submitting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <LifeBuoy className="h-4 w-4 mr-2" />}
+                                        Release for Approval
+                                    </Button>
+                                </DialogFooter>
+                            </form>
                         </DialogContent>
                     </Dialog>
                 </div>
 
-                {/* Leave Balance Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {leaveBalances.map((item, index) => (
-                        <Card key={index} className="border-none shadow-md hover:shadow-lg transition-shadow">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600 uppercase tracking-wider">
-                                    {item.type}
-                                </CardTitle>
-                                <Calendar className={`h-4 w-4 ${item.color.split(' ')[0]}`} />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-baseline justify-between">
-                                    <div className="text-3xl font-bold">{item.balance}</div>
-                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <span>Used: {item.used}</span>
-                                        <span className="text-gray-300">|</span>
-                                        <span>Total: {item.total}</span>
-                                    </div>
-                                </div>
-                                <div className="mt-4 h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full ${item.color.split(' ')[0].replace('text', 'bg')}`}
-                                        style={{ width: `${(item.balance / item.total) * 100}%` }}
-                                    ></div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <Card className="border-none shadow-xl shadow-indigo-100/30 ring-1 ring-gray-100 rounded-2xl bg-white p-6 space-y-2">
+                        <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center">
+                            <Clock className="h-6 w-6 text-orange-600" />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Awaiting Decision</p>
+                        <h4 className="text-3xl font-black text-gray-900">{leaveHistory.filter(l => l.status === 'pending').length}</h4>
+                    </Card>
+                    <Card className="border-none shadow-xl shadow-indigo-100/30 ring-1 ring-gray-100 rounded-2xl bg-white p-6 space-y-2">
+                        <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+                            <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Approved</p>
+                        <h4 className="text-3xl font-black text-gray-900">{leaveHistory.filter(l => l.status === 'approved').length}</h4>
+                    </Card>
                 </div>
 
-                {/* Leave History Table */}
-                <Card className="border-none shadow-md">
-                    <CardHeader>
-                        <CardTitle>Leave Requests History</CardTitle>
-                        <CardDescription>
-                            A list of all your leave applications and their current status.
-                        </CardDescription>
+                <Card className="border-none shadow-2xl shadow-indigo-100/30 ring-1 ring-gray-100 rounded-2xl bg-white overflow-hidden">
+                    <CardHeader className="bg-white border-b py-8 px-8 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-xl font-black tracking-tight text-gray-800 uppercase">Absence Registry</CardTitle>
+                            <CardDescription className="font-medium italic">Complete transactional logs of your institutional leave requests.</CardDescription>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-gray-50/50">
-                                    <TableHead className="w-[120px]">Applied Date</TableHead>
-                                    <TableHead>Leave Type</TableHead>
-                                    <TableHead>Duration</TableHead>
-                                    <TableHead>Days</TableHead>
-                                    <TableHead className="max-w-[300px]">Reason</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {leaveHistory.map((leave) => (
-                                    <TableRow key={leave.id} className="hover:bg-gray-50/50 transition-colors">
-                                        <TableCell className="font-medium text-gray-600">{leave.appliedOn}</TableCell>
-                                        <TableCell>
-                                            <span className="font-semibold text-gray-700">{leave.type}</span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <Calendar className="w-3 h-3" />
-                                                {leave.from} <span className="text-gray-400">to</span> {leave.to}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{leave.days}</TableCell>
-                                        <TableCell className="truncate max-w-[300px] text-gray-500" title={leave.reason}>
-                                            {leave.reason}
-                                        </TableCell>
-                                        <TableCell>{getStatusBadge(leave.status)}</TableCell>
-                                        <TableCell className="text-right">
-                                            {leave.status === 'Pending' ? (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => handleCancelLeave(leave.id)}
-                                                >
-                                                    Cancel
-                                                </Button>
-                                            ) : (
-                                                <div className="flex justify-end gap-2">
-                                                    <Button variant="ghost" size="sm" disabled>View</Button>
-                                                    {['Rejected', 'Cancelled'].includes(leave.status) && (
+                    <CardContent className="p-0">
+                        {leaveHistory.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b">
+                                            <TableHead className="w-[160px] font-black text-[10px] uppercase tracking-widest text-gray-500 pl-8 h-16">Transaction Date</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-500 h-16">Leave Parameters</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-500 h-16">Evaluative Reason</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-500 h-16">Audit Status</TableHead>
+                                            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest text-gray-500 h-16 pr-8">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {leaveHistory.map((leave) => (
+                                            <TableRow key={leave._id} className="group hover:bg-indigo-50/30 transition-all border-b border-gray-50">
+                                                <TableCell className="pl-8 py-6 font-black text-gray-400 text-xs">
+                                                    {new Date(leave.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="space-y-1">
+                                                        <span className="font-black text-gray-800 uppercase tracking-tight block">{leave.leaveType} Leave</span>
+                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
+                                                            <Calendar className="w-3 h-3 text-indigo-400" />
+                                                            {new Date(leave.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                            <ArrowRight className="w-2 h-2" />
+                                                            {new Date(leave.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                            <Badge variant="outline" className="ml-1 h-5 px-1.5 font-black bg-gray-50 group-hover:bg-white">{leave.totalDays}D</Badge>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="max-w-[300px]">
+                                                    <p className="text-xs font-medium text-gray-500 line-clamp-2 leading-relaxed" title={leave.reason}>
+                                                        {leave.reason}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell>{getStatusBadge(leave.status)}</TableCell>
+                                                <TableCell className="text-right pr-8">
+                                                    {leave.status === 'pending' ? (
                                                         <Button
                                                             variant="ghost"
-                                                            size="icon"
-                                                            className="text-gray-400 hover:text-red-600"
-                                                            onClick={() => handleDeleteLeave(leave.id)}
+                                                            size="sm"
+                                                            className="h-10 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-500 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-100"
+                                                            onClick={() => handleCancelLeave(leave._id)}
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            Abort Request
+                                                        </Button>
+                                                    ) : (
+                                                        <Button variant="ghost" size="icon" className="h-10 w-10 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl">
+                                                            <LifeBuoy className="w-4 h-4" />
                                                         </Button>
                                                     )}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        ) : (
+                            <div className="p-20 text-center space-y-4">
+                                <div className="h-20 w-20 bg-gray-50 rounded-3xl mx-auto flex items-center justify-center">
+                                    <LifeBuoy className="h-10 w-10 text-gray-300" />
+                                </div>
+                                <div className="space-y-1">
+                                    <h4 className="text-xl font-black text-gray-900 tracking-tight">Clean Slate</h4>
+                                    <p className="text-muted-foreground font-medium max-w-sm mx-auto">No absence records found in the institutional registry.</p>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
         </DashboardLayout>
     )
 }
+

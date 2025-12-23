@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const superAdminController = require('../controllers/superAdminController');
-const { authenticateJWT } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 // Apply JWT authentication to all routes
-router.use(authenticateJWT);
+router.use(authenticateToken);
 
 // ==================== INVOICES ====================
 router.get('/invoices', superAdminController.getAllInvoices);

@@ -31,7 +31,7 @@ export default function EventsPage() {
         try {
             const token = localStorage.getItem('token')
             const headers = { 'Authorization': `Bearer ${token}` }
-            const res = await fetch('http://localhost:5000/api/teacher/events', { headers })
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/events', { headers })
             const data = await res.json()
             if (data.success) {
                 setEvents(data.data)
@@ -68,7 +68,7 @@ export default function EventsPage() {
     const handleProposeEvent = async () => {
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://localhost:5000/api/teacher/events/propose', {
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/events/propose', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(formData)

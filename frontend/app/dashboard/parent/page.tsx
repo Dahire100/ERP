@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Users,
@@ -45,15 +44,23 @@ export default function ParentDashboard() {
 
 function ParentDashboardContent() {
   const router = useRouter()
-  const [activeChild, setActiveChild] = useState("all")
   const [children, setChildren] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [loading, setLoading] = useState(true)
+  const [userName, setUserName] = useState("Parent")
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
         const token = localStorage.getItem('token')
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr)
+            setUserName(user.name || "Parent")
+          } catch (e) { }
+        }
+
         const res = await fetch('http://localhost:5000/api/parent/dashboard', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -85,7 +92,11 @@ function ParentDashboardContent() {
   }, [])
 
   if (loading) {
-    return <div className="p-8 text-center">Loading dashboard...</div>
+    return (
+      <DashboardLayout title="Parent Dashboard">
+        <div className="flex h-screen items-center justify-center">Loading dashboard...</div>
+      </DashboardLayout>
+    )
   }
 
   const notices = [
@@ -107,6 +118,8 @@ function ParentDashboardContent() {
     { title: "Messages", icon: MessageSquare, href: "/dashboard/parent/communicate", color: "text-pink-600", bg: "bg-pink-100" },
   ]
 
+  const totalOutstandingFees = children.reduce((acc, child) => acc + (child.pendingFees || 0), 0)
+
   const handleQuickPay = (amount: number) => {
     toast.success("Payment Gateway Initiated", { description: `Proceeding to pay ₹${amount}` })
   }
@@ -122,7 +135,7 @@ function ParentDashboardContent() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-3xl font-bold text-gray-800 tracking-tight">
-              Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Mr. & Mrs. Parent</span>
+              Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{userName}</span>
             </h2>
             <p className="text-muted-foreground mt-1">
               Here is what's happening with your children today.
@@ -166,7 +179,7 @@ function ParentDashboardContent() {
                         </p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => navigateTo('/dashboard/parent/child-profile')}>
+                    <Button variant="ghost" size="icon" onClick={() => navigateTo(`/dashboard/parent/child-profile?id=${child.id}`)}>
                       <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
                     </Button>
                   </div>
@@ -237,25 +250,30 @@ function ParentDashboardContent() {
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <p className="text-gray-400 text-sm font-medium">Total Outstanding Fees</p>
-                      <h3 className="text-3xl font-bold mt-1">₹1,700</h3>
+                      <h3 className="text-3xl font-bold mt-1">₹{totalOutstandingFees}</h3>
                     </div>
                     <div className="p-2 bg-white/10 rounded-lg">
                       <AlertCircle className="h-5 w-5 text-orange-400" />
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-sm border-b border-gray-700 pb-2">
-                      <span>Alice Student</span>
-                      <span className="font-mono">₹500</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm border-b border-gray-700 pb-2">
-                      <span>Bob Student</span>
-                      <span className="font-mono">₹1,200</span>
-                    </div>
+                  <div className="space-y-4 max-h-[120px] overflow-y-auto">
+                    {children.map(child => (
+                      <div key={child.id} className="flex justify-between items-center text-sm border-b border-gray-700 pb-2 last:border-0">
+                        <span>{child.name}</span>
+                        <span className="font-mono">₹{child.pendingFees}</span>
+                      </div>
+                    ))}
+                    {children.length === 0 && <div className="text-sm text-gray-500">No children loaded.</div>}
                   </div>
-                  <Button className="w-full mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold" onClick={() => handleQuickPay(1700)}>
-                    Pay Now
-                  </Button>
+                  {totalOutstandingFees > 0 ? (
+                    <Button className="w-full mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold" onClick={() => handleQuickPay(totalOutstandingFees)}>
+                      Pay Now
+                    </Button>
+                  ) : (
+                    <Button className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-semibold cursor-default">
+                      All Dues Paid
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
 

@@ -8,6 +8,7 @@ const {
   addStudent,
   updateStudent,
   deleteStudent,
+  importStudents,
   getStudentFees,
   getStudentTransport,
   getStudentAttendance
@@ -17,6 +18,7 @@ const {
 router.use(authenticateToken);
 
 // School admin only routes
+router.post('/import', requireSchoolAdmin, importStudents);
 router.post('/', requireSchoolAdmin, addStudent);
 router.put('/:id', requireSchoolAdmin, updateStudent);
 router.delete('/:id', requireSchoolAdmin, deleteStudent);

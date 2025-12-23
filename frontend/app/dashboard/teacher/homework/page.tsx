@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -25,33 +26,82 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BookOpen, CheckCircle, Clock, Plus, Filter, Search, MoreHorizontal } from "lucide-react"
+import { BookOpen, CheckCircle, Clock, Plus, Filter, Search, MoreHorizontal, Loader2, Trash2, Edit2, AlertTriangle } from "lucide-react"
+
+interface Assignment {
+  _id: string;
+  title: string;
+  classId: {
+    _id: string;
+    name: string;
+    section: string;
+  };
+  subject: string;
+  dueDate: string;
+  totalMarks: number;
+  description: string;
+  status: string;
+  submissions: any[];
+}
+
+interface ClassItem {
+  _id: string;
+  name: string;
+  section: string;
+}
 
 export default function TeacherHomework() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [currentAssignment, setCurrentAssignment] = useState<any>(null)
-
-  // Initial State
-  const [assignments, setAssignments] = useState([
-    { id: 1, title: "Algebra Problems", class: "10-A", subject: "math", dueDate: "2024-11-18", totalStudents: 38, submitted: 32, graded: 25, status: "Active" },
-    { id: 2, title: "English Essay", class: "10-B", subject: "eng", dueDate: "2024-11-20", totalStudents: 35, submitted: 28, graded: 28, status: "Active" },
-    { id: 3, title: "Science Project", class: "9-A", subject: "sci", dueDate: "2024-11-15", totalStudents: 40, submitted: 40, graded: 40, status: "Completed" },
-    { id: 4, title: "History Essay", class: "10-A", subject: "hist", dueDate: "2024-11-22", totalStudents: 38, submitted: 15, graded: 10, status: "Active" },
-  ])
+  const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(null)
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [classes, setClasses] = useState<ClassItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
 
   // Form State
   const [formData, setFormData] = useState({
     title: "",
-    class: "",
+    classId: "",
     subject: "",
     dueDate: "",
-    points: ""
+    totalMarks: "100",
+    description: ""
   })
 
-  // Handlers
+  useEffect(() => {
+    fetchInitialData()
+  }, [])
+
+  const fetchInitialData = async () => {
+    setLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      const [hwRes, classRes] = await Promise.all([
+        fetch("http://127.0.0.1:5000/api/teacher/homework", {
+          headers: { "Authorization": `Bearer ${token}` }
+        }),
+        fetch("http://127.0.0.1:5000/api/teacher/classes", {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+      ])
+
+      const hwResult = await hwRes.json()
+      const classResult = await classRes.json()
+
+      if (hwResult.success) setAssignments(hwResult.data)
+      if (classResult.success) setClasses(classResult.data)
+    } catch (err) {
+      console.error("Error fetching homework data:", err)
+      toast({ title: "Error", description: "Failed to load homework", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const resetForm = () => {
-    setFormData({ title: "", class: "", subject: "", dueDate: "", points: "" })
+    setFormData({ title: "", classId: "", subject: "", dueDate: "", totalMarks: "100", description: "" })
     setIsEditing(false)
     setCurrentAssignment(null)
   }
@@ -61,221 +111,288 @@ export default function TeacherHomework() {
     setIsDialogOpen(true)
   }
 
-  const handleOpenEdit = (assignment: any) => {
+  const handleOpenEdit = (assignment: Assignment) => {
     setIsEditing(true)
     setCurrentAssignment(assignment)
     setFormData({
       title: assignment.title,
-      class: assignment.class,
+      classId: assignment.classId._id,
       subject: assignment.subject,
-      dueDate: assignment.dueDate,
-      points: "100" // Mock value
+      dueDate: assignment.dueDate.split('T')[0],
+      totalMarks: assignment.totalMarks.toString(),
+      description: assignment.description || ""
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this assignment?")) {
-      setAssignments(assignments.filter(a => a.id !== id))
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this assignment?")) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`http://127.0.0.1:5000/api/homework/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+
+      if (response.ok) {
+        setAssignments(assignments.filter(a => a._id !== id))
+        toast({ title: "Deleted", description: "Assignment removed successfully" })
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to delete assignment", variant: "destructive" })
     }
   }
 
-  const handleSave = () => {
-    if (isEditing && currentAssignment) {
-      // Update existing
-      setAssignments(assignments.map(a =>
-        a.id === currentAssignment.id
-          ? { ...a, title: formData.title, class: formData.class, subject: formData.subject, dueDate: formData.dueDate }
-          : a
-      ))
-    } else {
-      // Create new
-      const newId = Math.max(...assignments.map(a => a.id), 0) + 1
-      const newAssignment = {
-        id: newId,
-        title: formData.title,
-        class: formData.class || "10-A",
-        subject: formData.subject || "math",
-        dueDate: formData.dueDate || new Date().toISOString().split('T')[0],
-        totalStudents: 35, // Default
-        submitted: 0,
-        graded: 0,
-        status: "Active"
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const token = localStorage.getItem("token")
+      const url = isEditing
+        ? `http://127.0.0.1:5000/api/homework/${currentAssignment?._id}`
+        : "http://127.0.0.1:5000/api/homework"
+
+      const method = isEditing ? "PUT" : "POST"
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast({
+          title: isEditing ? "Updated" : "Created",
+          description: `Assignment ${isEditing ? "updated" : "assigned"} successfully`,
+          className: "bg-green-50 border-green-200 text-green-800"
+        })
+        fetchInitialData()
+        setIsDialogOpen(false)
+      } else {
+        throw new Error(result.error || "Failed to save")
       }
-      setAssignments([...assignments, newAssignment])
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to save",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
     }
-    setIsDialogOpen(false)
-    resetForm()
   }
 
   const totalAssignments = assignments.length
-  const activeAssignments = assignments.filter(a => a.status === "Active").length
-  const totalSubmissions = assignments.reduce((sum, a) => sum + a.submitted, 0)
-  const totalPendingGrading = assignments.reduce((sum, a) => sum + (a.submitted - a.graded), 0)
+  const activeAssignments = assignments.filter(a => a.status === "active").length
+  const totalSubmissions = assignments.reduce((sum, a) => sum + (a.submissions?.length || 0), 0)
+  const totalPendingGrading = assignments.reduce((sum, a) =>
+    sum + (a.submissions?.filter((s: any) => s.status === 'submitted').length || 0), 0
+  )
 
   return (
-    <DashboardLayout title="H.W. / C.W.">
-      <div className="space-y-6 max-w-7xl mx-auto">
+    <DashboardLayout title="Homework Management">
+      <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Homework & Classwork
-            </h2>
-            <p className="text-muted-foreground mt-1">Create new assignments and grade submissions.</p>
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Homework & Classwork</h2>
+            <p className="text-muted-foreground font-medium mt-1">Design assignments and monitor student academic progress.</p>
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-md" onClick={handleOpenCreate}>
+              <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 font-bold" onClick={handleOpenCreate}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Assignment
+                Assign New Work
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl border-none shadow-2xl">
               <DialogHeader>
-                <DialogTitle>{isEditing ? "Edit Assignment" : "Create New Assignment"}</DialogTitle>
-                <DialogDescription>{isEditing ? "Update assignment details" : "Assign homework or classwork to students."}</DialogDescription>
+                <DialogTitle className="text-2xl font-black">{isEditing ? "Modify Assignment" : "New Assignment"}</DialogTitle>
+                <DialogDescription className="font-medium text-gray-500">Provide clear instructions and deadlines for your students.</DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-6 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Class</Label>
-                    <Select value={formData.class} onValueChange={(val) => setFormData({ ...formData, class: val })}>
-                      <SelectTrigger><SelectValue placeholder="Select Class" /></SelectTrigger>
+                    <Label className="font-bold text-gray-700">Target Class</Label>
+                    <Select value={formData.classId} onValueChange={(val) => setFormData({ ...formData, classId: val })}>
+                      <SelectTrigger className="h-12"><SelectValue placeholder="Select Class" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="10-A">10-A</SelectItem>
-                        <SelectItem value="10-B">10-B</SelectItem>
-                        <SelectItem value="9-A">9-A</SelectItem>
+                        {classes.map(c => (
+                          <SelectItem key={c._id} value={c._id}>Class {c.name} - {c.section}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Subject</Label>
-                    <Select value={formData.subject} onValueChange={(val) => setFormData({ ...formData, subject: val })}>
-                      <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="math">Mathematics</SelectItem>
-                        <SelectItem value="sci">Science</SelectItem>
-                        <SelectItem value="eng">English</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="font-bold text-gray-700">Subject Area</Label>
+                    <Input
+                      placeholder="e.g. Mathematics"
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="h-12"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Assignment Title</Label>
+                  <Label className="font-bold text-gray-700">Assignment Title</Label>
                   <Input
-                    placeholder="e.g. Algebra Chapter 5 Exercises"
+                    placeholder="e.g. Quadratic Equations Practice"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="h-12 font-bold"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Due Date</Label>
+                    <Label className="font-bold text-gray-700">Due Date</Label>
                     <Input
                       type="date"
                       value={formData.dueDate}
                       onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                      className="h-12"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Points</Label>
+                    <Label className="font-bold text-gray-700">Weightage (Points)</Label>
                     <Input
                       type="number"
                       placeholder="100"
-                      value={formData.points}
-                      onChange={(e) => setFormData({ ...formData, points: e.target.value })}
+                      value={formData.totalMarks}
+                      onChange={(e) => setFormData({ ...formData, totalMarks: e.target.value })}
+                      className="h-12"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Description / Instructions</Label>
-                  <Textarea placeholder="Enter detailed instructions for students..." />
+                  <Label className="font-bold text-gray-700">Instructions & Resources</Label>
+                  <Textarea
+                    placeholder="Describe the assignment in detail..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="min-h-[120px] resize-none"
+                  />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button className="bg-indigo-600" onClick={handleSave}>{isEditing ? "Update" : "Assign Now"}</Button>
+              <DialogFooter className="border-t pt-6">
+                <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="font-bold text-gray-500">Discard</Button>
+                <Button
+                  className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 font-black px-8"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? <Loader2 className="animate-spin h-4 w-4" /> : isEditing ? "Save Changes" : "Assign Now"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard title="Total Assignments" value={totalAssignments.toString()} icon={BookOpen} iconColor="text-purple-600" iconBgColor="bg-purple-100" />
-          <StatCard title="Active" value={activeAssignments.toString()} icon={Clock} iconColor="text-blue-600" iconBgColor="bg-blue-100" />
-          <StatCard title="Submissions" value={totalSubmissions.toString()} icon={CheckCircle} iconColor="text-green-600" iconBgColor="bg-green-100" />
-          <StatCard title="Pending Grading" value={totalPendingGrading.toString()} icon={Clock} iconColor="text-orange-600" iconBgColor="bg-orange-100" />
+          <StatCard title="Total Assigned" value={totalAssignments.toString()} icon={BookOpen} iconColor="text-indigo-600" iconBgColor="bg-indigo-50" />
+          <StatCard title="Active Work" value={activeAssignments.toString()} icon={Clock} iconColor="text-blue-600" iconBgColor="bg-blue-50" />
+          <StatCard title="Submissions" value={totalSubmissions.toString()} icon={CheckCircle} iconColor="text-emerald-600" iconBgColor="bg-emerald-50" />
+          <StatCard title="To Grade" value={totalPendingGrading.toString()} icon={AlertTriangle} iconColor="text-orange-600" iconBgColor="bg-orange-50" />
         </div>
 
-        <Card className="border-none shadow-md">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-indigo-600" />Assignment List</CardTitle>
-                <CardDescription>Manage ongoing and completed work</CardDescription>
+        <Card className="border-none shadow-2xl shadow-indigo-100/30 overflow-hidden ring-1 ring-gray-100">
+          <CardHeader className="bg-gray-50/50 border-b py-5">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 font-black text-gray-800">
+                  <div className="p-1.5 bg-indigo-600 rounded-lg text-white">
+                    <BookOpen className="h-4 w-4" />
+                  </div>
+                  Assignment Roster
+                </CardTitle>
+                <CardDescription className="font-medium">Curated list of all assignments assigned to classes</CardDescription>
               </div>
-              <div className="w-64 relative hidden md:block">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search assignments..." className="pl-9" />
+              <div className="w-full sm:w-80 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input placeholder="Search assignments..." className="pl-10 h-11 bg-white border-gray-200 rounded-xl shadow-sm" />
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {assignments.map((assignment) => (
-                <div key={assignment.id} className="p-5 border rounded-xl hover:shadow-md transition-all bg-white group">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex gap-4">
-                      <div className="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
-                        <BookOpen className="h-6 w-6" />
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-20 text-center">
+                <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mx-auto mb-4" />
+                <p className="text-muted-foreground font-black text-sm uppercase tracking-widest">Compiling assignment history...</p>
+              </div>
+            ) : assignments.length > 0 ? (
+              <div className="divide-y divide-gray-100 bg-white">
+                {assignments.map((assignment) => (
+                  <div key={assignment._id} className="p-6 hover:bg-indigo-50/20 transition-all group">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      <div className="flex gap-5">
+                        <div className="h-14 w-14 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <BookOpen className="h-7 w-7" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-black text-xl text-gray-900 group-hover:text-indigo-600 transition-colors">{assignment.title}</h4>
+                            <Badge className={assignment.status === "completed" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}>
+                              {assignment.status}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-gray-500">
+                            <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700">Class {assignment.classId.name}-{assignment.classId.section}</span>
+                            <span className="capitalize">{assignment.subject}</span>
+                            <span className="flex items-center gap-1.5 text-rose-600 font-black">
+                              <Clock className="h-3.5 w-3.5" />
+                              {new Date(assignment.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-lg text-gray-900 group-hover:text-indigo-600 transition-colors">{assignment.title}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <span className="font-medium text-gray-700">Class {assignment.class}</span>
-                          <span>•</span>
-                          <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
+
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="text-right hidden sm:block min-w-[120px]">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Submission Rate</p>
+                          <div className="flex items-center gap-2">
+                            <Progress value={((assignment.submissions?.length || 0) / 40) * 100} className="h-2 w-24" />
+                            <span className="text-sm font-black text-gray-700">{assignment.submissions?.length || 0}/40</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="icon" variant="ghost" className="h-10 w-10 text-indigo-600 hover:bg-indigo-50" onClick={() => handleOpenEdit(assignment)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-10 w-10 text-rose-600 hover:bg-rose-50" onClick={() => handleDelete(assignment._id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button className="bg-gray-900 hover:bg-black text-white px-6 font-bold h-10 shadow-lg">Grade Subs</Button>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${assignment.status === "Completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                        }`}>
-                        {assignment.status}
-                      </span>
-
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleOpenEdit(assignment)}>Edit</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(assignment.id)}>Delete</Button>
-                      </div>
-                    </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50/50 rounded-lg border border-gray-100">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm font-medium">
-                        <span className="text-gray-600">Submission Progress</span>
-                        <span className="text-gray-900">{assignment.submitted}/{assignment.totalStudents} Students</span>
-                      </div>
-                      <Progress value={(assignment.submitted / assignment.totalStudents) * 100} className="h-2.5" />
-                    </div>
-
-                    <div className="flex items-center justify-end gap-4">
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider">Pending Grading</p>
-                        <p className="text-lg font-bold text-orange-600">{assignment.submitted - assignment.graded}</p>
-                      </div>
-                      <Button size="sm" variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50">View Submissions</Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-20 text-center space-y-4">
+                <p className="text-xl font-black text-gray-300 uppercase tracking-widest">No Assignments Published</p>
+                <Button onClick={handleOpenCreate} variant="outline" className="border-2 border-dashed border-gray-200 text-gray-400 hover:border-indigo-200 hover:text-indigo-600 px-8">
+                  Assign Your First Work
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
     </DashboardLayout>
   )
 }
+
+function Badge({ children, className }: { children: React.ReactNode, className?: string }) {
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${className}`}>
+      {children}
+    </span>
+  )
+}
+
+
+

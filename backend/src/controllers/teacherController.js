@@ -14,26 +14,28 @@ const Event = require('../models/Event');
 const Certificate = require('../models/Certificate');
 const ConsentRequest = require('../models/ConsentRequest');
 const PostalExchange = require('../models/PostalExchange');
+const Timetable = require('../models/Timetable');
+const DisciplinaryIncident = require('../models/DisciplinaryIncident');
+const ExamResult = require('../models/ExamResult');
+const LeaveRequest = require('../models/LeaveRequest');
+const Notice = require('../models/Notice');
+const StudyMaterial = require('../models/StudyMaterial');
+const { Book, IssueRecord } = require('../models/Library');
+const Quiz = require('../models/Quiz');
 
 // Get teacher dashboard statistics
 exports.getTeacherDashboard = async (req, res) => {
   try {
-    const { userId } = req.user;
-
-    // Find teacher
-    const teacher = await Teacher.findById(userId);
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        error: 'Teacher not found'
-      });
-    }
+    const { email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
 
     // Get assigned classes
     const assignedClasses = await Class.find({
       $or: [
-        { classTeacher: userId },
-        { 'subjects.teacher': userId }
+        { classTeacher: teacherId },
+        { 'subjects.teacher': teacherId }
       ],
       isActive: true
     }).select('name section');
@@ -46,13 +48,13 @@ exports.getTeacherDashboard = async (req, res) => {
 
     // Count active homework
     const activeHomework = await Homework.countDocuments({
-      assignedBy: userId,
+      assignedBy: teacherId,
       status: 'active'
     });
 
     // Get pending homework submissions
     const homeworkList = await Homework.find({
-      assignedBy: userId,
+      assignedBy: teacherId,
       status: 'active'
     });
 
@@ -98,12 +100,15 @@ exports.getTeacherDashboard = async (req, res) => {
 // Get teacher's classes
 exports.getTeacherClasses = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const { email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
 
     const classes = await Class.find({
       $or: [
-        { classTeacher: userId },
-        { 'subjects.teacher': userId }
+        { classTeacher: teacherId },
+        { 'subjects.teacher': teacherId }
       ],
       isActive: true
     }).populate('classTeacher', 'firstName lastName');
@@ -159,14 +164,17 @@ exports.getTeacherClasses = async (req, res) => {
 exports.getClassStudents = async (req, res) => {
   try {
     const { classId } = req.params;
-    const { userId } = req.user;
+    const { email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
 
     // Verify teacher has access to this class
     const classItem = await Class.findOne({
       _id: classId,
       $or: [
-        { classTeacher: userId },
-        { 'subjects.teacher': userId }
+        { classTeacher: teacherId },
+        { 'subjects.teacher': teacherId }
       ]
     });
 
@@ -200,10 +208,14 @@ exports.getClassStudents = async (req, res) => {
 // Get teacher's homework assignments
 exports.getTeacherHomework = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const { email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
     const { status, classId } = req.query;
 
-    const query = { assignedBy: userId };
+    const query = { assignedBy: teacherId };
     if (status) query.status = status;
     if (classId) query.classId = classId;
 
@@ -227,10 +239,14 @@ exports.getTeacherHomework = async (req, res) => {
 // Get lesson plans
 exports.getLessonPlans = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
     const { startDate, endDate, classId } = req.query;
 
-    const query = { teacherId: userId, schoolId };
+    const query = { teacherId, schoolId };
 
     if (classId) query.classId = classId;
 
@@ -260,12 +276,16 @@ exports.getLessonPlans = async (req, res) => {
 // Create lesson plan
 exports.createLessonPlan = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
     const { classId, subject, lessonDate, topic, objectives, activities, resources, homework, notes, duration } = req.body;
 
     const newLessonPlan = new LessonPlan({
       schoolId,
-      teacherId: userId,
+      teacherId,
       classId,
       subject,
       lessonDate,
@@ -298,11 +318,15 @@ exports.createLessonPlan = async (req, res) => {
 // Update lesson plan
 exports.updateLessonPlan = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
     const { id } = req.params;
 
     const lessonPlan = await LessonPlan.findOneAndUpdate(
-      { _id: id, teacherId: userId, schoolId },
+      { _id: id, teacherId, schoolId },
       { $set: req.body },
       { new: true, runValidators: true }
     );
@@ -331,12 +355,16 @@ exports.updateLessonPlan = async (req, res) => {
 // Delete lesson plan
 exports.deleteLessonPlan = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
     const { id } = req.params;
 
     const lessonPlan = await LessonPlan.findOneAndDelete({
       _id: id,
-      teacherId: userId,
+      teacherId,
       schoolId
     });
 
@@ -401,17 +429,18 @@ exports.getEnquiries = async (req, res) => {
 // Get Class Fees
 exports.getFees = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+
     const { classId } = req.query;
-    // Real logic would filter students by the Teacher's assigned classes or the specific class selected
-    // For now we return all fees for the requested class
-    let query = {};
+    let query = { schoolId };
     if (classId) query.classId = classId;
 
-    // In a real scenario, join with Student to get names
     const fees = await StudentFee.find(query).populate('studentId', 'firstName lastName rollNumber');
     res.json({ success: true, data: fees });
   } catch (err) {
+    console.error('Error fetching fees:', err);
     res.status(500).json({ success: false, error: 'Failed to fetch fees' });
   }
 };
@@ -457,13 +486,20 @@ exports.createAssessment = async (req, res) => {
 // Get Incidents
 exports.getDisciplinaryIncidents = async (req, res) => {
   try {
-    const { schoolId } = req.user;
-    // complaints or incident logs
-    // Assuming type field or separate Logic, depending on existing Complaint model
-    // As fallback, just getting complaints
-    const incidents = await Complaint.find({ schoolId }).populate('studentId', 'firstName lastName');
+    const { schoolId, email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    // Get incidents reported by the teacher or involving their students
+    const incidents = await DisciplinaryIncident.find({
+      schoolId,
+      reportedBy: teacherId
+    }).populate('studentId', 'firstName lastName rollNumber class section');
+
     res.json({ success: true, data: incidents });
   } catch (err) {
+    console.error('Error fetching disciplinary incidents:', err);
     res.status(500).json({ success: false, error: 'Failed to fetch incidents' });
   }
 };
@@ -471,16 +507,36 @@ exports.getDisciplinaryIncidents = async (req, res) => {
 // Report Incident
 exports.reportIncident = async (req, res) => {
   try {
-    const { schoolId, userId } = req.user;
-    const newIncident = new Complaint({
-      ...req.body,
+    const { schoolId, email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    const { studentId, incidentDate, location, severity, description } = req.body;
+
+    const newIncident = new DisciplinaryIncident({
       schoolId,
-      reportedBy: userId,
-      status: 'Pending'
+      reportedBy: teacherId,
+      studentId,
+      incidentDate,
+      location,
+      severity,
+      description,
+      status: 'pending'
     });
+
     await newIncident.save();
-    res.status(201).json({ success: true, message: 'Incident reported', data: newIncident });
+
+    const populatedIncident = await DisciplinaryIncident.findById(newIncident._id)
+      .populate('studentId', 'firstName lastName rollNumber class section');
+
+    res.status(201).json({
+      success: true,
+      message: 'Incident reported successfully',
+      data: populatedIncident
+    });
   } catch (err) {
+    console.error('Error reporting disciplinary incident:', err);
     res.status(500).json({ success: false, error: 'Failed to report incident' });
   }
 };
@@ -501,11 +557,15 @@ exports.getEvents = async (req, res) => {
 // Propose Event
 exports.proposeEvent = async (req, res) => {
   try {
-    const { schoolId, userId } = req.user;
+    const { schoolId, email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
     const newEvent = new Event({
       ...req.body,
       schoolId,
-      organizer: userId,
+      organizer: teacherId,
       title: req.body.title || 'Event Proposal', // Fallback
       status: 'Pending' // Proposal status
     });
@@ -546,8 +606,12 @@ exports.generateCertificate = async (req, res) => {
 // Get Requests
 exports.getConsentRequests = async (req, res) => {
   try {
-    const { schoolId, userId } = req.user;
-    const requests = await ConsentRequest.find({ schoolId, teacherId: userId });
+    const { schoolId, email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    const requests = await ConsentRequest.find({ schoolId, teacherId });
     res.json({ success: true, data: requests });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch consent requests' });
@@ -557,11 +621,467 @@ exports.getConsentRequests = async (req, res) => {
 // Create Request
 exports.createConsentRequest = async (req, res) => {
   try {
-    const { schoolId, userId } = req.user;
-    const newRequest = new ConsentRequest({ ...req.body, schoolId, teacherId: userId });
+    const { schoolId, email } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    const newRequest = new ConsentRequest({ ...req.body, schoolId, teacherId });
     await newRequest.save();
     res.status(201).json({ success: true, message: 'Consent request created', data: newRequest });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to create consent request' });
+  }
+};
+// --- Profile ---
+
+// Get current teacher profile
+exports.getTeacherProfile = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email, schoolId });
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+
+    res.json({ success: true, data: teacher });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch profile' });
+  }
+};
+
+// Update teacher profile
+exports.updateTeacherProfile = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const updates = req.body;
+
+    const teacher = await Teacher.findOneAndUpdate(
+      { email, schoolId },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+
+    res.json({ success: true, message: 'Profile updated successfully', data: teacher });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to update profile' });
+  }
+};
+// --- Timetable ---
+
+// Get current teacher's weekly timetable
+exports.getTeacherTimetable = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    // Find all timetable entries that have at least one period assigned to this teacher
+    const timetableEntries = await Timetable.find({
+      schoolId,
+      'periods.teacher': teacherId
+    }).populate('classId', 'name section');
+
+    // Group and format for easier consumption
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const formattedTimetable = days.map(day => {
+      const dayEntries = timetableEntries.filter(t => t.dayOfWeek === day);
+
+      const teacherPeriods = [];
+      dayEntries.forEach(entry => {
+        entry.periods.forEach(p => {
+          if (p.teacher && p.teacher.toString() === teacherId.toString()) {
+            teacherPeriods.push({
+              periodNumber: p.periodNumber,
+              subject: p.subject,
+              startTime: p.startTime,
+              endTime: p.endTime,
+              room: p.room,
+              className: entry.classId.name,
+              section: entry.classId.section
+            });
+          }
+        });
+      });
+
+      // Sort periods by number
+      teacherPeriods.sort((a, b) => a.periodNumber - b.periodNumber);
+
+      return {
+        day,
+        periods: teacherPeriods
+      };
+    });
+
+    res.json({ success: true, data: formattedTimetable });
+  } catch (err) {
+    console.error('Error fetching teacher timetable:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch timetable' });
+  }
+};
+// --- Attendance ---
+
+// Mark Attendance (Bulk)
+exports.markAttendance = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { date, className, section, attendanceData } = req.body;
+
+    if (!date || !className || !section || !attendanceData) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    const operations = attendanceData.map(item => ({
+      updateOne: {
+        filter: {
+          studentId: item.studentId,
+          date: attendanceDate,
+          schoolId
+        },
+        update: {
+          $set: {
+            status: item.status,
+            class: className,
+            section: section,
+            schoolId
+          }
+        },
+        upsert: true
+      }
+    }));
+
+    await Attendance.bulkWrite(operations);
+
+    res.json({ success: true, message: 'Attendance recorded successfully' });
+  } catch (err) {
+    console.error('Error marking attendance:', err);
+    res.status(500).json({ success: false, error: 'Failed to record attendance' });
+  }
+};
+
+// Get Attendance for a class and date
+exports.getAttendance = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { date, className, section } = req.query;
+
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    const attendance = await Attendance.find({
+      schoolId,
+      date: attendanceDate,
+      class: className,
+      section: section
+    });
+
+    res.json({ success: true, data: attendance });
+  } catch (err) {
+    console.error('Error fetching attendance:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch attendance' });
+  }
+};
+
+// --- Exams & Marks ---
+
+// Get Exams for teacher's classes
+exports.getTeacherExams = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+
+    // In a real app, we might filter by classes assigned to teacher
+    // For now, getting all exams in the school
+    const exams = await Exam.find({ schoolId }).sort({ date: -1 });
+
+    res.json({ success: true, data: exams });
+  } catch (err) {
+    console.error('Error fetching exams:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch exams' });
+  }
+};
+
+// Get Results for an exam
+exports.getExamResults = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { examId } = req.params;
+
+    const results = await ExamResult.find({
+      schoolId,
+      examId
+    });
+
+    res.json({ success: true, data: results });
+  } catch (err) {
+    console.error('Error fetching results:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch results' });
+  }
+};
+
+// Save Bulk Results
+exports.saveBulkResults = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { examId, results } = req.body;
+
+    if (!examId || !results || !Array.isArray(results)) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    const operations = results.map(item => ({
+      updateOne: {
+        filter: {
+          examId,
+          studentId: item.studentId,
+          schoolId
+        },
+        update: {
+          $set: {
+            marksObtained: item.marksObtained,
+            remarks: item.remarks,
+            schoolId
+          }
+        },
+        upsert: true
+      }
+    }));
+
+    await ExamResult.bulkWrite(operations);
+
+    res.json({ success: true, message: 'Marks saved successfully' });
+  } catch (err) {
+    console.error('Error saving marks:', err);
+    res.status(500).json({ success: false, error: 'Failed to save marks' });
+  }
+};
+
+// --- Leave Management ---
+
+// Get Teacher Leaves
+exports.getTeacherLeaves = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    const leaves = await LeaveRequest.find({
+      schoolId,
+      requesterId: teacherId,
+      requesterType: 'teacher'
+    }).sort({ createdAt: -1 });
+
+    res.json({ success: true, data: leaves });
+  } catch (err) {
+    console.error('Error fetching teacher leaves:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch leaves' });
+  }
+};
+
+// Apply for Leave
+exports.applyLeave = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    const { leaveType, startDate, endDate, reason } = req.body;
+
+    if (!leaveType || !startDate || !endDate || !reason) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    const newLeave = new LeaveRequest({
+      schoolId,
+      requesterId: teacherId,
+      requesterType: 'teacher',
+      leaveType,
+      startDate: start,
+      endDate: end,
+      totalDays,
+      reason,
+      status: 'pending'
+    });
+
+    await newLeave.save();
+
+    res.json({ success: true, message: 'Leave application submitted successfully', data: newLeave });
+  } catch (err) {
+    console.error('Error applying for leave:', err);
+    res.status(500).json({ success: false, error: 'Failed to submit leave application' });
+  }
+};
+
+// Cancel Leave
+exports.cancelLeave = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    const { id } = req.params;
+
+    const leave = await LeaveRequest.findOneAndUpdate(
+      { _id: id, requesterId: teacherId, status: 'pending', schoolId },
+      { status: 'cancelled' },
+      { new: true }
+    );
+
+    if (!leave) {
+      return res.status(404).json({ success: false, error: 'Leave request not found or cannot be cancelled' });
+    }
+
+    res.json({ success: true, message: 'Leave request cancelled successfully', data: leave });
+  } catch (err) {
+    console.error('Error cancelling leave:', err);
+    res.status(500).json({ success: false, error: 'Failed to cancel leave application' });
+  }
+};
+
+// --- Notice Board ---
+exports.getTeacherNotices = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const notices = await Notice.find({
+      schoolId,
+      isActive: true,
+      targetAudience: { $in: ['all', 'teachers'] }
+    }).sort({ publishedDate: -1 });
+    res.json({ success: true, data: notices });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch notices' });
+  }
+};
+
+// --- Download Center ---
+exports.getStudyMaterials = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const materials = await StudyMaterial.find({ schoolId, isActive: true })
+      .populate('uploadedBy', 'firstName lastName')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: materials });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch study materials' });
+  }
+};
+
+exports.uploadStudyMaterial = async (req, res) => {
+  try {
+    const { schoolId, userId } = req.user;
+    const newMaterial = new StudyMaterial({
+      ...req.body,
+      schoolId,
+      uploadedBy: userId
+    });
+    await newMaterial.save();
+    res.status(201).json({ success: true, message: 'Material uploaded successfully', data: newMaterial });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to upload material' });
+  }
+};
+
+// --- Library ---
+exports.getLibraryBooks = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const books = await Book.find({ schoolId, isActive: true });
+    res.json({ success: true, data: books });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch books' });
+  }
+};
+
+exports.getMyIssuedBooks = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+
+    const issuedBooks = await IssueRecord.find({
+      schoolId,
+      'issuedTo.userId': teacher._id,
+      'issuedTo.userType': 'teacher',
+      status: 'issued'
+    }).populate('bookId');
+
+    res.json({ success: true, data: issuedBooks });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch issued books' });
+  }
+};
+
+// --- Online Exams ---
+exports.getAvailableQuizzes = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const quizzes = await Quiz.find({ schoolId, isActive: true })
+      .populate('createdBy', 'firstName lastName');
+    res.json({ success: true, data: quizzes });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch quizzes' });
+  }
+};
+
+// --- Inventory (Placeholder as no specific Model found) ---
+exports.getInventory = async (req, res) => {
+  try {
+    // Return dummy data or common items if model existed
+    res.json({
+      success: true, data: [
+        { id: 1, itemName: 'Whiteboard Markers', category: 'Stationery', quantity: 50, status: 'Available' },
+        { id: 2, itemName: 'A4 Paper Rim', category: 'Stationery', quantity: 20, status: 'Low Stock' }
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch inventory' });
+  }
+};
+
+// --- Class Performance Reports ---
+exports.getClassPerformanceReports = async (req, res) => {
+  try {
+    const { email, schoolId } = req.user;
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    const teacherId = teacher._id;
+
+    // Get classes assigned to this teacher
+    const teacherClasses = await Class.find({
+      $or: [{ classTeacher: teacherId }, { 'subjects.teacher': teacherId }],
+      schoolId
+    });
+
+    const reports = await Promise.all(teacherClasses.map(async (cls) => {
+      const studentCount = await Student.countDocuments({ class: cls._id });
+      // This is a simplified report
+      return {
+        classId: cls._id,
+        className: `${cls.name}-${cls.section}`,
+        totalStudents: studentCount,
+        averageAttendance: "92%", // Placeholder
+        overallPerformance: "Good" // Placeholder
+      };
+    }));
+
+    res.json({ success: true, data: reports });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch performance reports' });
   }
 };

@@ -1,5 +1,6 @@
 // controllers/studentPortalController.js
 const Student = require('../models/Student');
+const Class = require('../models/Class');
 const Attendance = require('../models/Attendance');
 const Homework = require('../models/Homework');
 const Assignment = require('../models/Assignment');
@@ -25,11 +26,10 @@ const HostelOutpass = require('../models/HostelOutpass');
 // Get student dashboard
 exports.getStudentDashboard = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
 
     // Get student details
-    const student = await Student.findOne({ _id: userId, schoolId })
-      .populate('classId', 'name section');
+    const student = await Student.findOne({ email, schoolId });
 
     if (!student) {
       return res.status(404).json({
@@ -38,15 +38,26 @@ exports.getStudentDashboard = async (req, res) => {
       });
     }
 
+    const userId = student._id;
+
+    // Find the Class ID based on name and section
+    const studentClassForId = await Class.findOne({
+      schoolId,
+      name: student.class,
+      section: student.section
+    });
+
+    const classId = studentClassForId ? studentClassForId._id : null;
+
     // Get attendance statistics (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const attendanceRecords = await Attendance.find({
+    const attendanceRecords = classId ? await Attendance.find({
       schoolId,
-      classId: student.classId,
+      classId: classId,
       date: { $gte: thirtyDaysAgo }
-    });
+    }) : [];
 
     const studentAttendance = attendanceRecords.filter(record =>
       record.students.some(s =>
@@ -59,29 +70,29 @@ exports.getStudentDashboard = async (req, res) => {
       : 0;
 
     // Get pending homework count
-    const pendingHomework = await Homework.countDocuments({
+    const pendingHomework = classId ? await Homework.countDocuments({
       schoolId,
-      classId: student.classId,
+      classId: classId,
       dueDate: { $gte: new Date() },
       status: 'active',
       'submissions.studentId': { $ne: userId }
-    });
+    }) : 0;
 
     // Get pending assignments count
-    const pendingAssignments = await Assignment.countDocuments({
+    const pendingAssignments = classId ? await Assignment.countDocuments({
       schoolId,
-      classId: student.classId,
+      classId: classId,
       dueDate: { $gte: new Date() },
       status: 'active',
       'submissions.studentId': { $ne: userId }
-    });
+    }) : 0;
 
     // Get upcoming exams
-    const upcomingExams = await Exam.find({
+    const upcomingExams = classId ? await Exam.find({
       schoolId,
-      classId: student.classId,
+      classId: classId,
       examDate: { $gte: new Date() }
-    }).limit(5).sort({ examDate: 1 });
+    }).limit(5).sort({ examDate: 1 }) : [];
 
     // Get latest exam result
     const latestResult = await ExamResult.findOne({
@@ -110,11 +121,11 @@ exports.getStudentDashboard = async (req, res) => {
 
     // Get today's timetable
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todayTimetable = await Timetable.findOne({
+    const todayTimetable = classId ? await Timetable.findOne({
       schoolId,
-      classId: student.classId,
+      classId: classId,
       dayOfWeek: today
-    }).populate('periods.teacherId', 'firstName lastName');
+    }).populate('periods.teacherId', 'firstName lastName') : null;
 
     // Get unread notices count
     const unreadNotices = await Notice.countDocuments({
@@ -124,15 +135,15 @@ exports.getStudentDashboard = async (req, res) => {
     });
 
     // Get today's online classes
-    const todayOnlineClasses = await OnlineClass.find({
+    const todayOnlineClasses = classId ? await OnlineClass.find({
       schoolId,
-      classId: student.classId,
+      classId: classId,
       scheduledDate: {
         $gte: new Date().setHours(0, 0, 0, 0),
         $lt: new Date().setHours(23, 59, 59, 999)
       },
       status: { $in: ['scheduled', 'ongoing'] }
-    }).populate('teacherId', 'firstName lastName');
+    }).populate('teacherId', 'firstName lastName') : [];
 
     res.json({
       success: true,
@@ -142,7 +153,10 @@ exports.getStudentDashboard = async (req, res) => {
           firstName: student.firstName,
           lastName: student.lastName,
           rollNumber: student.rollNumber,
-          class: student.classId
+          class: {
+            name: student.class,
+            section: student.section
+          }
         },
         attendance: {
           percentage: attendancePercentage,
@@ -183,10 +197,9 @@ exports.getStudentDashboard = async (req, res) => {
 // Get student profile
 exports.getStudentProfile = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
 
-    const student = await Student.findOne({ _id: userId, schoolId })
-      .populate('classId', 'name section')
+    const student = await Student.findOne({ email, schoolId })
       .populate('schoolId', 'name address phone email');
 
     if (!student) {
@@ -212,7 +225,7 @@ exports.getStudentProfile = async (req, res) => {
 // Update student profile
 exports.updateStudentProfile = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
     const allowedUpdates = ['phone', 'address', 'bloodGroup', 'emergencyContact'];
 
     const updates = {};
@@ -223,7 +236,7 @@ exports.updateStudentProfile = async (req, res) => {
     });
 
     const student = await Student.findOneAndUpdate(
-      { _id: userId, schoolId },
+      { email, schoolId },
       { $set: updates },
       { new: true, runValidators: true }
     );
@@ -252,10 +265,10 @@ exports.updateStudentProfile = async (req, res) => {
 // Get student attendance
 exports.getStudentAttendance = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
     const { startDate, endDate } = req.query;
 
-    const student = await Student.findOne({ _id: userId, schoolId });
+    const student = await Student.findOne({ email, schoolId });
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -263,9 +276,22 @@ exports.getStudentAttendance = async (req, res) => {
       });
     }
 
+    const userId = student._id;
+
+    // Find the Class ID
+    const studentClassForId = await Class.findOne({
+      schoolId,
+      name: student.class,
+      section: student.section
+    });
+
+    if (!studentClassForId) {
+      return res.json({ success: true, data: { attendance: [], statistics: { totalDays: 0, presentDays: 0, absentDays: 0, percentage: 0 } } });
+    }
+
     const query = {
       schoolId,
-      classId: student.classId
+      classId: studentClassForId._id
     };
 
     if (startDate || endDate) {
@@ -316,10 +342,10 @@ exports.getStudentAttendance = async (req, res) => {
 // Get student homework
 exports.getStudentHomework = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
     const { status } = req.query;
 
-    const student = await Student.findOne({ _id: userId, schoolId });
+    const student = await Student.findOne({ email, schoolId });
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -327,9 +353,22 @@ exports.getStudentHomework = async (req, res) => {
       });
     }
 
+    const userId = student._id;
+
+    // Find the Class ID
+    const studentClassForId = await Class.findOne({
+      schoolId,
+      name: student.class,
+      section: student.section
+    });
+
+    if (!studentClassForId) {
+      return res.json({ success: true, data: [] });
+    }
+
     const query = {
       schoolId,
-      classId: student.classId
+      classId: studentClassForId._id
     };
 
     if (status === 'pending') {
@@ -375,9 +414,14 @@ exports.getStudentHomework = async (req, res) => {
 // Submit homework
 exports.submitHomework = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email: userEmail, schoolId } = req.user;
     const { homeworkId } = req.params;
     const { fileUrl, content } = req.body;
+
+    // Find student first to get their ID
+    const student = await Student.findOne({ email: userEmail, schoolId });
+    if (!student) return res.status(404).json({ success: false, error: 'Student profile not found' });
+    const studentId = student._id;
 
     const homework = await Homework.findOne({ _id: homeworkId, schoolId });
     if (!homework) {
@@ -389,7 +433,7 @@ exports.submitHomework = async (req, res) => {
 
     // Check if already submitted
     const existingSubmission = homework.submissions.find(s =>
-      s.studentId.toString() === userId
+      s.studentId.toString() === studentId.toString()
     );
 
     if (existingSubmission) {
@@ -400,7 +444,7 @@ exports.submitHomework = async (req, res) => {
     }
 
     homework.submissions.push({
-      studentId: userId,
+      studentId: studentId,
       submittedAt: new Date(),
       fileUrl,
       content,
@@ -425,10 +469,10 @@ exports.submitHomework = async (req, res) => {
 // Get student assignments
 exports.getStudentAssignments = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
     const { status } = req.query;
 
-    const student = await Student.findOne({ _id: userId, schoolId });
+    const student = await Student.findOne({ email, schoolId });
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -436,9 +480,22 @@ exports.getStudentAssignments = async (req, res) => {
       });
     }
 
+    const userId = student._id;
+
+    // Find the Class ID
+    const studentClassForId = await Class.findOne({
+      schoolId,
+      name: student.class,
+      section: student.section
+    });
+
+    if (!studentClassForId) {
+      return res.json({ success: true, data: [] });
+    }
+
     const query = {
       schoolId,
-      classId: student.classId
+      classId: studentClassForId._id
     };
 
     if (status === 'pending') {
@@ -485,9 +542,14 @@ exports.getStudentAssignments = async (req, res) => {
 // Submit assignment
 exports.submitAssignment = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email: userEmail, schoolId } = req.user;
     const { assignmentId } = req.params;
     const { fileUrl, content } = req.body;
+
+    // Find student first to get their ID
+    const student = await Student.findOne({ email: userEmail, schoolId });
+    if (!student) return res.status(404).json({ success: false, error: 'Student profile not found' });
+    const studentId = student._id;
 
     const assignment = await Assignment.findOne({ _id: assignmentId, schoolId });
     if (!assignment) {
@@ -498,7 +560,7 @@ exports.submitAssignment = async (req, res) => {
     }
 
     const existingSubmission = assignment.submissions.find(s =>
-      s.studentId.toString() === userId
+      s.studentId.toString() === studentId.toString()
     );
 
     if (existingSubmission) {
@@ -511,7 +573,7 @@ exports.submitAssignment = async (req, res) => {
     const isLate = new Date() > assignment.dueDate;
 
     assignment.submissions.push({
-      studentId: userId,
+      studentId: studentId,
       submittedAt: new Date(),
       fileUrl,
       content,
@@ -536,10 +598,10 @@ exports.submitAssignment = async (req, res) => {
 // Get student exams
 exports.getStudentExams = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
     const { status } = req.query;
 
-    const student = await Student.findOne({ _id: userId, schoolId });
+    const student = await Student.findOne({ email, schoolId });
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -547,9 +609,20 @@ exports.getStudentExams = async (req, res) => {
       });
     }
 
+    // Find the Class ID
+    const studentClassForId = await Class.findOne({
+      schoolId,
+      name: student.class,
+      section: student.section
+    });
+
+    if (!studentClassForId) {
+      return res.json({ success: true, data: [] });
+    }
+
     const query = {
       schoolId,
-      classId: student.classId
+      classId: studentClassForId._id
     };
 
     if (status === 'upcoming') {
@@ -576,9 +649,12 @@ exports.getStudentExams = async (req, res) => {
 // Get student exam results
 exports.getStudentResults = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email: userEmail, schoolId } = req.user;
 
-    const results = await ExamResult.find({ studentId: userId, schoolId })
+    const student = await Student.findOne({ email: userEmail, schoolId });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+
+    const results = await ExamResult.find({ studentId: student._id, schoolId })
       .populate('examId', 'name examDate totalMarks')
       .sort({ createdAt: -1 });
 
@@ -598,9 +674,12 @@ exports.getStudentResults = async (req, res) => {
 // Get student fees
 exports.getStudentFees = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email: userEmail, schoolId } = req.user;
 
-    const fees = await StudentFee.find({ studentId: userId, schoolId })
+    const student = await Student.findOne({ email: userEmail, schoolId });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+
+    const fees = await StudentFee.find({ studentId: student._id, schoolId })
       .sort({ dueDate: -1 });
 
     const summary = fees.reduce((acc, fee) => {
@@ -629,9 +708,9 @@ exports.getStudentFees = async (req, res) => {
 // Get student timetable
 exports.getStudentTimetable = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
 
-    const student = await Student.findOne({ _id: userId, schoolId });
+    const student = await Student.findOne({ email, schoolId });
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -639,9 +718,20 @@ exports.getStudentTimetable = async (req, res) => {
       });
     }
 
+    // Find the Class ID
+    const studentClassForId = await Class.findOne({
+      schoolId,
+      name: student.class,
+      section: student.section
+    });
+
+    if (!studentClassForId) {
+      return res.json({ success: true, data: [] });
+    }
+
     const timetable = await Timetable.find({
       schoolId,
-      classId: student.classId
+      classId: studentClassForId._id
     }).populate('periods.teacherId', 'firstName lastName');
 
     res.json({
@@ -660,10 +750,10 @@ exports.getStudentTimetable = async (req, res) => {
 // Get student online classes
 exports.getStudentOnlineClasses = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email, schoolId } = req.user;
     const { status } = req.query;
 
-    const student = await Student.findOne({ _id: userId, schoolId });
+    const student = await Student.findOne({ email, schoolId });
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -671,9 +761,20 @@ exports.getStudentOnlineClasses = async (req, res) => {
       });
     }
 
+    // Find the Class ID
+    const studentClassForId = await Class.findOne({
+      schoolId,
+      name: student.class,
+      section: student.section
+    });
+
+    if (!studentClassForId) {
+      return res.json({ success: true, data: [] });
+    }
+
     const query = {
       schoolId,
-      classId: student.classId
+      classId: studentClassForId._id
     };
 
     if (status) {
@@ -700,10 +801,13 @@ exports.getStudentOnlineClasses = async (req, res) => {
 // Get student leave requests
 exports.getStudentLeaveRequests = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email: userEmail, schoolId } = req.user;
+
+    const student = await Student.findOne({ email: userEmail, schoolId });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     const leaveRequests = await LeaveRequest.find({
-      requesterId: userId,
+      requesterId: student._id,
       schoolId
     })
       .populate('approvedBy', 'firstName lastName')
@@ -725,11 +829,14 @@ exports.getStudentLeaveRequests = async (req, res) => {
 // Get student progress reports
 exports.getStudentProgress = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email: userEmail, schoolId } = req.user;
     const { academicYear, term } = req.query;
 
+    const student = await Student.findOne({ email: userEmail, schoolId });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
+
     const query = {
-      studentId: userId,
+      studentId: student._id,
       schoolId
     };
 
@@ -778,12 +885,15 @@ exports.getStudentNotices = async (req, res) => {
 // Submit complaint
 exports.submitComplaint = async (req, res) => {
   try {
-    const { userId, schoolId } = req.user;
+    const { email: userEmail, schoolId } = req.user;
     const { complaintType, subject, description, priority, attachments } = req.body;
+
+    const student = await Student.findOne({ email: userEmail, schoolId });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     const complaint = new Complaint({
       schoolId,
-      complainantId: userId,
+      complainantId: student._id,
       complainantType: 'student',
       complaintType,
       subject,

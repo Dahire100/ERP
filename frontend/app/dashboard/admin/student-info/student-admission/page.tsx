@@ -17,11 +17,297 @@ import {
 import { FileText, Upload, Download, Plus, ChevronUp, ChevronDown } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function StudentAdmission() {
+    const { toast } = useToast()
+    const [isImportOpen, setIsImportOpen] = useState(false)
+    const [importFile, setImportFile] = useState<File | null>(null)
+    const [importing, setImporting] = useState(false)
+    const [importedData, setImportedData] = useState<any[] | null>(null)
+
+    const downloadCredentials = () => {
+        if (!importedData) return
+
+        const headers = ['Student Name', 'Student ID', 'Student Email', 'Student Password', 'Parent Name', 'Parent Email', 'Parent Password']
+        const csvContent = [
+            headers.join(','),
+            ...importedData.map(row => [
+                row.name,
+                row.studentId,
+                row.studentCreds?.email || '',
+                row.studentCreds?.password || '',
+                row.parentName || '',
+                row.parentCreds?.email || '',
+                row.parentCreds?.password || ''
+            ].join(','))
+        ].join('\n')
+
+        const blob = new Blob([csvContent], { type: 'text/csv' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'student_credentials.csv'
+        a.click()
+    }
+
+    const downloadSampleCsv = () => {
+        const headers = ['firstName', 'lastName', 'class', 'section', 'gender', 'dateOfBirth', 'parentName', 'parentPhone', 'email', 'phone', 'address', 'parentEmail']
+        const sampleRow = ['John', 'Doe', 'Class 1', 'A', 'Male', '2015-05-12', 'Michael Doe', '9876543210', 'student@example.com', '1234567890', '123 Main St', 'parent@example.com']
+
+        const csvContent = [
+            headers.join(','),
+            sampleRow.join(',')
+        ].join('\n')
+
+        const blob = new Blob([csvContent], { type: 'text/csv' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'student_import_sample.csv'
+        a.click()
+    }
+
+    const downloadAdmissionForm = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Student Admission Form</title>
+                <style>
+                    body { font-family: 'Times New Roman', serif; padding: 40px; }
+                    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+                    .school-name { font-size: 24px; font-weight: bold; text-transform: uppercase; }
+                    .form-title { font-size: 18px; font-weight: bold; margin-top: 10px; text-decoration: underline; }
+                    .section { margin-bottom: 25px; }
+                    .section-title { font-size: 16px; font-weight: bold; background: #eee; padding: 5px; margin-bottom: 15px; border: 1px solid #000; }
+                    .row { display: flex; flex-wrap: wrap; margin-bottom: 10px; }
+                    .col { flex: 1; min-width: 200px; margin-right: 15px; margin-bottom: 10px; }
+                    .label { font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px; }
+                    .input-line { border-bottom: 1px dotted #000; height: 20px; width: 100%; display: block; }
+                    .photo-box { border: 1px solid #000; width: 120px; height: 140px; display: flex; align-items: center; justify-content: center; float: right; margin-left: 20px; margin-bottom: 20px; }
+                    .clearfix::after { content: ""; clear: both; display: table; }
+                    .footer { margin-top: 50px; text-align: center; font-size: 12px; }
+                    .signature-row { display: flex; justify-content: space-between; margin-top: 60px; }
+                    .signature-line { border-top: 1px solid #000; width: 200px; padding-top: 5px; text-align: center; }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; }
+                        button { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="school-name">FRONTIER PUBLIC SCHOOL</div>
+                    <div>123, Education Lane, Knowledge City, State - 400001</div>
+                    <div>Phone: +91 98765 43210 | Email: info@frontier.edu</div>
+                    <div class="form-title">STUDENT ADMISSION FORM</div>
+                </div>
+
+                <div class="section clearfix">
+                    <div class="photo-box">Passport Photo</div>
+                    <div class="row">
+                        <div class="col"><span class="label">Admission No:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Date:</span><span class="input-line"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span class="label">Class:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Section:</span><span class="input-line"></span></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">STUDENT DETAILS</div>
+                    <div class="row">
+                        <div class="col"><span class="label">First Name:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Last Name:</span><span class="input-line"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span class="label">Date of Birth:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Gender:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Blood Group:</span><span class="input-line"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span class="label">Religion:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Caste:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Category:</span><span class="input-line"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span class="label">Aadhar No:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Mobile No:</span><span class="input-line"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span class="label">Email:</span><span class="input-line"></span></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">PARENT / GUARDIAN DETAILS</div>
+                    <div class="row">
+                        <div class="col"><span class="label">Father's Name:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Occupation:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Phone:</span><span class="input-line"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span class="label">Mother's Name:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Occupation:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Phone:</span><span class="input-line"></span></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">ADDRESS DETAILS</div>
+                    <div class="row">
+                        <div class="col" style="flex: 2;"><span class="label">Current Address:</span><div class="input-line"></div><div class="input-line" style="margin-top:5px;"></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col" style="flex: 2;"><span class="label">Permanent Address:</span><div class="input-line"></div><div class="input-line" style="margin-top:5px;"></div></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">PREVIOUS SCHOOL DETAILS</div>
+                    <div class="row">
+                        <div class="col"><span class="label">Last School Name:</span><span class="input-line"></span></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><span class="label">Last Class Passed:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Year of Passing:</span><span class="input-line"></span></div>
+                        <div class="col"><span class="label">Percentage/Grade:</span><span class="input-line"></span></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">DECLARATION</div>
+                    <p style="font-size: 14px; text-align: justify; line-height: 1.5;">
+                        I hereby declare that the information provided above is true and correct to the best of my knowledge and belief. 
+                        I understand that any incorrect information may lead to the cancellation of admission. I agree to abide by the rules 
+                        and regulations of the school.
+                    </p>
+                </div>
+
+                <div class="signature-row">
+                    <div class="signature-line">Signature of Parent/Guardian</div>
+                    <div class="signature-line">Signature of Principal</div>
+                </div>
+
+                <div class="footer">
+                    <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; font-size: 16px; cursor: pointer;">Print Form</button>
+                </div>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    }
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setImportFile(e.target.files[0])
+        }
+    }
+
+    const processImport = async () => {
+        if (!importFile) return
+
+        setImporting(true)
+        try {
+            const text = await importFile.text()
+            const rows = text.split('\n').filter(r => r.trim() !== '')
+            const headers = rows[0].split(',').map(h => h.trim())
+
+            const students = rows.slice(1).map(row => {
+                const values = row.split(',').map(v => v.trim())
+                const student: any = {}
+                headers.forEach((header, index) => {
+                    student[header] = values[index]
+                })
+                return student
+            })
+
+            const token = localStorage.getItem('token')
+            const response = await fetch('http://localhost:5000/api/students/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ students })
+            })
+
+            const data = await response.json()
+
+            if (response.ok) {
+                toast({
+                    title: "Import Successful",
+                    description: `Imported ${data.results.success} students. Failed: ${data.results.failed}`
+                })
+                setImportedData(data.results.importedData)
+                // Don't close modal yet, let them download credentials
+                // setIsImportOpen(false) 
+                setImportFile(null)
+            } else {
+                throw new Error(data.error || 'Import failed')
+            }
+        } catch (error: any) {
+            console.error('Import error:', error)
+            toast({ title: "Import Failed", description: error.message, variant: "destructive" })
+        } finally {
+            setImporting(false)
+        }
+    }
+
     return (
         <DashboardLayout title="Student Admission">
             <div className="space-y-6">
+                {/* Import Modal */}
+                <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Import Students via CSV</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Select CSV File</Label>
+                                <Input type="file" accept=".csv" onChange={handleFileUpload} />
+                                <p className="text-xs text-gray-500">
+                                    Format: firstName, lastName, class, section, gender, dateOfBirth, parentName, parentPhone, email, phone, address, parentEmail
+                                </p>
+                            </div>
+                        </div>
+
+                        {importedData && (
+                            <div className="bg-green-50 p-4 rounded-md border border-green-200">
+                                <h4 className="text-green-800 font-medium mb-2">Import Complete!</h4>
+                                <p className="text-sm text-green-700 mb-4">
+                                    Successfully generated credentials for {importedData.length} students.
+                                </p>
+                                <Button size="sm" onClick={downloadCredentials} className="bg-green-600 hover:bg-green-700 w-full">
+                                    <Download className="h-4 w-4 mr-2" /> Download Credentials CSV
+                                </Button>
+                            </div>
+                        )}
+
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => {
+                                setIsImportOpen(false)
+                                setImportedData(null)
+                                setImportFile(null)
+                            }}>Close</Button>
+                            {!importedData && (
+                                <Button onClick={processImport} disabled={!importFile || importing}>
+                                    {importing ? "Importing..." : "Upload & Import"}
+                                </Button>
+                            )}
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between bg-pink-50 border-b border-pink-100 py-3">
                         <CardTitle className="text-lg flex items-center gap-2 text-gray-800 font-normal">
@@ -29,10 +315,18 @@ export default function StudentAdmission() {
                             Student Admission Form
                         </CardTitle>
                         <div className="flex gap-2">
-                            <Button size="sm" className="bg-[#1e1e50] hover:bg-[#151538] text-white text-xs">
-                                <Download className="h-4 w-4 mr-2" /> Download Form
+                            <Button
+                                size="sm"
+                                className="bg-[#1e1e50] hover:bg-[#151538] text-white text-xs"
+                                onClick={downloadAdmissionForm}
+                            >
+                                <Download className="h-4 w-4 mr-2" /> Download Admission Form
                             </Button>
-                            <Button size="sm" className="bg-[#1e1e50] hover:bg-[#151538] text-white text-xs">
+                            <Button
+                                size="sm"
+                                className="bg-[#1e1e50] hover:bg-[#151538] text-white text-xs"
+                                onClick={() => setIsImportOpen(true)}
+                            >
                                 <Upload className="h-4 w-4 mr-2" /> Import Student
                             </Button>
                         </div>

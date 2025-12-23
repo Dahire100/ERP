@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,38 +13,87 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { toast } from "sonner"
 
 export default function ParentLibrary() {
-    const [selectedChild, setSelectedChild] = useState<"child1" | "child2">("child1")
+    const [selectedChild, setSelectedChild] = useState<string>("")
+    const [children, setChildren] = useState<any[]>([])
+    const [libraryData, setLibraryData] = useState<any>({ current: [], history: [] })
+    const [loading, setLoading] = useState(true)
 
-    const children = {
-        child1: { name: "Alice Student", class: "10-A" },
-        child2: { name: "Bob Student", class: "8-B" }
-    }
-
-    const libraryData = {
-        child1: {
-            current: [
-                { id: 1, title: "Advanced Physics", author: "H.C. Verma", issuedDate: "2025-01-15", dueDate: "2025-01-22", cover: "/placeholder.svg" },
-                { id: 2, title: "Organic Chemistry", author: "Morrison & Boyd", issuedDate: "2025-01-18", dueDate: "2025-01-25", cover: "/placeholder.svg" }
-            ],
-            history: [
-                { id: 3, title: "Great Expectations", author: "Charles Dickens", returnedDate: "2025-01-10", status: "Returned on time" },
-                { id: 4, title: "Calculus Vol 1", author: "I.A. Maron", returnedDate: "2024-12-20", status: "Late Return (Paid Fine)" }
-            ]
-        },
-        child2: {
-            current: [
-                { id: 101, title: "History of World", author: "J.M. Roberts", issuedDate: "2025-01-20", dueDate: "2025-01-27", cover: "/placeholder.svg" }
-            ],
-            history: [
-                { id: 102, title: "Harry Potter and the Sorcerer's Stone", author: "J.K. Rowling", returnedDate: "2025-01-05", status: "Returned on time" }
-            ]
+    // Fetch children on mount
+    useEffect(() => {
+        const fetchChildren = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch('http://localhost:5000/api/parent/dashboard', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+                if (data.success && data.data.children.length > 0) {
+                    setChildren(data.data.children)
+                    setSelectedChild(data.data.children[0]._id)
+                } else {
+                    setLoading(false)
+                }
+            } catch (error) {
+                console.error("Failed to fetch children", error)
+                setLoading(false)
+            }
         }
+        fetchChildren()
+    }, [])
+
+    // Fetch library data when selected child changes
+    useEffect(() => {
+        if (!selectedChild) return
+
+        const fetchLibrary = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch(`http://localhost:5000/api/parent/child/${selectedChild}/library`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+
+                if (data.success) {
+                    // Backend likely returns a list of transactions or books. 
+                    // I will structure them into 'current' (not returned) and 'history' (returned)
+                    // Assuming data.data is an array of records
+                    const allRecords = Array.isArray(data.data) ? data.data : []
+                    // Note: Schema might vary, adapting to common structure
+                    const current = allRecords.filter((r: any) => !r.returnedDate && r.status === 'Issued')
+                    const history = allRecords.filter((r: any) => r.returnedDate || r.status === 'Returned')
+
+                    setLibraryData({ current, history })
+                } else {
+                    setLibraryData({ current: [], history: [] })
+                }
+            } catch (error) {
+                console.error("Failed to fetch library data", error)
+                setLibraryData({ current: [], history: [] })
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchLibrary()
+    }, [selectedChild])
+
+
+    const getSelectedChildName = () => {
+        const child = children.find(c => c._id === selectedChild)
+        return child ? `${child.firstName} ${child.lastName}` : "Loading..."
     }
 
-    const currentBooks = libraryData[selectedChild].current
-    const historyBooks = libraryData[selectedChild].history
+    if (loading) {
+        return (
+            <DashboardLayout title="Library">
+                <div className="flex h-screen items-center justify-center">Loading...</div>
+            </DashboardLayout>
+        )
+    }
+
+    const { current, history } = libraryData
 
     return (
         <DashboardLayout title="Library">
@@ -56,49 +105,50 @@ export default function ParentLibrary() {
                             Library Activity
                         </h2>
                         <p className="text-muted-foreground mt-1">
-                            Books issued to {children[selectedChild].name}
+                            Books issued to {getSelectedChildName()}
                         </p>
                     </div>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
-                                <span className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-blue-600" />
-                                    {children[selectedChild].name}
-                                </span>
-                                <ChevronDown className="h-4 w-4 opacity-50" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[200px]">
-                            <DropdownMenuItem onClick={() => setSelectedChild("child1")}>
-                                Alice Student (10-A)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedChild("child2")}>
-                                Bob Student (8-B)
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {children.length > 0 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
+                                    <span className="flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-blue-600" />
+                                        {getSelectedChildName()}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[200px]">
+                                {children.map(child => (
+                                    <DropdownMenuItem key={child._id} onClick={() => setSelectedChild(child._id)}>
+                                        {child.firstName} {child.lastName}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <StatCard
                         title="Currently Issued"
-                        value={currentBooks.length.toString()}
+                        value={current.length.toString()}
                         icon={Book}
                         iconColor="text-blue-600"
                         iconBgColor="bg-blue-100"
                     />
                     <StatCard
                         title="Returned This Year"
-                        value={historyBooks.length.toString()}
+                        value={history.length.toString()}
                         icon={RotateCcw}
                         iconColor="text-green-600"
                         iconBgColor="bg-green-100"
                     />
                     <StatCard
                         title="Fine Due"
-                        value="₹0"
+                        value="₹0" // Backend doesn't provide fine explicitly in simple list usually
                         icon={Clock}
                         iconColor="text-red-600"
                         iconBgColor="bg-red-100"
@@ -118,17 +168,21 @@ export default function ParentLibrary() {
                             </TabsList>
 
                             <TabsContent value="current" className="space-y-4">
-                                {currentBooks.length > 0 ? currentBooks.map(book => (
-                                    <div key={book.id} className="p-4 border rounded-xl hover:shadow-md transition-all flex item-start gap-4">
+                                {current.length > 0 ? current.map((book: any, index: number) => (
+                                    <div key={book._id || index} className="p-4 border rounded-xl hover:shadow-md transition-all flex item-start gap-4">
                                         <div className="h-16 w-12 bg-gray-200 rounded flex items-center justify-center text-gray-400">
                                             <Book className="h-6 w-6" />
                                         </div>
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-gray-900">{book.title}</h4>
-                                            <p className="text-sm text-gray-500">{book.author}</p>
+                                            <h4 className="font-bold text-gray-900">{book.bookId?.title || "Unknown Title"}</h4>
+                                            <p className="text-sm text-gray-500">{book.bookId?.author || "Unknown Author"}</p>
                                             <div className="flex items-center gap-4 mt-2 text-xs font-medium">
-                                                <span className="text-green-600 bg-green-50 px-2 py-1 rounded">Issued: {book.issuedDate}</span>
-                                                <span className="text-red-600 bg-red-50 px-2 py-1 rounded">Due: {book.dueDate}</span>
+                                                <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
+                                                    Issued: {new Date(book.issueDate).toLocaleDateString()}
+                                                </span>
+                                                <span className="text-red-600 bg-red-50 px-2 py-1 rounded">
+                                                    Due: {new Date(book.dueDate).toLocaleDateString()}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -138,18 +192,18 @@ export default function ParentLibrary() {
                             </TabsContent>
 
                             <TabsContent value="history" className="space-y-4">
-                                {historyBooks.length > 0 ? historyBooks.map(book => (
-                                    <div key={book.id} className="p-4 border rounded-xl hover:shadow-sm transition-all flex item-start gap-4 bg-gray-50/50">
+                                {history.length > 0 ? history.map((book: any, index: number) => (
+                                    <div key={book._id || index} className="p-4 border rounded-xl hover:shadow-sm transition-all flex item-start gap-4 bg-gray-50/50">
                                         <div className="h-16 w-12 bg-gray-200 rounded flex items-center justify-center text-gray-400">
                                             <Book className="h-6 w-6" />
                                         </div>
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-gray-700">{book.title}</h4>
-                                            <p className="text-sm text-gray-500">{book.author}</p>
+                                            <h4 className="font-bold text-gray-700">{book.bookId?.title || "Unknown Title"}</h4>
+                                            <p className="text-sm text-gray-500">{book.bookId?.author || "Unknown Author"}</p>
                                             <div className="flex items-center gap-4 mt-2 text-xs font-medium">
-                                                <span className="text-gray-600">Returned: {book.returnedDate}</span>
-                                                <span className={`px-2 py-1 rounded ${book.status.includes('Late') ? 'text-red-600 bg-red-50' : 'text-green-600 bg-green-50'}`}>
-                                                    {book.status}
+                                                <span className="text-gray-600">Returned: {new Date(book.returnDate).toLocaleDateString()}</span>
+                                                <span className={`px-2 py-1 rounded ${book.fine > 0 ? 'text-red-600 bg-red-50' : 'text-green-600 bg-green-50'}`}>
+                                                    {book.fine > 0 ? `Late (Fine: ₹${book.fine})` : 'Returned on time'}
                                                 </span>
                                             </div>
                                         </div>

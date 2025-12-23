@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard-layout"
 import { StatCard } from "@/components/super-admin/stat-card"
@@ -14,40 +14,130 @@ import { User, Mail, Phone, MapPin, Users, Calendar, Edit, Save, Briefcase } fro
 import { toast } from "sonner"
 
 export default function ParentProfile() {
+  const [children, setChildren] = useState<any[]>([])
   const [parentInfo, setParentInfo] = useState({
-    name: "Mr. John Parent",
-    email: "john.parent@email.com",
+    name: "Parent User",
+    email: "parent@example.com",
     phone: "+1-555-0101",
-    address: "123 Main Street, City, State 12345",
+    address: "123 Main Street, City",
     occupation: "Software Engineer",
-    relationship: "Father",
+    relationship: "Guardian",
     emergencyContact: "+1-555-0102",
-    children: 2,
-    memberSince: "2020-04-01"
+    childrenCount: 0,
+    memberSince: new Date().toISOString()
   })
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editForm, setEditForm] = useState(parentInfo)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const userStr = localStorage.getItem('user')
+        let user = null
+        if (userStr) {
+          try {
+            user = JSON.parse(userStr)
+          } catch (e) { }
+        }
+
+        // Fetch Children
+        const res = await fetch('http://localhost:5000/api/parent/dashboard', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+
+        if (data.success) {
+          setChildren(data.data.children)
+
+          // Build parent info from user object and derived data
+          setParentInfo({
+            name: user?.name || "Parent User",
+            email: user?.email || "parent@example.com",
+            phone: user?.phone || "+1-555-0000",
+            address: "Not provided", // Backend doesn't return this in dashboard/login usually
+            occupation: "Not provided",
+            relationship: "Parent",
+            emergencyContact: "Not provided",
+            childrenCount: data.data.children.length,
+            memberSince: "2024-01-01" // Placeholder
+          })
+          setEditForm({
+            name: user?.name || "Parent User",
+            email: user?.email || "parent@example.com",
+            phone: user?.phone || "+1-555-0000",
+            address: "",
+            occupation: "",
+            relationship: "Parent",
+            emergencyContact: "",
+            childrenCount: data.data.children.length,
+            memberSince: "2024-01-01"
+          })
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile data", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
 
   const handleEdit = () => {
     setEditForm(parentInfo)
     setIsEditModalOpen(true)
   }
 
-  const handleSave = () => {
-    setParentInfo(editForm)
-    setIsEditModalOpen(false)
-    toast.success("Profile Updated", { description: "Your profile information has been successfully updated." })
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('http://localhost:5000/api/parent/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: editForm.name,
+          phone: editForm.phone
+        })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setParentInfo(editForm)
+        setIsEditModalOpen(false)
+        // Update local storage user if needed
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr)
+          user.name = editForm.name
+          user.phone = editForm.phone
+          localStorage.setItem('user', JSON.stringify(user))
+        }
+        toast.success("Profile Updated", { description: "Your profile information has been updated." })
+      } else {
+        toast.error("Update Failed", { description: "Could not update profile information." })
+      }
+    } catch (error) {
+      console.error("Profile update error", error)
+      toast.error("Network Error", { description: "Please try again later." })
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
     setEditForm({ ...editForm, [field]: value })
   }
 
-  const children = [
-    { name: "Alice Student", class: "10-A", rollNo: "10-A-001", status: "Active" },
-    { name: "Bob Student", class: "8-B", rollNo: "8-B-015", status: "Active" }
-  ]
+  if (loading) {
+    return (
+      <DashboardLayout title="My Profile">
+        <div className="flex h-screen items-center justify-center">Loading...</div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout title="My Profile">
@@ -60,8 +150,8 @@ export default function ParentProfile() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <StatCard title="Children" value={parentInfo.children.toString()} icon={Users} iconColor="text-blue-600" iconBgColor="bg-blue-100" />
-          <StatCard title="Member Since" value="2020" icon={Calendar} iconColor="text-purple-600" iconBgColor="bg-purple-100" />
+          <StatCard title="Children" value={parentInfo.childrenCount.toString()} icon={Users} iconColor="text-blue-600" iconBgColor="bg-blue-100" />
+          <StatCard title="Member Since" value={new Date(parentInfo.memberSince).getFullYear().toString()} icon={Calendar} iconColor="text-purple-600" iconBgColor="bg-purple-100" />
           <StatCard title="Status" value="Active" icon={User} iconColor="text-green-600" iconBgColor="bg-green-100" />
         </div>
 
@@ -71,12 +161,12 @@ export default function ParentProfile() {
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20 animate-in zoom-in duration-500">
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-2xl font-bold">
-                    {parentInfo.name.split(' ').map(n => n[0]).join('')}
+                    {parentInfo.name.split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <CardTitle className="text-2xl">{parentInfo.name}</CardTitle>
-                  <CardDescription>{parentInfo.relationship} • {parentInfo.occupation}</CardDescription>
+                  <CardDescription>{parentInfo.relationship} • {parentInfo.email}</CardDescription>
                 </div>
               </div>
               <Button onClick={handleEdit} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
@@ -97,15 +187,15 @@ export default function ParentProfile() {
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Emergency Contact</p>
-                <p className="text-sm font-medium flex items-center gap-2"><Phone className="h-4 w-4" />{parentInfo.emergencyContact}</p>
+                <p className="text-sm font-medium flex items-center gap-2"><Phone className="h-4 w-4" />{parentInfo.emergencyContact || "N/A"}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Occupation</p>
-                <p className="text-sm font-medium flex items-center gap-2"><Briefcase className="h-4 w-4" />{parentInfo.occupation}</p>
+                <p className="text-sm font-medium flex items-center gap-2"><Briefcase className="h-4 w-4" />{parentInfo.occupation || "N/A"}</p>
               </div>
               <div className="space-y-1 col-span-2">
                 <p className="text-xs text-muted-foreground">Address</p>
-                <p className="text-sm font-medium flex items-center gap-2"><MapPin className="h-4 w-4" />{parentInfo.address}</p>
+                <p className="text-sm font-medium flex items-center gap-2"><MapPin className="h-4 w-4" />{parentInfo.address || "N/A"}</p>
               </div>
             </div>
           </CardContent>
@@ -125,23 +215,26 @@ export default function ParentProfile() {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
-                          {child.name.split(' ').map(n => n[0]).join('')}
+                          {child.firstName[0]}{child.lastName[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold">{child.name}</p>
-                        <p className="text-xs text-muted-foreground">Class {child.class} • Roll No: {child.rollNo}</p>
+                        <p className="font-semibold">{child.firstName} {child.lastName}</p>
+                        <p className="text-xs text-muted-foreground">Class {child.class?.name}-{child.class?.section} • Roll No: {child.rollNumber}</p>
                       </div>
                     </div>
                     <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-                      {child.status}
+                      Active
                     </span>
                   </div>
-                  <Button size="sm" variant="outline" className="w-full">
-                    View Profile
-                  </Button>
+                  <Link href={`/dashboard/parent/child-profile?id=${child._id}`}>
+                    <Button size="sm" variant="outline" className="w-full">
+                      View Profile
+                    </Button>
+                  </Link>
                 </div>
               ))}
+              {children.length === 0 && <div className="text-muted-foreground text-center py-4">No children found.</div>}
             </CardContent>
           </Card>
 
@@ -162,7 +255,7 @@ export default function ParentProfile() {
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-sm text-muted-foreground">Children Enrolled</span>
-                <span className="font-semibold">{parentInfo.children}</span>
+                <span className="font-semibold">{parentInfo.childrenCount}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-sm text-muted-foreground">Portal Access</span>
@@ -180,16 +273,16 @@ export default function ParentProfile() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Link href="/dashboard/parent/child-profile">
-                <Button variant="outline" className="h-20 w-full flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 hover:scale-105 hover:shadow-md">
-                  <Users className="h-5 w-5" />
-                  <span className="text-xs">View Children</span>
-                </Button>
-              </Link>
               <Link href="/dashboard/parent/attendance">
                 <Button variant="outline" className="h-20 w-full flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 hover:scale-105 hover:shadow-md">
                   <Calendar className="h-5 w-5" />
                   <span className="text-xs">Attendance</span>
+                </Button>
+              </Link>
+              <Link href="/dashboard/parent/homework">
+                <Button variant="outline" className="h-20 w-full flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 hover:scale-105 hover:shadow-md">
+                  <Briefcase className="h-5 w-5" /> {/* Replaced 'Book' with Briefcase if needed or any icon */}
+                  <span className="text-xs">Homework</span>
                 </Button>
               </Link>
               <Link href="/dashboard/parent/communicate">
@@ -198,10 +291,10 @@ export default function ParentProfile() {
                   <span className="text-xs">Messages</span>
                 </Button>
               </Link>
-              <Link href="/dashboard/parent/communicate">
+              <Link href="/dashboard/parent/fees">
                 <Button variant="outline" className="h-20 w-full flex flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 hover:scale-105 hover:shadow-md">
                   <Phone className="h-5 w-5" />
-                  <span className="text-xs">Contact School</span>
+                  <span className="text-xs">Fees</span>
                 </Button>
               </Link>
             </div>
@@ -216,7 +309,7 @@ export default function ParentProfile() {
                 Edit Parent Profile
               </DialogTitle>
               <DialogDescription>
-                Update your profile information below
+                Update your profile information below (Updates are local only for this demo)
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
@@ -237,6 +330,7 @@ export default function ParentProfile() {
                   value={editForm.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="Enter your email"
+                  disabled // Email usually cannot be changed easily
                 />
               </div>
               <div className="space-y-2">

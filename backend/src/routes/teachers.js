@@ -38,6 +38,14 @@ const addTeacher = async (req, res) => {
     return res.status(400).json({ error: 'First name, last name, email, and subjects are required' });
   }
 
+  // Check for existing user or teacher to prevent partial state
+  const existingUser = await User.findOne({ email });
+  const existingTeacher = await Teacher.findOne({ email, schoolId });
+
+  if (existingUser || existingTeacher) {
+    return res.status(409).json({ error: 'A user or teacher with this email already exists.' });
+  }
+
   const teacherId = `TCH${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
 
   try {

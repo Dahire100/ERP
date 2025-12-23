@@ -1,62 +1,110 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Search, Book, BookOpen, Clock, Calendar } from "lucide-react"
+import { Search, Book, BookOpen, Clock, Calendar, Loader2, Sparkles, ChevronRight } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+
+interface Book {
+    _id: string;
+    title: string;
+    author: string;
+    category: string;
+    status: string;
+    cover?: string;
+    dueDate?: string;
+}
 
 export default function LibraryPage() {
-    const books = [
-        { id: 1, title: "Modern Physics", author: "Dr. A.K. Sharma", category: "Science", status: "Available", cover: "bg-blue-100" },
-        { id: 2, title: "Advanced Mathematics", author: "R.D. Sharma", category: "Maths", status: "Issued", dueDate: "2023-12-15", cover: "bg-purple-100" },
-        { id: 3, title: "English Literature", author: "William Shakespeare", category: "Literature", status: "Available", cover: "bg-amber-100" },
-        { id: 4, title: "History of World", author: "H.G. Wells", category: "History", status: "Available", cover: "bg-red-100" },
-        { id: 5, title: "Chemistry Vol I", author: "O.P. Tandon", category: "Science", status: "Available", cover: "bg-green-100" },
-        { id: 6, title: "Data Structures", author: "Narasimha Karumanchi", category: "Computer Science", status: "Issued", dueDate: "2023-12-20", cover: "bg-slate-100" },
-    ]
+    const [books, setBooks] = useState<Book[]>([])
+    const [issuedBooks, setIssuedBooks] = useState<Book[]>([])
+    const [loading, setLoading] = useState(true)
+    const [searchQuery, setSearchQuery] = useState("")
+    const { toast } = useToast()
 
-    const myIssuedBooks = books.filter(b => b.status === "Issued")
+    useEffect(() => {
+        fetchLibraryData()
+    }, [])
+
+    const fetchLibraryData = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            const [booksRes, issuedRes] = await Promise.all([
+                fetch('http://127.0.0.1:5000/api/teacher/library/books', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('http://127.0.0.1:5000/api/teacher/library/my-books', { headers: { 'Authorization': `Bearer ${token}` } })
+            ])
+
+            const booksData = await booksRes.json()
+            const issuedData = await issuedRes.json()
+
+            if (booksData.success) setBooks(booksData.data)
+            if (issuedData.success) setIssuedBooks(issuedData.data)
+        } catch (err) {
+            toast({ title: "Error", description: "Failed to load library repository", variant: "destructive" })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const filteredBooks = books.filter(b =>
+        b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        b.author.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    if (loading) {
+        return (
+            <DashboardLayout title="Knowledge Repository">
+                <div className="flex items-center justify-center min-h-[50vh]">
+                    <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+                </div>
+            </DashboardLayout>
+        )
+    }
 
     return (
-        <DashboardLayout title="Library">
-            <div className="space-y-8 max-w-7xl mx-auto">
-                {/* Header & Search */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Library</h1>
-                        <p className="text-gray-500 mt-1">Search for books, reservation, and track your reading history.</p>
+        <DashboardLayout title="Institutional Library">
+            <div className="space-y-8 max-w-[1400px] mx-auto pb-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-1">
+                        <h2 className="text-4xl font-black text-gray-900 tracking-tight italic uppercase">Bibliographic Vault</h2>
+                        <p className="text-muted-foreground font-medium italic">Intellectual assets and academic research publications.</p>
                     </div>
-                    <div className="w-full md:w-96 relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <div className="w-full md:w-96 relative group">
+                        <Search className="absolute left-4 top-4 h-4 w-4 text-gray-400 font-black group-focus-within:text-indigo-600 transition-colors" />
                         <Input
-                            placeholder="Search by title, author, or ISBN..."
-                            className="pl-10 h-11 shadow-sm"
+                            placeholder="Query by title, author, or ISBN..."
+                            className="pl-12 h-14 rounded-2xl border-none bg-white shadow-xl shadow-indigo-100/30 focus:ring-4 focus:ring-indigo-100 font-bold transition-all"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                 </div>
 
-                {/* Currently Issued Section */}
-                {myIssuedBooks.length > 0 && (
-                    <section>
-                        <div className="flex items-center gap-2 mb-4">
-                            <Clock className="w-5 h-5 text-indigo-600" />
-                            <h2 className="text-xl font-semibold text-gray-800">Currently Issued to Me</h2>
+                {issuedBooks.length > 0 && (
+                    <section className="space-y-4">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-orange-50 rounded-lg">
+                                <Clock className="w-5 h-5 text-orange-600" />
+                            </div>
+                            <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight italic">Active Custodial Records</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {myIssuedBooks.map((book) => (
-                                <Card key={book.id} className="border-l-4 border-l-orange-500 shadow-md">
-                                    <CardContent className="p-4 flex gap-4">
-                                        <div className={`w-16 h-24 rounded-md shadow-inner flex items-center justify-center ${book.cover}`}>
-                                            <BookOpen className="w-6 h-6 opacity-50" />
+                            {issuedBooks.map((book) => (
+                                <Card key={book._id} className="border-none shadow-xl shadow-indigo-100/20 ring-1 ring-orange-100/50 bg-white overflow-hidden group">
+                                    <CardContent className="p-6 flex gap-6">
+                                        <div className="w-20 h-28 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform">
+                                            <BookOpen className="w-8 h-8 text-orange-300" />
                                         </div>
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-gray-900 line-clamp-1">{book.title}</h3>
-                                            <p className="text-sm text-gray-500">{book.author}</p>
-                                            <div className="mt-3 flex items-center gap-2 text-sm text-red-600 font-medium">
+                                        <div className="flex-1 space-y-2">
+                                            <h4 className="font-black text-gray-900 uppercase tracking-tight italic line-clamp-1">{book.title}</h4>
+                                            <p className="text-xs font-bold text-gray-400">{book.author}</p>
+                                            <div className="pt-2 flex items-center gap-2 text-[10px] font-black text-red-600 uppercase tracking-widest bg-red-50/50 p-2 rounded-lg w-fit">
                                                 <Calendar className="w-3 h-3" />
-                                                Due: {book.dueDate}
+                                                Due for Return: {book.dueDate ? new Date(book.dueDate).toLocaleDateString() : 'N/A'}
                                             </div>
                                         </div>
                                     </CardContent>
@@ -66,40 +114,50 @@ export default function LibraryPage() {
                     </section>
                 )}
 
-                {/* Book Catalog */}
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <Book className="w-5 h-5 text-indigo-600" />
-                        <h2 className="text-xl font-semibold text-gray-800">Browse Catalog</h2>
+                <section className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 bg-indigo-50 rounded-lg">
+                                <Book className="w-5 h-5 text-indigo-600" />
+                            </div>
+                            <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight italic">Full Bibliographic Index</h3>
+                        </div>
+                        <Sparkles className="h-5 w-5 text-indigo-400 opacity-50" />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {books.map((book) => (
-                            <Card key={book.id} className="group hover:shadow-xl transition-all duration-300 border-none shadow-md overflow-hidden">
-                                <div className={`h-40 w-full ${book.cover} flex items-center justify-center relative`}>
-                                    <Book className="w-12 h-12 opacity-20 group-hover:scale-110 transition-transform duration-500" />
-                                    {book.status === 'Available' ? (
-                                        <Badge className="absolute top-3 right-3 bg-green-500 hover:bg-green-600">Available</Badge>
-                                    ) : (
-                                        <Badge variant="secondary" className="absolute top-3 right-3">Issued</Badge>
-                                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                        {filteredBooks.length > 0 ? filteredBooks.map((book) => (
+                            <Card key={book._id} className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border-none shadow-xl shadow-indigo-100/30 overflow-hidden bg-white">
+                                <div className="h-48 w-full bg-slate-50 flex items-center justify-center relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent"></div>
+                                    <Book className="w-16 h-16 text-indigo-100 group-hover:scale-125 transition-transform duration-700" />
+                                    <Badge className={`absolute top-4 right-4 h-7 px-4 rounded-lg font-black uppercase text-[9px] border-none shadow-lg ${book.status === 'Available' ? "bg-emerald-500" : "bg-gray-400"
+                                        }`}>
+                                        {book.status}
+                                    </Badge>
                                 </div>
-                                <CardContent className="p-4">
-                                    <p className="text-xs font-semibold text-indigo-600 mb-1 uppercase tracking-wide">{book.category}</p>
-                                    <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1 line-clamp-1" title={book.title}>
-                                        {book.title}
-                                    </h3>
-                                    <p className="text-sm text-gray-500">{book.author}</p>
+                                <CardContent className="p-6 space-y-2">
+                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{book.category}</p>
+                                    <h3 className="font-black text-gray-900 text-lg leading-tight italic uppercase line-clamp-2">{book.title}</h3>
+                                    <p className="text-sm font-bold text-gray-400 italic">By {book.author}</p>
                                 </CardContent>
-                                <CardFooter className="p-4 pt-0">
+                                <CardFooter className="p-6 pt-0">
                                     <Button
-                                        className="w-full bg-slate-900 group-hover:bg-indigo-600 transition-colors"
+                                        className="w-full h-12 bg-gray-900 hover:bg-indigo-600 transition-all font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg group-active:scale-95 text-white"
                                         disabled={book.status !== 'Available'}
                                     >
-                                        {book.status === 'Available' ? 'Reserve Book' : 'Not Available'}
+                                        Execute Reservation
                                     </Button>
                                 </CardFooter>
                             </Card>
-                        ))}
+                        )) : (
+                            <div className="col-span-full p-20 text-center space-y-4">
+                                <div className="h-20 w-20 bg-gray-50 rounded-3xl mx-auto flex items-center justify-center opacity-50">
+                                    <Book className="h-10 w-10 text-gray-300" />
+                                </div>
+                                <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">No match found in bibliographic index.</p>
+                            </div>
+                        )}
                     </div>
                 </section>
             </div>

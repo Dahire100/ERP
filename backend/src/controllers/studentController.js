@@ -2,14 +2,13 @@
 const Student = require('../models/Student');
 const User = require('../models/User');
 const StudentFee = require('../models/StudentFee');
+const School = require('../models/School');
 const bcrypt = require('bcryptjs');
 
 // Generate unique student ID
-const generateStudentId = (schoolId) => {
+const generateStudentId = (schoolNamePrefix) => {
   const timestamp = Date.now().toString().slice(-6);
-  // Assuming schoolId is an ObjectId, we can use a substring or just the timestamp
-  // For uniqueness, maybe append a random number or use a counter
-  return `STU${timestamp}${Math.floor(Math.random() * 1000)}`;
+  return `${schoolNamePrefix}STU${timestamp}${Math.floor(Math.random() * 1000)}`;
 };
 
 // Get all students for a school
@@ -21,6 +20,19 @@ exports.getAllStudents = async (req, res) => {
     const query = { schoolId };
     if (studentClass) query.class = studentClass;
     if (section) query.section = section;
+
+    const { keyword } = req.query;
+    if (keyword) {
+      const regex = new RegExp(keyword, 'i');
+      query.$or = [
+        { firstName: regex },
+        { lastName: regex },
+        { studentId: regex },
+        { rollNumber: regex },
+        { phone: regex },
+        { parentPhone: regex }
+      ];
+    }
 
     const students = await Student.find(query).sort({ class: 1, rollNumber: 1 });
     res.json(students);
@@ -56,8 +68,24 @@ exports.addStudent = async (req, res) => {
     bloodGroup, transportRoute
   } = req.body;
 
-  const studentId = generateStudentId(schoolId);
+  // Fetch School to get the name for prefixing
+  const school = await School.findById(schoolId);
+  if (!school) {
+    return res.status(404).json({ error: 'School not found' });
+  }
+  const schoolNameClean = school.schoolName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 5); // First 5 alphanum chars
+  const schoolNameFull = school.schoolName.replace(/[^a-zA-Z0-9]/g, '');
+
+  const studentId = generateStudentId(schoolNameClean);
   const admissionDate = new Date();
+
+  // Check if User exists with this email to prevent orphan records
+  if (email) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ error: 'A user with this email already exists.' });
+    }
+  }
 
   try {
     const newStudent = new Student({
@@ -69,12 +97,13 @@ exports.addStudent = async (req, res) => {
     await newStudent.save();
 
     // Create user account for student
-    // Generate random password
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let studentPassword = '';
-    for (let i = 0; i < 10; i++) {
-      studentPassword += charset.charAt(Math.floor(Math.random() * charset.length));
+    // Generate random password with School Prefix
+    const charset = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let randomPart = '';
+    for (let i = 0; i < 6; i++) {
+      randomPart += charset.charAt(Math.floor(Math.random() * charset.length));
     }
+    const studentPassword = `${schoolNameFull}@${randomPart}`;
 
     const hashedPassword = bcrypt.hashSync(studentPassword, 10);
 
@@ -100,17 +129,21 @@ exports.addStudent = async (req, res) => {
     }
 
     // Check if Parent Email exists and Create Parent User if needed
-    if (req.body.parentEmail) {
-      const parentEmail = req.body.parentEmail;
+    let parentEmail = req.body.parentEmail;
+    let parentPassword = null;
+
+    if (parentEmail) {
       // Check if user already exists
       const existingParent = await User.findOne({ email: parentEmail });
 
       if (!existingParent) {
         // Create New Parent User
-        let parentPassword = '';
-        for (let i = 0; i < 10; i++) {
-          parentPassword += charset.charAt(Math.floor(Math.random() * charset.length));
+        const charset = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let randomPart = '';
+        for (let i = 0; i < 6; i++) {
+          randomPart += charset.charAt(Math.floor(Math.random() * charset.length));
         }
+        parentPassword = `${schoolNameFull}@${randomPart}`;
         const hashedParentPassword = bcrypt.hashSync(parentPassword, 10);
 
         await User.create({
@@ -124,20 +157,32 @@ exports.addStudent = async (req, res) => {
           phone: parentPhone
         });
 
-        // Send Email to Parent (Re-using student credentials email function structure or a placeholder)
-        // Ideally, create a sendParentCredentials function, but for now we can log or try to reuse
         console.log(`✅ Parent User Created: ${parentEmail} / ${parentPassword}`);
         try {
-          // For now, reusing/mocking as we didn't add sendParentCredentials to emailService yet
-          // But in a real app, you'd add that function.
-          // Sending a simple notification via console for now as per instructions "remove seeding"
-          // The primary goal is that the account EXISTS.
+          const { sendParentCredentials } = require('../utils/emailService');
+          await sendParentCredentials(parentEmail, parentName, parentEmail, parentPassword);
         } catch (pErr) {
           console.error('Parent email failed', pErr);
         }
       } else {
         console.log(`ℹ️ Parent User already exists: ${parentEmail}`);
       }
+    }
+
+    // Prepare response credentials
+    const responseCredentials = {
+      student: {
+        email,
+        password: studentPassword
+      }
+    };
+
+    // Add parent credentials if created
+    if (parentEmail && parentPassword) {
+      responseCredentials.parent = {
+        email: parentEmail,
+        password: parentPassword
+      };
     }
 
     res.status(201).json({
@@ -150,14 +195,140 @@ exports.addStudent = async (req, res) => {
         section
       },
       // IN DEV ONLY: Return password for testing if email fails
-      tempCredentials: {
-        email,
-        password: studentPassword
-      }
+      tempCredentials: responseCredentials
     });
   } catch (err) {
     console.error('Error adding student:', err);
     res.status(500).json({ error: 'Failed to add student' });
+  }
+};
+
+// Import students
+exports.importStudents = async (req, res) => {
+  const { schoolId } = req.user;
+  const students = req.body.students; // Expecting array of student objects
+
+  if (!students || !Array.isArray(students) || students.length === 0) {
+    return res.status(400).json({ error: 'Invalid data format. Expected array of students.' });
+  }
+
+  // Fetch School to get the name for prefixing
+  const school = await School.findById(schoolId);
+  if (!school) {
+    return res.status(404).json({ error: 'School not found' });
+  }
+  const schoolNameClean = school.schoolName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 5);
+  const schoolNameFull = school.schoolName.replace(/[^a-zA-Z0-9]/g, '');
+
+  const results = {
+    total: students.length,
+    success: 0,
+    failed: 0,
+    errors: [],
+    importedData: []
+  };
+
+  try {
+    for (const [index, studentData] of students.entries()) {
+      try {
+        const {
+          firstName, lastName, class: studentClass, section,
+          dateOfBirth, gender, address, phone, email, parentName, parentPhone,
+          bloodGroup
+        } = studentData;
+
+        // Basic validation
+        if (!firstName || !studentClass || !section) {
+          throw new Error(`Missing required fields for student at row ${index + 1}`);
+        }
+
+        const studentId = `${schoolNameClean}STU${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
+        const admissionDate = new Date();
+
+        // Create Student
+        const newStudent = new Student({
+          studentId, firstName, lastName, class: studentClass, section,
+          admissionDate, dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          gender, address, phone, email,
+          parentName, parentPhone, bloodGroup, schoolId
+        });
+
+        await newStudent.save();
+
+        // Create User for Student
+        const charset = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        let randomPart = '';
+        for (let i = 0; i < 6; i++) randomPart += charset.charAt(Math.floor(Math.random() * charset.length));
+        const studentPassword = `${schoolNameFull}@${randomPart}`;
+
+        const hashedPassword = bcrypt.hashSync(studentPassword, 10);
+        let studentCreds = null;
+
+        if (email) {
+          // Check if user exists
+          const existingUser = await User.findOne({ email });
+          if (!existingUser) {
+            await User.create({
+              email,
+              passwordHash: hashedPassword,
+              role: 'student',
+              firstName,
+              lastName,
+              schoolId,
+              isActive: true
+            });
+            studentCreds = { email, password: studentPassword };
+          }
+        }
+
+        // Handle Parent User
+        let parentCreds = null;
+        if (studentData.parentEmail) {
+          const parentEmail = studentData.parentEmail;
+          const existingParent = await User.findOne({ email: parentEmail });
+
+          if (!existingParent) {
+            let randomPart = '';
+            for (let i = 0; i < 6; i++) randomPart += charset.charAt(Math.floor(Math.random() * charset.length));
+            const parentPassword = `${schoolNameFull}@${randomPart}`;
+            const hashedParentPassword = bcrypt.hashSync(parentPassword, 10);
+
+            await User.create({
+              email: parentEmail,
+              passwordHash: hashedParentPassword,
+              role: 'parent',
+              firstName: parentName ? parentName.split(' ')[0] : 'Parent',
+              lastName: parentName ? (parentName.split(' ').slice(1).join(' ') || 'User') : 'User',
+              schoolId,
+              isActive: true,
+              phone: parentPhone
+            });
+
+            parentCreds = { email: parentEmail, password: parentPassword };
+          } else {
+            parentCreds = { email: parentEmail, password: "(Already Exists)" };
+          }
+        }
+
+        results.success++;
+        results.importedData.push({
+          name: `${firstName} ${lastName}`,
+          studentId: newStudent.studentId,
+          studentCreds,
+          parentName: parentName || 'N/A',
+          parentCreds
+        });
+      } catch (err) {
+        results.failed++;
+        results.errors.push({ row: index + 1, error: err.message });
+      }
+    }
+
+    res.json({ message: 'Import completed', results });
+
+  } catch (err) {
+    console.error('Error importing students:', err);
+    res.status(500).json({ error: 'Failed to process import' });
   }
 };
 

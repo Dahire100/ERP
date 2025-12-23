@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,65 +14,77 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 
 export default function ParentClassTimetable() {
-    const [selectedChild, setSelectedChild] = useState<"child1" | "child2">("child1")
-
-    const children = {
-        child1: { name: "Alice Student", class: "10-A" },
-        child2: { name: "Bob Student", class: "8-B" }
-    }
-
-    const timeSlots = [
-        "08:00 AM - 08:45 AM",
-        "08:45 AM - 09:30 AM",
-        "09:30 AM - 10:15 AM",
-        "10:15 AM - 10:30 AM", // Break
-        "10:30 AM - 11:15 AM",
-        "11:15 AM - 12:00 PM",
-        "12:00 PM - 12:45 PM", // Lunch
-        "12:45 PM - 01:30 PM",
-        "01:30 PM - 02:15 PM"
-    ]
+    const [selectedChild, setSelectedChild] = useState<string>("")
+    const [children, setChildren] = useState<any[]>([])
+    const [timetable, setTimetable] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
 
     const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
-    // Mock data for Alice (10-A)
-    const timetableChild1: Record<string, any[]> = {
-        "Monday": [
-            { subject: "Mathematics", teacher: "Mr. Smith", room: "Room 101", type: "Class", color: "bg-blue-100 text-blue-700 border-blue-200" },
-            { subject: "Physics", teacher: "Ms. Johnson", room: "Lab 2", type: "Lab", color: "bg-purple-100 text-purple-700 border-purple-200" },
-            { subject: "Chemistry", teacher: "Dr. Brown", room: "Lab 1", type: "Lab", color: "bg-green-100 text-green-700 border-green-200" },
-            { type: "Break", subject: "Short Break" },
-            { subject: "English", teacher: "Mrs. Davis", room: "Room 102", type: "Class", color: "bg-orange-100 text-orange-700 border-orange-200" },
-            { subject: "History", teacher: "Mr. Wilson", room: "Room 103", type: "Class", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-            { type: "Lunch", subject: "Lunch Break" },
-            { subject: "Computer Sci", teacher: "Ms. Clark", room: "Comp Lab", type: "Lab", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-            { subject: "Library", teacher: "-", room: "Library", type: "Activity", color: "bg-gray-100 text-gray-700 border-gray-200" }
-        ],
+    // Fetch children on mount
+    useEffect(() => {
+        const fetchChildren = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch('http://localhost:5000/api/parent/dashboard', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+                if (data.success && data.data.children.length > 0) {
+                    setChildren(data.data.children)
+                    setSelectedChild(data.data.children[0]._id)
+                }
+            } catch (error) {
+                console.error("Failed to fetch children", error)
+                toast.error("Failed to load children list")
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchChildren()
+    }, [])
+
+    // Fetch timetable when selected child changes
+    useEffect(() => {
+        if (!selectedChild) return
+
+        const fetchTimetable = async () => {
+            try {
+                const token = localStorage.getItem('token')
+                const res = await fetch(`http://localhost:5000/api/parent/child/${selectedChild}/timetable`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                const data = await res.json()
+
+                if (data.success) {
+                    setTimetable(data.data) // Assuming data is array of Timetable objects
+                }
+            } catch (error) {
+                console.error("Failed to fetch timetable", error)
+                toast.error("Failed to load timetable")
+            }
+        }
+        fetchTimetable()
+    }, [selectedChild])
+
+
+    const getSelectedChildName = () => {
+        const child = children.find(c => c._id === selectedChild)
+        return child ? `${child.firstName} ${child.lastName}` : "Loading..."
     }
-    // Fill other days for Alice
-    weekDays.slice(1).forEach(day => timetableChild1[day] = timetableChild1["Monday"])
 
-    // Mock data for Bob (8-B)
-    const timetableChild2: Record<string, any[]> = {
-        "Monday": [
-            { subject: "Science", teacher: "Mrs. White", room: "Room 201", type: "Class", color: "bg-green-100 text-green-700 border-green-200" },
-            { subject: "Maths", teacher: "Mr. Black", room: "Room 201", type: "Class", color: "bg-blue-100 text-blue-700 border-blue-200" },
-            { subject: "Social St.", teacher: "Ms. Green", room: "Room 201", type: "Class", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-            { type: "Break", subject: "Short Break" },
-            { subject: "English", teacher: "Mr. Gray", room: "Room 201", type: "Class", color: "bg-orange-100 text-orange-700 border-orange-200" },
-            { subject: "Hindi", teacher: "Mrs. Red", room: "Room 201", type: "Class", color: "bg-pink-100 text-pink-700 border-pink-200" },
-            { type: "Lunch", subject: "Lunch Break" },
-            { subject: "Art", teacher: "Ms. Pencil", room: "Art Room", type: "Activity", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-            { subject: "Games", teacher: "Coach Run", room: "Playground", type: "Activity", color: "bg-red-100 text-red-700 border-red-200" }
-        ],
+    const getSelectedChildClass = () => {
+        const child = children.find(c => c._id === selectedChild)
+        return child && child.class ? `${child.class.name}-${child.class.section}` : "N/A"
     }
-    // Fill other days for Bob
-    weekDays.slice(1).forEach(day => timetableChild2[day] = timetableChild2["Monday"])
 
-
-    const timetableData = selectedChild === "child1" ? timetableChild1 : timetableChild2
+    const getTimetableForDay = (day: string) => {
+        const dayData = timetable.find((t: any) => t.dayOfWeek === day)
+        return dayData ? dayData.periods : []
+    }
 
     return (
         <DashboardLayout title="Class Timetable">
@@ -84,29 +96,30 @@ export default function ParentClassTimetable() {
                             Weekly Timetable
                         </h2>
                         <p className="text-muted-foreground mt-1">
-                            Class schedule for {children[selectedChild].name}
+                            Class schedule for {getSelectedChildName()}
                         </p>
                     </div>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
-                                <span className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-blue-600" />
-                                    {children[selectedChild].name}
-                                </span>
-                                <ChevronDown className="h-4 w-4 opacity-50" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[200px]">
-                            <DropdownMenuItem onClick={() => setSelectedChild("child1")}>
-                                Alice Student (10-A)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedChild("child2")}>
-                                Bob Student (8-B)
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {children.length > 0 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="min-w-[180px] justify-between shadow-sm">
+                                    <span className="flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-blue-600" />
+                                        {getSelectedChildName()}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[200px]">
+                                {children.map(child => (
+                                    <DropdownMenuItem key={child._id} onClick={() => setSelectedChild(child._id)}>
+                                        {child.firstName} {child.lastName}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
 
                 <Card className="border-none shadow-md">
@@ -115,7 +128,7 @@ export default function ParentClassTimetable() {
                             <CardTitle className="flex items-center gap-2">
                                 <Calendar className="h-5 w-5 text-blue-500" /> Class Schedule
                             </CardTitle>
-                            <Badge variant="outline" className="text-blue-600 bg-blue-50">Class {children[selectedChild].class}</Badge>
+                            <Badge variant="outline" className="text-blue-600 bg-blue-50">Class {getSelectedChildClass()}</Badge>
                         </div>
                         <CardDescription>View daily classes and breaks</CardDescription>
                     </CardHeader>
@@ -127,55 +140,73 @@ export default function ParentClassTimetable() {
                                 ))}
                             </TabsList>
 
-                            {weekDays.map(day => (
-                                <TabsContent key={day} value={day} className="space-y-4">
-                                    <div className="rounded-xl border overflow-hidden bg-white">
-                                        <div className="bg-gray-50/50 p-4 border-b grid grid-cols-12 gap-4 font-semibold text-sm text-gray-500">
-                                            <div className="col-span-3 md:col-span-2">Time</div>
-                                            <div className="col-span-9 md:col-span-10">Subject & Details</div>
-                                        </div>
+                            {weekDays.map(day => {
+                                const periods = getTimetableForDay(day)
+                                return (
+                                    <TabsContent key={day} value={day} className="space-y-4">
+                                        <div className="rounded-xl border overflow-hidden bg-white">
+                                            <div className="bg-gray-50/50 p-4 border-b grid grid-cols-12 gap-4 font-semibold text-sm text-gray-500">
+                                                <div className="col-span-3 md:col-span-2">Time</div>
+                                                <div className="col-span-9 md:col-span-10">Subject & Details</div>
+                                            </div>
 
-                                        <ScrollArea className="h-[500px]">
-                                            <div className="divide-y">
-                                                {timeSlots.map((time, index) => {
-                                                    const slot = timetableData[day]?.[index] || { subject: "Free Period", type: "Free" }
-                                                    const isBreak = slot.type === "Break" || slot.type === "Lunch"
+                                            <ScrollArea className="h-[500px]">
+                                                {periods.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center h-full py-12 text-muted-foreground">
+                                                        <Calendar className="h-10 w-10 mb-2 opacity-20" />
+                                                        <p>No classes scheduled for this day</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="divide-y">
+                                                        {periods.map((period: any, index: number) => {
+                                                            const isBreak = period.type === "Break" || period.type === "Lunch"
+                                                            // Color logic placeholder or use predefined
+                                                            const colors = ["bg-blue-100 border-blue-200 text-blue-700", "bg-purple-100 border-purple-200 text-purple-700", "bg-green-100 border-green-200 text-green-700", "bg-orange-100 border-orange-200 text-orange-700", "bg-pink-100 border-pink-200 text-pink-700"]
+                                                            const colorClass = colors[index % colors.length]
 
-                                                    return (
-                                                        <div key={index} className={`grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors ${isBreak ? "bg-gray-50/50" : ""}`}>
-                                                            <div className="col-span-3 md:col-span-2 text-sm font-medium text-gray-600 flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-                                                                <Clock className="h-4 w-4 text-blue-400 hidden md:block" />
-                                                                <span className="text-xs md:text-sm">{time.split(' - ')[0]}</span>
-                                                                <span className="text-xs text-gray-400 md:hidden">- {time.split(' - ')[1]}</span>
-                                                            </div>
-                                                            <div className="col-span-9 md:col-span-10">
-                                                                {isBreak ? (
-                                                                    <div className="flex items-center justify-center p-2 bg-gray-100 rounded-md text-gray-500 font-medium uppercase text-xs tracking-wider border border-dashed border-gray-200">
-                                                                        {slot.subject}
+                                                            return (
+                                                                <div key={index} className={`grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors ${isBreak ? "bg-gray-50/50" : ""}`}>
+                                                                    <div className="col-span-3 md:col-span-2 text-sm font-medium text-gray-600 flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                                                                        <Clock className="h-4 w-4 text-blue-400 hidden md:block" />
+                                                                        <span className="text-xs md:text-sm">{period.startTime} - {period.endTime}</span>
                                                                     </div>
-                                                                ) : (
-                                                                    <div className={`p-3 rounded-lg border border-l-4 ${slot.color || "bg-gray-50 border-gray-100 border-l-gray-300"}`}>
-                                                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                                                                            <div>
-                                                                                <h4 className="font-bold text-base">{slot.subject}</h4>
-                                                                                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm opacity-90">
-                                                                                    {slot.teacher && <span className="flex items-center gap-1"><User className="h-3 w-3" /> {slot.teacher}</span>}
-                                                                                    {slot.room && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {slot.room}</span>}
+                                                                    <div className="col-span-9 md:col-span-10">
+                                                                        {isBreak ? (
+                                                                            <div className="flex items-center justify-center p-2 bg-gray-100 rounded-md text-gray-500 font-medium uppercase text-xs tracking-wider border border-dashed border-gray-200">
+                                                                                {period.subject}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className={`p-3 rounded-lg border border-l-4 ${colorClass}`}>
+                                                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                                                                    <div>
+                                                                                        <h4 className="font-bold text-base">{period.subject}</h4>
+                                                                                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm opacity-90">
+                                                                                            {period.teacherId ? (
+                                                                                                <span className="flex items-center gap-1">
+                                                                                                    <User className="h-3 w-3" />
+                                                                                                    {period.teacherId.firstName || ""} {period.teacherId.lastName || ""}
+                                                                                                </span>
+                                                                                            ) : period.teacher ? (
+                                                                                                <span className="flex items-center gap-1"><User className="h-3 w-3" /> {period.teacher}</span>
+                                                                                            ) : null}
+                                                                                            {period.room && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {period.room}</span>}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <Badge variant="secondary" className="w-fit self-start md:self-center bg-white/50">{period.type || "Class"}</Badge>
                                                                                 </div>
                                                                             </div>
-                                                                            <Badge variant="secondary" className="w-fit self-start md:self-center">{slot.type}</Badge>
-                                                                        </div>
+                                                                        )}
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                </TabsContent>
-                            ))}
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </ScrollArea>
+                                        </div>
+                                    </TabsContent>
+                                )
+                            })}
                         </Tabs>
                     </CardContent>
                 </Card>

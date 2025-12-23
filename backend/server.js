@@ -54,7 +54,38 @@ const frontOfficeSetupRoutes = require('./src/routes/frontOfficeSetup');
 const gatePassRoutes = require('./src/routes/gatePass');
 const entranceExamRoutes = require('./src/routes/entranceExam');
 
+// Partial backend modules - now complete
+const consentLetterRoutes = require('./src/routes/consentLetter');
+const disciplinaryRoutes = require('./src/routes/disciplinary');
+const lessonPlannerRoutes = require('./src/routes/lessonPlanner');
+const quizRoutes = require('./src/routes/quiz');
+// const studyMaterialRoutes = require('./src/routes/studyMaterial'); // File deleted
 
+// Staff management (Human Resource expansion)
+const staffRoutes = require('./src/routes/staff');
+
+// New modules - Bank Info & Classwork
+const bankAccountRoutes = require('./src/routes/bankAccount');
+const classworkRoutes = require('./src/routes/classwork');
+
+// New modules - Inventory & Question Paper
+const inventoryRoutes = require('./src/routes/inventory');
+const questionPaperRoutes = require('./src/routes/questionPaper');
+
+// New modules - HW-CW & Primary Evaluation
+const hwCwRoutes = require('./src/routes/hwCw');
+const primaryEvaluationRoutes = require('./src/routes/primaryEvaluation');
+
+// New modules - Profile & Report
+const profileRoutes = require('./src/routes/profile');
+const reportRoutes = require('./src/routes/report');
+
+// New modules - Settings & System Setting
+const settingRoutes = require('./src/routes/setting');
+const systemSettingRoutes = require('./src/routes/systemSetting');
+
+// New modules - Wallet
+const walletRoutes = require('./src/routes/wallet');
 
 
 
@@ -118,7 +149,38 @@ app.use('/api/gate-pass', gatePassRoutes);
 app.use('/api/entrance-exam', entranceExamRoutes);
 app.use('/api/student-categories', require('./src/routes/studentCategory'));
 
+// Partial backend modules - now complete
+app.use('/api/consent-letter', consentLetterRoutes);
+app.use('/api/disciplinary', disciplinaryRoutes);
+app.use('/api/lesson-planner', lessonPlannerRoutes);
+app.use('/api/quiz', quizRoutes);
+// app.use('/api/study-material', studyMaterialRoutes);
 
+// Staff management (Human Resource expansion)
+app.use('/api/staff', staffRoutes);
+
+// New modules - Bank Info & Classwork
+app.use('/api/bank-accounts', bankAccountRoutes);
+app.use('/api/classwork', classworkRoutes);
+
+// New modules - Inventory & Question Paper
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/question-papers', questionPaperRoutes);
+
+// New modules - HW-CW & Primary Evaluation
+app.use('/api/hw-cw', hwCwRoutes);
+app.use('/api/primary-evaluation', primaryEvaluationRoutes);
+
+// New modules - Profile & Report
+app.use('/api/profile', profileRoutes);
+app.use('/api/reports', reportRoutes);
+
+// New modules - Settings & System Setting
+app.use('/api/settings', settingRoutes);
+app.use('/api/system-settings', systemSettingRoutes);
+
+// New modules - Wallet
+app.use('/api/wallet', walletRoutes);
 
 
 
@@ -172,7 +234,12 @@ app.get('/api/health', (req, res) => {
       '/api/leave-requests',
       '/api/student',
       '/api/cms',
-      '/api/subscription'
+      '/api/subscription',
+      '/api/consent-letter',
+      '/api/disciplinary',
+      '/api/lesson-planner',
+      '/api/quiz',
+      '/api/study-material'
     ]
   });
 });

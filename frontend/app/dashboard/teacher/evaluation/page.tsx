@@ -32,7 +32,7 @@ export default function EvaluationPage() {
         try {
             const token = localStorage.getItem('token')
             const headers = { 'Authorization': `Bearer ${token}` }
-            const res = await fetch('http://localhost:5000/api/teacher/evaluation/assessments', { headers })
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/evaluation/assessments', { headers })
             const data = await res.json()
             if (data.success) setAssessments(data.data)
         } catch (err) {
@@ -66,7 +66,7 @@ export default function EvaluationPage() {
     const handleCreateAssessment = async () => {
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://localhost:5000/api/teacher/evaluation/assessments', {
+            const res = await fetch('http://127.0.0.1:5000/api/teacher/evaluation/assessments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(formData)

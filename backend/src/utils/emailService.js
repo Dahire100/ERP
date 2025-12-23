@@ -595,3 +595,71 @@ exports.sendTeacherCredentials = async (toEmail, teacherName, teacherId, passwor
     throw error;
   }
 };
+
+// Send parent credentials
+exports.sendParentCredentials = async (toEmail, parentName, username, password) => {
+  if (!isEmailConfigured) {
+    console.log('⚠️  Email not configured - Skipping parent credentials email');
+    return { success: false, message: 'Email not configured' };
+  }
+
+  try {
+    const loginUrl = 'http://localhost:3000/login';
+    const mailOptions = {
+      from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject: '👨‍👩‍👧‍👦 Welcome to Frontier LMS - Your Parent Portal Access',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #0891b2; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+            .credentials-box { background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #0891b2; margin: 15px 0; }
+            .button { background: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Welcome to the Parent Portal!</h1>
+            </div>
+            <div class="content">
+              <h2>Dear ${parentName},</h2>
+              <p>Your parent account has been created in Frontier LMS. You can now track your child's progress, pay fees, and more.</p>
+              
+              <div class="credentials-box">
+                <h3>🔐 Login Details:</h3>
+                <p><strong>URL:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
+                <p><strong>Username/Email:</strong> ${username}</p>
+                <p><strong>Password:</strong> ${password}</p>
+              </div>
+
+              <p>Please login and change your password immediately for security.</p>
+              
+              <p style="text-align: center; margin-top: 20px;">
+                <a href="${loginUrl}" class="button">Login to Portal</a>
+              </p>
+              
+              <div class="footer">
+                <p>Best regards,<br><strong>Frontier LMS Team</strong></p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Parent credentials email sent to:', toEmail);
+    return info;
+  } catch (error) {
+    console.error('❌ Failed to send parent credentials to', toEmail, ':', error.message);
+    throw error;
+  }
+};

@@ -127,3 +127,125 @@ exports.deleteSubject = async (req, res) => {
     });
   }
 };
+
+// Get subject by ID
+exports.getSubjectById = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { id } = req.params;
+
+    const subject = await Subject.findOne({ _id: id, schoolId })
+      .populate('classes', 'name section');
+
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        error: 'Subject not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: subject
+    });
+  } catch (err) {
+    console.error('Error fetching subject:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch subject'
+    });
+  }
+};
+
+// Get subjects by class
+exports.getSubjectsByClass = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { classId } = req.params;
+
+    const subjects = await Subject.find({
+      schoolId,
+      classes: classId,
+      isActive: true
+    }).sort({ name: 1 });
+
+    res.json({
+      success: true,
+      data: subjects
+    });
+  } catch (err) {
+    console.error('Error fetching subjects by class:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch subjects'
+    });
+  }
+};
+
+// Get subject statistics
+exports.getSubjectStats = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+
+    const totalSubjects = await Subject.countDocuments({ schoolId, isActive: true });
+    const subjects = await Subject.find({ schoolId, isActive: true });
+
+    const typeCount = {
+      theory: 0,
+      practical: 0,
+      optional: 0
+    };
+
+    subjects.forEach(subject => {
+      if (subject.type) {
+        typeCount[subject.type] = (typeCount[subject.type] || 0) + 1;
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        total: totalSubjects,
+        byType: typeCount
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching subject stats:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch statistics'
+    });
+  }
+};
+
+// Toggle subject active status
+exports.toggleSubjectStatus = async (req, res) => {
+  try {
+    const { schoolId } = req.user;
+    const { id } = req.params;
+
+    const subject = await Subject.findOne({ _id: id, schoolId });
+
+    if (!subject) {
+      return res.status(404).json({
+        success: false,
+        error: 'Subject not found'
+      });
+    }
+
+    subject.isActive = !subject.isActive;
+    await subject.save();
+
+    res.json({
+      success: true,
+      message: `Subject ${subject.isActive ? 'activated' : 'deactivated'} successfully`,
+      data: subject
+    });
+  } catch (err) {
+    console.error('Error toggling subject status:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to toggle status'
+    });
+  }
+};
