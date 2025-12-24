@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { UserCircle, Mail, KeyRound, AlertCircle, ArrowRight, GraduationCap } from "lucide-react"
+import { getApiUrl, API_ENDPOINTS } from "@/lib/api-config"
 
 
 export default function StudentLogin() {
@@ -27,7 +28,7 @@ export default function StudentLogin() {
     setIsLoading(true)
     
     try {
-      const response = await fetch("http://localhost:5000/api/otp/send-otp", {
+      const response = await fetch(getApiUrl(API_ENDPOINTS.OTP.SEND), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,7 +65,7 @@ export default function StudentLogin() {
     setIsLoading(true)
     
     try {
-      const response = await fetch("http://localhost:5000/api/otp/verify-otp", {
+      const response = await fetch(getApiUrl(API_ENDPOINTS.OTP.VERIFY), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

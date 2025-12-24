@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { GraduationCap, Building2, Mail, Phone, MapPin, User, Calendar, FileText, ArrowRight, CheckCircle2 } from "lucide-react"
+import { getApiUrl, API_ENDPOINTS } from "@/lib/api-config"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -41,7 +42,7 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("http://localhost:5000/api/schools/register", {
+      const response = await fetch(getApiUrl(API_ENDPOINTS.SCHOOLS.REGISTER), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

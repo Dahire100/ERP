@@ -194,7 +194,7 @@ exports.sendSuperAdminNotification = async (superAdminEmail, schoolData) => {
               </ol>
 
               <p style="text-align: center;">
-                <a href="http://localhost:3000" class="button">Login to Admin Dashboard</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" class="button">Login to Admin Dashboard</a>
               </p>
 
               <p><em>This is an automated notification. Please do not reply to this email.</em></p>
@@ -228,7 +228,7 @@ exports.sendSchoolApprovalEmail = async (toEmail, schoolName, adminEmail, adminP
   try {
     console.log('📧 Sending approval email with credentials to:', toEmail);
 
-    const loginUrl = 'http://localhost:3000/login'; // Update with actual production URL if needed
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
 
     const mailOptions = {
       from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
@@ -466,7 +466,7 @@ exports.sendStudentCredentials = async (toEmail, studentName, studentId, passwor
   }
 
   try {
-    const loginUrl = 'http://localhost:3000/login';
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
     const mailOptions = {
       from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
       to: toEmail,
@@ -535,7 +535,7 @@ exports.sendTeacherCredentials = async (toEmail, teacherName, teacherId, passwor
   }
 
   try {
-    const loginUrl = 'http://localhost:3000/login';
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
     const mailOptions = {
       from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
       to: toEmail,
@@ -604,7 +604,7 @@ exports.sendParentCredentials = async (toEmail, parentName, username, password) 
   }
 
   try {
-    const loginUrl = 'http://localhost:3000/login';
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login`;
     const mailOptions = {
       from: process.env.SMTP_FROM || `"Frontier LMS" <${process.env.SMTP_USER}>`,
       to: toEmail,

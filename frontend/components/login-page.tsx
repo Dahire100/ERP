@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { GraduationCap, Mail, Lock, Building2, ArrowRight, Shield, KeyRound, Search, BookOpen, Users, UserCircle, Eye, EyeOff, AlertCircle } from "lucide-react"
+import { getApiUrl, API_ENDPOINTS } from "@/lib/api-config"
 
 interface School {
   _id: string
@@ -51,7 +52,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(getApiUrl(API_ENDPOINTS.AUTH.LOGIN), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

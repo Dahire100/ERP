@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/dashboard-layout"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { getApiUrl, API_ENDPOINTS } from "@/lib/api-config"
 import {
   Users,
   BookOpen,
