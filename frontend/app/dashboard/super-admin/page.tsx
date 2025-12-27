@@ -43,8 +43,7 @@ function SuperAdminDashboardContent() {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/dashboard', {
-          headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch('https://erp-api-dahire100.onrender.com/api/dashboard', {          headers: { 'Authorization': `Bearer ${token}` }
         })
         const result = await res.json()
         if (result.stats) {
