@@ -41,7 +41,7 @@ export default function StudentAttendance() {
                 // Looking at backend code: if (startDate || endDate) filter, else return all?
                 // Backend: "const attendanceRecords = await Attendance.find(query).sort({ date: -1 });" -> Returns all if no dates provided.
 
-                const res = await fetch('http://127.0.0.1:5000/api/student/attendance', {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/student/attendance`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
                 const data = await res.json()

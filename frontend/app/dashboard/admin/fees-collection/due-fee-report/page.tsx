@@ -39,7 +39,7 @@ export default function DueFeeReport() {
         try {
             const token = localStorage.getItem('token')
             // Fetch all pending fees
-            const response = await fetch('http://localhost:5000/api/fees?status=pending', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/fees?status=pending`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
 

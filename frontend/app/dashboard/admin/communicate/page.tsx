@@ -40,7 +40,7 @@ export default function Communicate() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/communication/sent', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/communication/sent`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -67,7 +67,7 @@ export default function Communicate() {
   const handleSend = async (data: any) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/communication', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/communication`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

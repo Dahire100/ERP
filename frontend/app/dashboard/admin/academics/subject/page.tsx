@@ -46,7 +46,7 @@ export default function Subject() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/subjects', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/subjects`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {

@@ -52,7 +52,7 @@ export default function StudentCommunicate() {
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/messages/inbox', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/messages/inbox`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await res.json()
@@ -78,7 +78,7 @@ export default function StudentCommunicate() {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/messages', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ export default function StudentCommunicate() {
       // Inferring reply flow (create new message with Re: subject)
       const recipientEmail = selectedMessage.sender?.email // Assuming populated
 
-      const res = await fetch('http://127.0.0.1:5000/api/messages', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

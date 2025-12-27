@@ -25,8 +25,8 @@ export default function StudentAcademics() {
 
       // Parallel fetch of Progress (for subjects/grades) and Assignments
       const [progressRes, assignmentsRes] = await Promise.all([
-        fetch('http://127.0.0.1:5000/api/student/progress', { headers }),
-        fetch('http://127.0.0.1:5000/api/student/homework', { headers }) // Using homework/assignments endpoint
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/student/progress`, { headers }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/student/homework`, { headers }) // Using homework/assignments endpoint
       ])
 
       const progressData = await progressRes.json()

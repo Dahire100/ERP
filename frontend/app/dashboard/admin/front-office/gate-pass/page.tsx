@@ -54,7 +54,7 @@ export default function GatePassPage() {
         setLoading(true)
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch('http://localhost:5000/api/gate-pass', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/gate-pass`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             if (response.ok) {
@@ -83,7 +83,7 @@ export default function GatePassPage() {
     const handleAdd = async (data: any) => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch('http://localhost:5000/api/gate-pass', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/gate-pass`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

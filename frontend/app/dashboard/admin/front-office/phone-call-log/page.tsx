@@ -51,7 +51,7 @@ export default function PhoneCallLogPage() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/phone-call-log', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/phone-call-log`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -80,7 +80,7 @@ export default function PhoneCallLogPage() {
   const handleAdd = async (data: any) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/phone-call-log', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/phone-call-log`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

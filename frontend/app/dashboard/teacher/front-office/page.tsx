@@ -44,8 +44,8 @@ export default function FrontOfficePage() {
             const headers = { 'Authorization': `Bearer ${token}` }
 
             const [visitorsRes, enquiriesRes] = await Promise.all([
-                fetch('http://127.0.0.1:5000/api/teacher/front-office/visitors', { headers }),
-                fetch('http://127.0.0.1:5000/api/teacher/front-office/enquiries', { headers })
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/front-office/visitors`, { headers }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/front-office/enquiries`, { headers })
             ])
 
             const visitorsData = await visitorsRes.json()
@@ -88,7 +88,7 @@ export default function FrontOfficePage() {
     const handleAddVisitor = async () => {
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://127.0.0.1:5000/api/teacher/front-office/visitors', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/front-office/visitors`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

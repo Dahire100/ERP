@@ -95,7 +95,7 @@ export default function InstituteManagement() {
       }
 
       // Using the correct endpoint that returns all schools
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/schools/all', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/schools/all`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -167,7 +167,7 @@ export default function InstituteManagement() {
       setProcessingId(schoolId)
       const token = localStorage.getItem('token')
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schools/${schoolId}/approve`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/schools/${schoolId}/approve`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -213,7 +213,7 @@ export default function InstituteManagement() {
       setProcessingId(schoolId)
       const token = localStorage.getItem('token')
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/schools/${schoolId}/reject`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/schools/${schoolId}/reject`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

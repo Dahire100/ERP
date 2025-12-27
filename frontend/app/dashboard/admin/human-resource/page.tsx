@@ -46,7 +46,7 @@ export default function HumanResource() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/teachers', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teachers`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -77,7 +77,7 @@ export default function HumanResource() {
   const handleAdd = async (data: any) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/teachers', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teachers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

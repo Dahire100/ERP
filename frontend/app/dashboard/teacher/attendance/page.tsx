@@ -55,7 +55,7 @@ export default function TeacherAttendance() {
   const fetchClasses = async () => {
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://127.0.0.1:5000/api/teacher/classes", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       const result = await response.json()
@@ -111,7 +111,7 @@ export default function TeacherAttendance() {
         remarks: ""
       }))
 
-      const response = await fetch("http://127.0.0.1:5000/api/attendance", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/attendance`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

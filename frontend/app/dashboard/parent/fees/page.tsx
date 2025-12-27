@@ -41,7 +41,7 @@ export default function ParentFees() {
         const headers = { 'Authorization': `Bearer ${token}` }
 
         // 1. Fetch Dashboard to get children list
-        const dashRes = await fetch('http://localhost:5000/api/parent/dashboard', { headers })
+        const dashRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/parent/dashboard`, { headers })
         const dashData = await dashRes.json()
 
         if (dashData.success) {

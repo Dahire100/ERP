@@ -43,7 +43,7 @@ export default function SectionPage() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/sections', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/sections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {

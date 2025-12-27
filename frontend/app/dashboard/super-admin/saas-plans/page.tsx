@@ -42,7 +42,7 @@ export default function SaaSPlans() {
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/super-admin/plans', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/plans`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 
@@ -73,7 +73,7 @@ export default function SaaSPlans() {
   const handleAdd = async (data: any) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/super-admin/plans', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/plans`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export default function SaaSPlans() {
   const handleEdit = async (id: string, data: any) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://127.0.0.1:5000/api/super-admin/plans/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/plans/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +137,7 @@ export default function SaaSPlans() {
     if (deleteConfirm.id) {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch(`http://127.0.0.1:5000/api/super-admin/plans/${deleteConfirm.id}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/plans/${deleteConfirm.id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         })

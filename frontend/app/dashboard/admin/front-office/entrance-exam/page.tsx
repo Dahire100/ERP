@@ -53,7 +53,7 @@ export default function EntranceExamPage() {
         setLoading(true)
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch('http://localhost:5000/api/entrance-exam', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/entrance-exam`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             if (response.ok) {
@@ -82,7 +82,7 @@ export default function EntranceExamPage() {
     const handleAdd = async (data: any) => {
         try {
             const token = localStorage.getItem('token')
-            const response = await fetch('http://localhost:5000/api/entrance-exam', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/entrance-exam`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

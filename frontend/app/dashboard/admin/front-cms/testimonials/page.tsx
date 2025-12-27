@@ -50,7 +50,7 @@ export default function TestimonialsPage() {
         setLoading(true)
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/api/cms/testimonials', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/cms/testimonials`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -77,7 +77,7 @@ export default function TestimonialsPage() {
     const handleAdd = async (data: any) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/api/cms/testimonials', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/cms/testimonials`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

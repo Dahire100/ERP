@@ -21,8 +21,8 @@ export default function StudentExaminations() {
         const headers = { 'Authorization': `Bearer ${token}` }
 
         const [examsRes, resultsRes] = await Promise.all([
-          fetch('http://127.0.0.1:5000/api/student/exams', { headers }), // filtered by backend logic potentially
-          fetch('http://127.0.0.1:5000/api/student/results', { headers })
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/student/exams`, { headers }), // filtered by backend logic potentially
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/student/results`, { headers })
         ])
 
         const examsData = await examsRes.json()

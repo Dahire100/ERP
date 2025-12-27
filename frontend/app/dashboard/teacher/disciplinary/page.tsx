@@ -75,8 +75,8 @@ export default function DisciplinaryPage() {
             const headers = { 'Authorization': `Bearer ${token}` }
 
             const [incRes, classRes] = await Promise.all([
-                fetch('http://127.0.0.1:5000/api/teacher/disciplinary', { headers }),
-                fetch('http://127.0.0.1:5000/api/teacher/classes', { headers })
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/disciplinary`, { headers }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, { headers })
             ])
 
             const incData = await incRes.json()
@@ -120,7 +120,7 @@ export default function DisciplinaryPage() {
         setSubmitting(true)
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://127.0.0.1:5000/api/teacher/disciplinary', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/disciplinary`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(formData)

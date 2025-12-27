@@ -52,7 +52,7 @@ export default function PostalExchangePage() {
         setLoading(true)
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/api/postal-exchange', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/postal-exchange`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -80,7 +80,7 @@ export default function PostalExchangePage() {
     const handleAdd = async (data: any) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/api/postal-exchange', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/postal-exchange`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

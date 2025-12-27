@@ -66,7 +66,7 @@ export default function EvaluationPage() {
     const handleCreateAssessment = async () => {
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://127.0.0.1:5000/api/teacher/evaluation/assessments', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/evaluation/assessments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(formData)

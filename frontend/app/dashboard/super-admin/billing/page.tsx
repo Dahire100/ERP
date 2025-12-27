@@ -69,7 +69,7 @@ export default function Billing() {
   const fetchInvoices = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/super-admin/invoices', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/invoices`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 
@@ -100,7 +100,7 @@ export default function Billing() {
   const handleAdd = async (data: any) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/super-admin/invoices', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/invoices`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ export default function Billing() {
   const handleEdit = async (id: string, data: any) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://127.0.0.1:5000/api/super-admin/invoices/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/invoices/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ export default function Billing() {
     if (deleteConfirm.id) {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch(`http://127.0.0.1:5000/api/super-admin/invoices/${deleteConfirm.id}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/super-admin/invoices/${deleteConfirm.id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         })

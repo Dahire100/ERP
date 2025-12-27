@@ -28,7 +28,7 @@ export default function StudentHomework() {
     const fetchHomework = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch('http://127.0.0.1:5000/api/student/homework', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/student/homework`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await res.json()

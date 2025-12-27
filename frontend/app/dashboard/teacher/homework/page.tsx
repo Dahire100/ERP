@@ -130,7 +130,7 @@ export default function TeacherHomework() {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/homework/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/homework/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })
