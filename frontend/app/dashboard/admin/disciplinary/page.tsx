@@ -2,11 +2,7 @@
 
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-<<<<<<< HEAD
 import { AlertTriangle, MessageSquare, Shield, ListChecks, ArrowRight, LayoutGrid, FilePen, FileChartColumn } from "lucide-react"
-=======
-import { AlertTriangle, MessageSquare, Shield, ListChecks, ArrowRight } from "lucide-react"
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
 import Link from "next/link"
 
 export default function Disciplinary() {
@@ -15,12 +11,9 @@ export default function Disciplinary() {
     { title: "Remarks", description: "Record behaviour remarks", icon: <Shield className="h-8 w-8 text-blue-600" />, href: "/dashboard/admin/disciplinary/remarks", color: "bg-blue-50 border-blue-100" },
     { title: "Actions Taken", description: "Disciplinary actions", icon: <AlertTriangle className="h-8 w-8 text-orange-600" />, href: "/dashboard/admin/disciplinary/actions-taken", color: "bg-orange-50 border-orange-100" },
     { title: "Behaviour Log", description: "Overall behaviour history", icon: <ListChecks className="h-8 w-8 text-emerald-600" />, href: "/dashboard/admin/disciplinary/behaviour-log", color: "bg-emerald-50 border-emerald-100" },
-<<<<<<< HEAD
     { title: "Parameter", description: "Manage disciplinary parameters", icon: <LayoutGrid className="h-8 w-8 text-purple-600" />, href: "/dashboard/admin/disciplinary/parameter", color: "bg-purple-50 border-purple-100" },
     { title: "Assessment", description: "Student behaviour assessment", icon: <FilePen className="h-8 w-8 text-pink-600" />, href: "/dashboard/admin/disciplinary/assessment", color: "bg-pink-50 border-pink-100" },
     { title: "Disciplinary Report", description: "View disciplinary reports", icon: <FileChartColumn className="h-8 w-8 text-indigo-600" />, href: "/dashboard/admin/disciplinary/disciplinary-report", color: "bg-indigo-50 border-indigo-100" },
-=======
->>>>>>> 0a561723a8dd8fb4adb47cccae82c8f3a9e66be4
   ]
 
   return (

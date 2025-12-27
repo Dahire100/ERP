@@ -9,6 +9,8 @@ const {
   deleteTransportRoute,
   getStudentsByRoute
 } = require('../controllers/transportController');
+const { getVehicles, addVehicle, deleteVehicle } = require('../controllers/vehicleController');
+const { getDrivers, addDriver, deleteDriver } = require('../controllers/driverController');
 
 router.use(authenticateToken);
 
@@ -16,6 +18,16 @@ router.use(authenticateToken);
 router.post('/', requireSchoolAdmin, addTransportRoute);
 router.put('/:id', requireSchoolAdmin, updateTransportRoute);
 router.delete('/:id', requireSchoolAdmin, deleteTransportRoute);
+
+// Vehicles
+router.get('/vehicles', getVehicles);
+router.post('/vehicles', requireSchoolAdmin, addVehicle);
+router.delete('/vehicles/:id', requireSchoolAdmin, deleteVehicle);
+
+// Drivers
+router.get('/drivers', getDrivers);
+router.post('/drivers', requireSchoolAdmin, addDriver);
+router.delete('/drivers/:id', requireSchoolAdmin, deleteDriver);
 
 // Accessible by school admin and teachers
 router.get('/', getTransportRoutes);

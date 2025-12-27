@@ -1,33 +1,81 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Bus } from "lucide-react"
+import { Bus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-
-const sample = [
-  { id: 1, number: "UP14 AB 1234", capacity: 40, route: "North Loop" },
-  { id: 2, number: "UP16 ZX 4432", capacity: 50, route: "East Express" },
-]
+import { apiFetch, API_ENDPOINTS } from "@/lib/api-config"
 
 export default function Vehicles() {
-  const [rows, setRows] = useState(sample)
+  const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ number: "", capacity: "", route: "" })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchVehicles = async () => {
+    try {
+      const res = await apiFetch(`${API_ENDPOINTS.TRANSPORT}/vehicles`)
+      if (res.ok) {
+        const data = await res.json()
+        setRows(data)
+      }
+    } catch (error) {
+      console.error("Failed to fetch vehicles")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchVehicles()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.number || !form.capacity || !form.route) {
-      toast.error("Vehicle, capacity and route are required")
+    if (!form.number || !form.capacity) {
+      toast.error("Vehicle and capacity are required")
       return
     }
-    setRows([...rows, { id: Date.now(), number: form.number, capacity: Number(form.capacity), route: form.route }])
-    toast.success("Vehicle added")
-    setForm({ number: "", capacity: "", route: "" })
+
+    try {
+      const res = await apiFetch(`${API_ENDPOINTS.TRANSPORT}/vehicles`, {
+        method: "POST",
+        body: JSON.stringify({
+          number: form.number,
+          capacity: Number(form.capacity),
+          route: form.route
+        })
+      })
+
+      if (res.ok) {
+        toast.success("Vehicle added")
+        setForm({ number: "", capacity: "", route: "" })
+        fetchVehicles()
+      } else {
+        toast.error("Failed to add vehicle")
+      }
+    } catch (error) {
+      toast.error("Error submitting form")
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure?")) return;
+    try {
+      const res = await apiFetch(`${API_ENDPOINTS.TRANSPORT}/vehicles/${id}`, {
+        method: "DELETE"
+      })
+      if (res.ok) {
+        toast.success("Vehicle deleted")
+        fetchVehicles()
+      }
+    } catch (error) {
+      toast.error("Failed to delete")
+    }
   }
 
   return (
@@ -52,7 +100,7 @@ export default function Vehicles() {
                   <Input value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} className="bg-white border-gray-200" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-red-500">Route *</Label>
+                  <Label>Route</Label>
                   <Input value={form.route} onChange={(e) => setForm({ ...form, route: e.target.value })} className="bg-white border-gray-200" />
                 </div>
                 <div className="flex justify-end">
@@ -76,16 +124,24 @@ export default function Vehicles() {
                       <TableHead className="font-bold text-gray-700 uppercase">Number</TableHead>
                       <TableHead className="font-bold text-gray-700 uppercase text-right">Capacity</TableHead>
                       <TableHead className="font-bold text-gray-700 uppercase">Route</TableHead>
+                      <TableHead className="font-bold text-gray-700 uppercase text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.number}</TableCell>
-                        <TableCell className="text-right">{row.capacity}</TableCell>
-                        <TableCell>{row.route}</TableCell>
-                      </TableRow>
-                    ))}
+                    {loading ? <TableRow><TableCell colSpan={4}>Loading...</TableCell></TableRow> :
+                      rows.length === 0 ? <TableRow><TableCell colSpan={4}>No vehicles found</TableCell></TableRow> :
+                        rows.map((row) => (
+                          <TableRow key={row._id}>
+                            <TableCell>{row.vehicleNumber}</TableCell>
+                            <TableCell className="text-right">{row.capacity}</TableCell>
+                            <TableCell>{row.route || "-"}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(row._id)}>
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
                   </TableBody>
                 </Table>
               </div>
@@ -96,4 +152,3 @@ export default function Vehicles() {
     </DashboardLayout>
   )
 }
-

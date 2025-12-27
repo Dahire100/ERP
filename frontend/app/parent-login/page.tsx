@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Users, Mail, KeyRound, AlertCircle, ArrowRight } from "lucide-react"
+import { Users, Mail, KeyRound, AlertCircle, ArrowRight, GraduationCap } from "lucide-react"
 import { getApiUrl, API_ENDPOINTS } from "@/lib/api-config"
 
 export default function ParentLogin() {
@@ -25,7 +25,7 @@ export default function ParentLogin() {
     setError("")
     setSuccess("")
     setIsLoading(true)
-    
+
     try {
       const response = await fetch(getApiUrl(API_ENDPOINTS.OTP.SEND), {
         method: "POST",
@@ -46,7 +46,7 @@ export default function ParentLogin() {
 
       setOtpSent(true)
       setSuccess("OTP sent successfully! Check your email.")
-      
+
       if (data.devOTP) {
         setDevOTP(data.devOTP)
         setSuccess(`OTP sent! (Dev Mode - OTP: ${data.devOTP})`)
@@ -62,7 +62,7 @@ export default function ParentLogin() {
     e.preventDefault()
     setError("")
     setIsLoading(true)
-    
+
     try {
       const response = await fetch(getApiUrl(API_ENDPOINTS.OTP.VERIFY), {
         method: "POST",
@@ -84,7 +84,7 @@ export default function ParentLogin() {
 
       localStorage.setItem("token", data.token)
       localStorage.setItem("user", JSON.stringify(data.user))
-      
+
       // Use window.location for hard navigation
       window.location.href = "/dashboard/parent"
     } catch (err) {
@@ -149,7 +149,7 @@ export default function ParentLogin() {
               {otpSent ? "Enter OTP" : "Welcome Back"}
             </CardTitle>
             <CardDescription>
-              {otpSent 
+              {otpSent
                 ? "Enter the 6-digit code sent to your email"
                 : "Sign in with OTP verification"}
             </CardDescription>

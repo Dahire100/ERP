@@ -59,7 +59,7 @@ const consentLetterRoutes = require('./src/routes/consentLetter');
 const disciplinaryRoutes = require('./src/routes/disciplinary');
 const lessonPlannerRoutes = require('./src/routes/lessonPlanner');
 const quizRoutes = require('./src/routes/quiz');
-// const studyMaterialRoutes = require('./src/routes/studyMaterial'); // File deleted
+const studyMaterialRoutes = require('./src/routes/studyMaterial');
 
 // Staff management (Human Resource expansion)
 const staffRoutes = require('./src/routes/staff');
@@ -154,7 +154,7 @@ app.use('/api/consent-letter', consentLetterRoutes);
 app.use('/api/disciplinary', disciplinaryRoutes);
 app.use('/api/lesson-planner', lessonPlannerRoutes);
 app.use('/api/quiz', quizRoutes);
-// app.use('/api/study-material', studyMaterialRoutes);
+app.use('/api/study-material', studyMaterialRoutes);
 
 // Staff management (Human Resource expansion)
 app.use('/api/staff', staffRoutes);
