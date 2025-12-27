@@ -54,9 +54,9 @@ export default function StudentProfile() {
         const headers = { 'Authorization': `Bearer ${token}` }
 
         const [profileRes, attendanceRes, resultsRes] = await Promise.all([
-          fetch('http://127.0.0.1:5000/api/student/profile', { headers }),
-          fetch('http://127.0.0.1:5000/api/student/attendance', { headers }),
-          fetch('http://127.0.0.1:5000/api/student/results', { headers })
+          fetch('${process.env.NEXT_PUBLIC_API_URL}/api/student/profile', { headers }),
+          fetch('${process.env.NEXT_PUBLIC_API_URL}/api/student/attendance', { headers }),
+          fetch('${process.env.NEXT_PUBLIC_API_URL}/api/student/results', { headers })
         ])
 
         const profileData = await profileRes.json()
@@ -153,7 +153,7 @@ export default function StudentProfile() {
     // Implement API update here
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/student/profile', {
+      const res = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/student/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
