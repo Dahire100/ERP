@@ -3,7 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { initDB } = require('./src/config/db');
-const { seedDatabase } = require('./src/config/seed');
+const { 210
+      } = require('./src/config/seed');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -247,10 +248,9 @@ app.get('/api/health', (req, res) => {
 // Seed database after a delay
 // Seed database after a delay
 // DISABLE SEEDING AS PER REQUEST - Relying on actual registration flow
-// setTimeout(() => {
-//   seedDatabase();
-// }, 2000);
-
+setTimeout(() => {
+  seedDatabase();
+}, 2000);
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🕒 Started at ${new Date().toISOString()}`);
