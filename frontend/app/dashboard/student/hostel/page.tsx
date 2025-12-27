@@ -39,8 +39,8 @@ export default function StudentHostel() {
 
       // Parallel fetch
       const [hostelRes, outpassRes] = await Promise.all([
-        fetch('http://127.0.0.1:5000/api/student/hostel', { headers }),
-        fetch('http://127.0.0.1:5000/api/student/hostel/outpass/history', { headers })
+        fetch('/api/student/hostel', { headers }),
+        fetch('/api/student/hostel/outpass/history', { headers })
       ])
 
       const hostelData = await hostelRes.json()
@@ -76,7 +76,7 @@ export default function StudentHostel() {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/student/complaints', {
+      const res = await fetch('/api/student/complaints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -106,7 +106,7 @@ export default function StudentHostel() {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/student/hostel/outpass', {
+      const res = await fetch('/api/student/hostel/outpass', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(outpassForm)
