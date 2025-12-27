@@ -50,6 +50,16 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
 
   const navItems = navigationByRole[user.role]
 
+  const getRolePath = (role: string) => {
+    switch (role) {
+      case 'school_admin': return 'admin'
+      case 'super_admin': return 'super-admin'
+      default: return role
+    }
+  }
+
+  const rolePath = getRolePath(user.role)
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -155,7 +165,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         <div className="p-3 border-t border-gray-200">
           {sidebarOpen ? (
             <div className="space-y-2">
-              <Link href={`/dashboard/${user.role}/profile`} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
+              <Link href={`/dashboard/${rolePath}/profile`} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className={`bg-gradient-to-br ${getRoleGradient(user.role)} text-white text-xs font-bold`}>
                     {user.name.split(' ').map(n => n[0]).join('')}
@@ -189,14 +199,14 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
               <p className="text-sm text-gray-500 mt-0.5">Welcome back, {user.name.split(' ')[0]}!</p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative" title="Notifications">
+              <Link href={`/dashboard/${rolePath}/notifications`} className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative" title="Notifications">
                 <Bell size={20} className="text-gray-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              <Link href={`/dashboard/${user.role}/settings`} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Settings">
+              </Link>
+              <Link href={`/dashboard/${rolePath}/settings`} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Settings">
                 <Settings size={20} className="text-gray-600" />
               </Link>
-              <Link href={`/dashboard/${user.role}/profile`} className="flex items-center gap-3 pl-3 border-l border-gray-200 hover:bg-gray-50 rounded-lg p-2 transition-colors cursor-pointer">
+              <Link href={`/dashboard/${rolePath}/profile`} className="flex items-center gap-3 pl-3 border-l border-gray-200 hover:bg-gray-50 rounded-lg p-2 transition-colors cursor-pointer">
                 <Avatar className="h-9 w-9">
                   <AvatarFallback className={`bg-gradient-to-br ${getRoleGradient(user.role)} text-white font-bold`}>
                     {user.name.split(' ').map(n => n[0]).join('')}

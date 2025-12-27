@@ -31,7 +31,26 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
-    lastLogin: Date
+    lastLogin: Date,
+    preferences: {
+        emailNotifications: {
+            type: Boolean,
+            default: true
+        },
+        pushNotifications: {
+            type: Boolean,
+            default: true
+        },
+        theme: {
+            type: String,
+            enum: ['light', 'dark', 'system'],
+            default: 'light'
+        },
+        sidebarOpen: {
+            type: Boolean,
+            default: true
+        }
+    }
 }, {
     timestamps: true
 });

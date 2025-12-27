@@ -10,6 +10,8 @@ exports.getMyProfile = async (req, res) => {
 
     try {
         let profile = null;
+        // Always fetch user to get preferences
+        const user = await User.findById(userId).select('-password');
 
         // Fetch profile based on role
         switch (role) {
@@ -30,17 +32,17 @@ exports.getMyProfile = async (req, res) => {
                 if (staff) {
                     profile = staff;
                 } else {
-                    profile = await User.findById(userId).populate('schoolId', 'name');
+                    profile = user;
                 }
                 break;
 
             case 'admin':
             case 'superadmin':
-                profile = await User.findById(userId).populate('schoolId', 'name');
+                profile = user;
                 break;
 
             default:
-                profile = await User.findById(userId);
+                profile = user;
         }
 
         if (!profile) {
@@ -51,11 +53,12 @@ exports.getMyProfile = async (req, res) => {
             role,
             profile,
             user: {
-                _id: req.user._id,
-                email: req.user.email,
-                firstName: req.user.firstName,
-                lastName: req.user.lastName,
-                role: req.user.role
+                _id: user._id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+                preferences: user.preferences
             }
         });
     } catch (err) {
@@ -68,15 +71,28 @@ exports.getMyProfile = async (req, res) => {
 exports.updateMyProfile = async (req, res) => {
     const { schoolId, _id: userId, role } = req.user;
     const updates = req.body;
+    const preferencesUpdate = updates.preferences;
 
     // Prevent updating sensitive fields
     delete updates.password;
     delete updates.role;
     delete updates.schoolId;
     delete updates._id;
+    delete updates.preferences; // Handle separately
 
     try {
         let updatedProfile = null;
+
+        // Update User preferences if provided
+        if (preferencesUpdate) {
+            await User.findByIdAndUpdate(userId, { $set: { preferences: preferencesUpdate } });
+        }
+
+        // Update User basic info if provided (firstName, lastName, etc)
+        // Some common fields might need to be synced to User model
+        if (updates.firstName || updates.lastName || updates.phone) {
+            await User.findByIdAndUpdate(userId, updates);
+        }
 
         switch (role) {
             case 'student':
@@ -106,9 +122,13 @@ exports.updateMyProfile = async (req, res) => {
                 updatedProfile = await User.findByIdAndUpdate(userId, updates, { new: true });
         }
 
+        // Refetch user to get updated preferences
+        const updatedUser = await User.findById(userId).select('preferences');
+
         res.json({
             message: 'Profile updated successfully',
-            data: updatedProfile
+            data: updatedProfile,
+            preferences: updatedUser.preferences
         });
     } catch (err) {
         console.error('Error updating profile:', err);

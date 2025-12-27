@@ -408,6 +408,7 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
       ],
     },
     { label: "Settings", href: "/dashboard/admin/settings" },
+    { label: "Notifications", href: "/dashboard/admin/notifications" },
     {
       label: "Front CMS",
       href: "/dashboard/admin/front-cms",
@@ -457,7 +458,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Consent Letter", href: "/dashboard/teacher/consent-letter" },
     { label: "Library", href: "/dashboard/teacher/library" },
     { label: "Inventory", href: "/dashboard/teacher/inventory" },
-    { label: "System Setting", href: "/dashboard/teacher/settings" },
+    { label: "Settings", href: "/dashboard/teacher/settings" },
+    { label: "Notifications", href: "/dashboard/teacher/notifications" },
     { label: "Download Center", href: "/dashboard/teacher/download-center" },
     { label: "Online Exam", href: "/dashboard/teacher/online-exam" },
     { label: "Digital Notice Board", href: "/dashboard/teacher/notice-board" },
@@ -482,6 +484,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Hostel", href: "/dashboard/student/hostel" },
     { label: "Student Wallet", href: "/dashboard/student/wallet" },
     { label: "Communicate", href: "/dashboard/student/communicate" },
+    { label: "Notifications", href: "/dashboard/student/notifications" },
+    { label: "Settings", href: "/dashboard/student/settings" },
   ],
   parent: [
     { label: "Dashboard", href: "/dashboard/parent" },
@@ -501,6 +505,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Communicate", href: "/dashboard/parent/communicate" },
     { label: "Consent Letter", href: "/dashboard/parent/consent-letter" },
     { label: "Digital Notice Board", href: "/dashboard/parent/notice-board" },
+    { label: "Notifications", href: "/dashboard/parent/notifications" },
+    { label: "Settings", href: "/dashboard/parent/settings" },
   ],
   "super_admin": [
     { label: "Dashboard", href: "/dashboard/super-admin" },
@@ -508,6 +514,8 @@ export const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "SaaS Plan Management", href: "/dashboard/super-admin/saas-plans" },
     { label: "Billing & Invoicing", href: "/dashboard/super-admin/billing" },
     { label: "Support Tickets", href: "/dashboard/super-admin/support-tickets" },
+    { label: "Notifications", href: "/dashboard/super-admin/notifications" },
+    { label: "Settings", href: "/dashboard/super-admin/settings" },
     { label: "Platform Settings", href: "/dashboard/super-admin/platform-settings" },
   ],
 }

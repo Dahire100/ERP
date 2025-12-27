@@ -3,8 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { initDB } = require('./src/config/db');
-const { 210
-      } = require('./src/config/seed');
+const { seedDatabase } = require('./src/config/seed');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -84,6 +83,7 @@ const reportRoutes = require('./src/routes/report');
 // New modules - Settings & System Setting
 const settingRoutes = require('./src/routes/setting');
 const systemSettingRoutes = require('./src/routes/systemSetting');
+const notificationRoutes = require('./src/routes/notificationRoutes');
 
 // New modules - Wallet
 const walletRoutes = require('./src/routes/wallet');
@@ -179,6 +179,7 @@ app.use('/api/reports', reportRoutes);
 // New modules - Settings & System Setting
 app.use('/api/settings', settingRoutes);
 app.use('/api/system-settings', systemSettingRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // New modules - Wallet
 app.use('/api/wallet', walletRoutes);
