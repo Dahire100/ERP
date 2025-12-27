@@ -26,7 +26,7 @@ export default function ParentReport() {
     const fetchChildren = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch('http://localhost:5000/api/parent/dashboard', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/parent/dashboard`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await res.json()
@@ -51,7 +51,7 @@ export default function ParentReport() {
     const fetchResults = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch(`http://localhost:5000/api/parent/child/${selectedChild}/results`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/parent/child/${selectedChild}/results`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await res.json()

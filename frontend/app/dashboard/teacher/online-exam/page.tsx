@@ -79,10 +79,10 @@ export default function TeacherOnlineExam() {
     try {
       const token = localStorage.getItem('token')
       const [quizRes, classRes] = await Promise.all([
-        fetch('http://127.0.0.1:5000/api/teacher/online-exams', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/online-exams`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://127.0.0.1:5000/api/teacher/classes', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ])
@@ -103,7 +103,7 @@ export default function TeacherOnlineExam() {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/online-exams', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/online-exams`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +141,7 @@ export default function TeacherOnlineExam() {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://127.0.0.1:5000/api/online-exams/${selectedQuiz._id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/online-exams/${selectedQuiz._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ export default function TeacherOnlineExam() {
 
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://127.0.0.1:5000/api/online-exams/${quizId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/online-exams/${quizId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })

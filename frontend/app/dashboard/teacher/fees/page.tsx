@@ -30,7 +30,7 @@ export default function TeacherFeesPage() {
             setLoading(true)
             const token = localStorage.getItem('token')
             const headers = { 'Authorization': `Bearer ${token}` }
-            const res = await fetch(`http://127.0.0.1:5000/api/teacher/fees?classId=${selectedClass}`, { headers })
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/fees?classId=${selectedClass}`, { headers })
             const data = await res.json()
             if (data.success) {
                 setFeeRecords(data.data)
@@ -53,7 +53,7 @@ export default function TeacherFeesPage() {
         // In real implementation you might need student ID
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://127.0.0.1:5000/api/teacher/fees/remind', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/fees/remind`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ studentName })

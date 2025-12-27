@@ -36,7 +36,7 @@ export default function ParentCommunicate() {
         const headers = { 'Authorization': `Bearer ${token}` }
 
         // Fetch Children
-        const childRes = await fetch('http://localhost:5000/api/parent/dashboard', { headers })
+        const childRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/parent/dashboard`, { headers })
         const childData = await childRes.json()
         if (childData.success && childData.data.children.length > 0) {
           setChildren(childData.data.children)
@@ -44,7 +44,7 @@ export default function ParentCommunicate() {
         }
 
         // Fetch Messages
-        const msgRes = await fetch('http://localhost:5000/api/messages/inbox', { headers })
+        const msgRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/messages/inbox`, { headers })
         const msgData = await msgRes.json()
         if (msgData.success) {
           setMessages(msgData.data)
@@ -65,7 +65,7 @@ export default function ParentCommunicate() {
     const fetchTeachers = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch(`http://localhost:5000/api/parent/child/${selectedChild}/timetable`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/parent/child/${selectedChild}/timetable`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await res.json()
@@ -99,7 +99,7 @@ export default function ParentCommunicate() {
   const handleSendMessage = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/messages/send', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/messages/send`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

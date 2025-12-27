@@ -34,8 +34,8 @@ export default function LibraryPage() {
         try {
             const token = localStorage.getItem('token')
             const [booksRes, issuedRes] = await Promise.all([
-                fetch('http://127.0.0.1:5000/api/teacher/library/books', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://127.0.0.1:5000/api/teacher/library/my-books', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/library/books`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/library/my-books`, { headers: { 'Authorization': `Bearer ${token}` } })
             ])
 
             const booksData = await booksRes.json()

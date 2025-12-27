@@ -71,10 +71,10 @@ export default function MarksEntry() {
     try {
       const token = localStorage.getItem("token")
       const [classRes, examRes] = await Promise.all([
-        fetch("http://127.0.0.1:5000/api/teacher/classes", {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, {
           headers: { "Authorization": `Bearer ${token}` }
         }),
-        fetch("http://127.0.0.1:5000/api/teacher/exams", {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/exams`, {
           headers: { "Authorization": `Bearer ${token}` }
         })
       ])
@@ -99,10 +99,10 @@ export default function MarksEntry() {
     try {
       const token = localStorage.getItem("token")
       const [studentsRes, resultsRes] = await Promise.all([
-        fetch(`http://127.0.0.1:5000/api/teacher/classes/${selectedClassId}/students`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes/${selectedClassId}/students`, {
           headers: { "Authorization": `Bearer ${token}` }
         }),
-        fetch(`http://127.0.0.1:5000/api/teacher/exams/${selectedExamId}/results`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/exams/${selectedExamId}/results`, {
           headers: { "Authorization": `Bearer ${token}` }
         })
       ])
@@ -149,7 +149,7 @@ export default function MarksEntry() {
         remarks: s.remarks
       }))
 
-      const res = await fetch("http://127.0.0.1:5000/api/teacher/exams/results/bulk", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/exams/results/bulk`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

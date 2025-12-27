@@ -50,8 +50,8 @@ export default function StudentDetails() {
         try {
             const token = localStorage.getItem('token');
             const [classesRes, sectionsRes] = await Promise.all([
-                fetch('http://localhost:5000/api/classes', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('http://localhost:5000/api/sections', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/classes`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/sections`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             if (classesRes.ok) {
@@ -77,7 +77,7 @@ export default function StudentDetails() {
         setLoading(true)
         try {
             const token = localStorage.getItem('token');
-            let url = 'http://localhost:5000/api/students?';
+            let url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/students?`;
             const params = new URLSearchParams();
             if (searchCriteria.class) params.append('class', searchCriteria.class);
             if (searchCriteria.section) params.append('section', searchCriteria.section);

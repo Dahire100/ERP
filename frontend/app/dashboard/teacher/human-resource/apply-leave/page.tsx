@@ -84,7 +84,7 @@ export default function ApplyLeavePage() {
     const fetchLeaveHistory = async () => {
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://127.0.0.1:5000/api/teacher/leaves', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/leaves`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const data = await res.json()
@@ -103,7 +103,7 @@ export default function ApplyLeavePage() {
         setSubmitting(true)
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch('http://127.0.0.1:5000/api/teacher/leaves', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/leaves`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ export default function ApplyLeavePage() {
     const handleCancelLeave = async (id: string) => {
         try {
             const token = localStorage.getItem('token')
-            const res = await fetch(`http://127.0.0.1:5000/api/teacher/leaves/${id}/cancel`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/leaves/${id}/cancel`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             })

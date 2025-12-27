@@ -28,7 +28,7 @@ export default function ParentNoticeBoard() {
         const headers = { 'Authorization': `Bearer ${token}` }
 
         // Fetch Children
-        const childRes = await fetch('http://localhost:5000/api/parent/dashboard', { headers })
+        const childRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/parent/dashboard`, { headers })
         const childData = await childRes.json()
         if (childData.success && childData.data.children.length > 0) {
           setChildren(childData.data.children)
@@ -36,7 +36,7 @@ export default function ParentNoticeBoard() {
         }
 
         // Fetch Notices (General for now, future can include class specific)
-        const noticesRes = await fetch('http://localhost:5000/api/parent/notices', { headers })
+        const noticesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/parent/notices`, { headers })
         const noticesData = await noticesRes.json()
         if (noticesData.success) {
           setNotices(noticesData.data)

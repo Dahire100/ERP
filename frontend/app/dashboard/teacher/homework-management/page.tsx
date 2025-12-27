@@ -87,10 +87,10 @@ export default function HomeworkManagement() {
     try {
       const token = localStorage.getItem('token')
       const [hwRes, classRes] = await Promise.all([
-        fetch('http://127.0.0.1:5000/api/teacher/homework', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/homework`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://127.0.0.1:5000/api/teacher/classes', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ])
@@ -112,7 +112,7 @@ export default function HomeworkManagement() {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/homework', { // Assuming base homework endpoint for saving
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/homework`, { // Assuming base homework endpoint for saving
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

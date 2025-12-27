@@ -108,10 +108,10 @@ export default function TeacherCommunicate() {
     try {
       const token = localStorage.getItem('token')
       const [inboxRes, sentRes] = await Promise.all([
-        fetch('http://127.0.0.1:5000/api/communication/inbox', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/communication/inbox`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://127.0.0.1:5000/api/communication/sent', {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/communication/sent`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ])
@@ -133,7 +133,7 @@ export default function TeacherCommunicate() {
       const token = localStorage.getItem('token')
       // Fetching students/staff/parents - this might need specialized endpoints
       // For now let's assume teacher can message anyone in their classes
-      const res = await fetch('http://127.0.0.1:5000/api/teacher/classes', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await res.json()
@@ -152,7 +152,7 @@ export default function TeacherCommunicate() {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://127.0.0.1:5000/api/communication', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/communication`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export default function TeacherCommunicate() {
   const deleteMessage = async (id: string) => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`http://127.0.0.1:5000/api/communication/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/communication/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })

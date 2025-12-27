@@ -46,7 +46,7 @@ export default function TeacherDashboard() {
         const fetchDashboardData = async () => {
             try {
                 const token = localStorage.getItem("token")
-                const response = await fetch("http://127.0.0.1:5000/api/teacher/dashboard", {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/dashboard`, {
                     headers: {
                         "Authorization": `Bearer ${token}`
                     }

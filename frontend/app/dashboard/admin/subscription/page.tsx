@@ -36,7 +36,7 @@ export default function Subscription() {
     const fetchPlans = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/subscription/plans', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/subscription/plans`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -65,7 +65,7 @@ export default function Subscription() {
   const handleAdd = async (data: any) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/subscription/plans', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/subscription/plans`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +95,7 @@ export default function Subscription() {
   const handleEdit = async (id: string, data: any) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/subscription/plans/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/subscription/plans/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ export default function Subscription() {
     if (deleteConfirm.id) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/subscription/plans/${deleteConfirm.id}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/subscription/plans/${deleteConfirm.id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

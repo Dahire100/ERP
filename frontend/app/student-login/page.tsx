@@ -101,7 +101,7 @@ export default function StudentLogin() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("http://localhost:5000/api/otp/resend-otp", {
+      const response = await fetch(getApiUrl(API_ENDPOINTS.OTP.RESEND), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

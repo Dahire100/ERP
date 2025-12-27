@@ -64,7 +64,7 @@ export default function MarkAttendance() {
   const fetchInitialData = async () => {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/teacher/classes', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const data = await res.json()
@@ -88,10 +88,10 @@ export default function MarkAttendance() {
     try {
       const token = localStorage.getItem('token')
       const [studentRes, attendanceRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/teacher/classes/${filters.classId}/students`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes/${filters.classId}/students`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`http://localhost:5000/api/teacher/attendance?date=${filters.date}&className=${classes.find(c => c._id === filters.classId)?.name}&section=${classes.find(c => c._id === filters.classId)?.section}`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/attendance?date=${filters.date}&className=${classes.find(c => c._id === filters.classId)?.name}&section=${classes.find(c => c._id === filters.classId)?.section}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ])
@@ -132,7 +132,7 @@ export default function MarkAttendance() {
         status
       }))
 
-      const res = await fetch('http://localhost:5000/api/teacher/attendance', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/attendance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

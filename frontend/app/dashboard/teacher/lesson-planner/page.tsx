@@ -75,10 +75,10 @@ export default function LessonPlanner() {
     try {
       const token = localStorage.getItem("token")
       const [lessonsRes, classesRes] = await Promise.all([
-        fetch("http://127.0.0.1:5000/api/teacher/lesson-plans", {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/lesson-plans`, {
           headers: { "Authorization": `Bearer ${token}` }
         }),
-        fetch("http://127.0.0.1:5000/api/teacher/classes", {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/classes`, {
           headers: { "Authorization": `Bearer ${token}` }
         })
       ])
@@ -99,7 +99,7 @@ export default function LessonPlanner() {
     setCreating(true)
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://127.0.0.1:5000/api/teacher/lesson-plans", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/lesson-plans`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -128,7 +128,7 @@ export default function LessonPlanner() {
   const updateStatus = async (id: string, status: string) => {
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://127.0.0.1:5000/api/teacher/lesson-plans/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/teacher/lesson-plans/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
