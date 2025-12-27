@@ -79,10 +79,10 @@ export default function TeacherHomework() {
     try {
       const token = localStorage.getItem("token")
       const [hwRes, classRes] = await Promise.all([
-        fetch("http://127.0.0.1:5000/api/teacher/homework", {
+        fetch("${process.env.NEXT_PUBLIC_API_URL}/api/teacher/homework", {
           headers: { "Authorization": `Bearer ${token}` }
         }),
-        fetch("http://127.0.0.1:5000/api/teacher/classes", {
+        fetch("${process.env.NEXT_PUBLIC_API_URL}/api/teacher/classes", {
           headers: { "Authorization": `Bearer ${token}` }
         })
       ])
@@ -130,7 +130,7 @@ export default function TeacherHomework() {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://127.0.0.1:5000/api/homework/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/homework/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -149,8 +149,8 @@ export default function TeacherHomework() {
     try {
       const token = localStorage.getItem("token")
       const url = isEditing
-        ? `http://127.0.0.1:5000/api/homework/${currentAssignment?._id}`
-        : "http://127.0.0.1:5000/api/homework"
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/homework/${currentAssignment?._id}`
+        : "${process.env.NEXT_PUBLIC_API_URL}/api/homework"
 
       const method = isEditing ? "PUT" : "POST"
 
