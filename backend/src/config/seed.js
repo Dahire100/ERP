@@ -50,6 +50,39 @@ const seedDatabase = async () => {
         console.log('   Email:', SUPER_ADMIN_CREDENTIALS.email);
         console.log('   Password: [Secured - Check seed.js file]');
         console.log('   Note: OTP will be sent to this email for login\n');
+
+          // Create sample schools if none exist
+  const schoolCount = await School.countDocuments();
+  if (schoolCount === 0) {
+    const sampleSchools = [
+      {
+        name: 'Frontier Public School',
+        address: '123 Education Street, City',
+        phone: '+1234567890',
+        email: 'contact@frontierschool.com',
+        principalName: 'Dr. John Smith',
+        status: 'active'
+      },
+      {
+        name: 'Excellence Academy',
+        address: '456 Learning Avenue, City',
+        phone: '+9876543210',
+        email: 'info@excellenceacademy.com',
+        principalName: 'Ms. Sarah Johnson',
+        status: 'active'
+      },
+      {
+        name: 'Global Institute',
+        address: '789 Knowledge Lane, City',
+        phone: '+5555555555',
+        email: 'hello@globalinstitute.com',
+        principalName: 'Prof. Michael Brown',
+        status: 'active'
+      }
+    ];
+    await School.insertMany(sampleSchools);
+    console.log('✅ Sample schools created successfully');
+  }
     } catch (error) {
         console.error('❌ Seeding error:', error);
     }
