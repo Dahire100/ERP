@@ -26,36 +26,60 @@ export default function FacultyLoginPage() {
         setError("");
 
         try {
-            // Using standard login endpoint
-            const response = await fetch(getApiUrl(API_ENDPOINTS.AUTH.LOGIN), {
+            const apiUrl = getApiUrl(API_ENDPOINTS.AUTH.SCHOOL_LOGIN);
+            const requestBody = {
+                email: username, // Send as email field (backend checks email || username)
+                username: username,
+                password,
+                schoolId: schoolId,
+                portalType: "faculty"
+            };
+
+            console.log('Faculty Login Request:', { apiUrl, schoolId, username });
+
+            const response = await fetch(apiUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    email: username, // Assuming username maps to email or identifier
-                    password,
-                    role: "teacher", // Defaulting to teacher for faculty login, backend might handle admin/teacher distinction
-                }),
+                body: JSON.stringify(requestBody),
             });
 
-            const data = await response.json();
+            console.log('Response status:', response.status, response.statusText);
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Failed to parse JSON response:', jsonError);
+                throw new Error('Server returned invalid response');
+            }
+
+            console.log('Response data:', data);
 
             if (!response.ok) {
-                // Fallback or specific error handling
-                console.error("Login failed", data);
-                // For demo purposes, if API fails (e.g. 404), we might want to show a message
-                throw new Error(data.error || "Login failed");
+                const errorMessage = data.error || data.message || `Login failed (${response.status})`;
+                console.error("Login failed:", errorMessage, data);
+                throw new Error(errorMessage);
             }
 
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
 
-            // Redirect based on role (backend should return role)
-            if (data.user?.role === 'school_admin' || data.user?.role === 'admin') {
-                router.push('/dashboard/admin');
+            // Use window.location for hard navigation to ensure localStorage is available
+            const role = data.user?.role;
+
+            if (role === 'school_admin' || role === 'admin' || role === 'super_admin') {
+                window.location.href = '/dashboard/admin';
+            } else if (role === 'teacher') {
+                window.location.href = '/dashboard/teacher';
+            } else if (role === 'student') {
+                window.location.href = '/dashboard/student';
+            } else if (role === 'parent') {
+                window.location.href = '/dashboard/parent';
             } else {
-                router.push('/dashboard/teacher');
+                console.error("Unknown role:", role);
+                window.location.href = '/';
             }
 
         } catch (err) {
