@@ -37,12 +37,47 @@ exports.schoolLogin = async (req, res) => {
     }
 
     // 1. Verify School Association
-    if (!user.schoolId || user.schoolId._id.toString() !== schoolId) {
+    const targetSchoolId = schoolId; // Assuming schoolId passed is the ID, not slug. If slug, we need resolution logic back!
+
+    // Check if schoolId passed is a Slug or ID. 
+    // Wait, the previous code had slug resolution logic! It seems I am viewing a version WITHOUT slug resolution?
+    // In Step 29, the code had slug resolution. In Step 313, it's GONE?
+    // Did checking out Main/Merge overwrite it with an older version?
+    // Ah, Step 70 "Switched to branch Main". 
+    // Step 76 "Already up to date".
+    // It seems the version on Main might be simpler or older?
+    // Let's restore the robust slug resolution logic AND add the debug info.
+
+    const mongoose = require('mongoose');
+    let resolvedSchoolId = null;
+
+    if (mongoose.Types.ObjectId.isValid(schoolId)) {
+      resolvedSchoolId = schoolId;
+    } else {
+      // Resolve slug
+      const normalize = (value) => (value || '').toString().trim().toLowerCase();
+      const toSlug = (value) => normalize(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+      const schools = await School.find({}, { schoolName: 1, name: 1, email: 1 });
+      const incomingSlug = toSlug(schoolId);
+
+      const matched = schools.find((s) => {
+        const slugName = toSlug(s.schoolName || s.name);
+        return slugName === incomingSlug;
+      });
+
+      if (matched) {
+        resolvedSchoolId = matched._id.toString();
+      }
+    }
+
+    if (!user.schoolId || (resolvedSchoolId && user.schoolId._id.toString() !== resolvedSchoolId)) {
       if (user.role !== 'super_admin') {
-        console.log('❌ User belongs to different school:', user.schoolId?._id);
+        const debugInfo = `User School ID: ${user.schoolId?._id}, Target School ID: ${resolvedSchoolId || 'Unresolved (' + schoolId + ')'}`;
+        console.log('❌ User belongs to different school:', debugInfo);
         return res.status(403).json({
           success: false,
-          error: 'You are not registered with this school'
+          error: 'You are not registered with this school (' + debugInfo + ')'
         });
       }
     }
