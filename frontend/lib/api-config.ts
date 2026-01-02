@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
   // Auth
   AUTH: {
     LOGIN: '/api/auth/login',
+    SCHOOL_LOGIN: '/api/auth/school-login',
     PROFILE: '/api/auth/profile',
     CHANGE_PASSWORD: '/api/auth/change-password',
   },

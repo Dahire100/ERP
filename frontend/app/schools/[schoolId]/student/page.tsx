@@ -26,32 +26,51 @@ export default function StudentLoginPage() {
         setError("");
 
         try {
-            const response = await fetch(getApiUrl(API_ENDPOINTS.AUTH.LOGIN), {
+            const apiUrl = getApiUrl(API_ENDPOINTS.AUTH.SCHOOL_LOGIN);
+            const requestBody = {
+                email: username, // Send as email field (backend checks email || username)
+                username: username,
+                password,
+                schoolId: schoolId,
+                portalType: "student"
+            };
+            
+            console.log('Student Login Request:', { apiUrl, schoolId, username });
+            
+            const response = await fetch(apiUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    email: username,
-                    password,
-                    role: "student",
-                }),
+                body: JSON.stringify(requestBody),
             });
 
-            const data = await response.json();
+            console.log('Response status:', response.status, response.statusText);
+            
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Failed to parse JSON response:', jsonError);
+                throw new Error('Server returned invalid response');
+            }
+            
+            console.log('Response data:', data);
 
             if (!response.ok) {
-                // console.error("Login failed", data);
-                throw new Error(data.error || "Login failed");
+                const errorMessage = data.error || data.message || `Login failed (${response.status})`;
+                console.error("Login failed:", errorMessage, data);
+                throw new Error(errorMessage);
             }
 
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
 
+            // Use window.location for hard navigation to ensure localStorage is available
             if (data.user?.role === 'parent') {
-                router.push('/dashboard/parent');
+                window.location.href = '/dashboard/parent';
             } else {
-                router.push('/dashboard/student');
+                window.location.href = '/dashboard/student';
             }
 
         } catch (err) {
