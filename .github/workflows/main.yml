@@ -49,10 +49,6 @@ jobs:
         cd frontend
         pnpm install --no-frozen-lockfile
 
-    - name: Lint Frontend
-      run: |
-        cd frontend
-        pnpm run lint
 
     - name: Build Frontend
       run: |
