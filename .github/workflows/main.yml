@@ -28,7 +28,7 @@ jobs:
     - name: Install Backend Dependencies
       run: |
         cd backend
-        npm ci
+        npm install
 
     # Frontend Steps
     - name: Install pnpm
