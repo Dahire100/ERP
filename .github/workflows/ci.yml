@@ -1,0 +1,60 @@
+name: Project CI
+
+on:
+  push:
+    branches: [ "Main", "master" ]
+  pull_request:
+    branches: [ "Main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    # Backend Steps
+    - name: Install Backend Dependencies
+      run: |
+        cd backend
+        npm ci
+
+    # Frontend Steps
+    - name: Install pnpm
+      run: npm install -g pnpm
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        pnpm install --no-frozen-lockfile
+
+    - name: Lint Frontend
+      run: |
+        cd frontend
+        npm run lint
+
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm run build
+  
+  docker-build-backend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Backend Docker Image
+      run: |
+        cd backend
+        docker build .
