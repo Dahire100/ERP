@@ -7,7 +7,110 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Bell, Check, Trash2, Info, AlertTriangle, CheckCircle, AlertCircle, Clock, Filter, Archive } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Bell, Check, Trash2, Info, AlertTriangle, CheckCircle, AlertCircle, Clock, Filter, Archive, ExternalLink } from "lucide-react"
+
+// ... (existing code)
+
+function NotificationList({ groups, loading, onDelete, onRead, getIcon }: any) {
+    const router = useRouter()
+
+    if (loading) return <div className="py-20 text-center text-gray-500 flex flex-col items-center"><Clock className="h-10 w-10 animate-pulse mb-4 opacity-50" />Loading notifications...</div>
+
+    // Check if empty
+    const isEmpty = Object.values(groups).every((arr: any) => arr.length === 0);
+
+    if (isEmpty) return (
+        <div className="py-20 text-center flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+            <div className="h-20 w-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <Bell className="h-10 w-10 text-gray-300" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900">All caught up!</h3>
+            <p className="text-gray-500 mt-2 max-w-sm">You have no new notifications at the moment. Check back later for updates.</p>
+        </div>
+    )
+
+    const handleNotificationClick = (notification: any) => {
+        if (notification.link) {
+            router.push(notification.link);
+        } else {
+            // If no link, maybe just toggle read status? 
+            // For now, doing nothing or maybe toggle read if user requested "open" as in "mark read"
+            if (!notification.isRead) {
+                onRead(notification._id)
+            }
+        }
+    }
+
+    return (
+        <div className="space-y-8">
+            {Object.entries(groups).map(([label, items]: [string, any]) => (
+                items.length > 0 && (
+                    <div key={label} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">{label}</h3>
+                        <div className="space-y-3">
+                            {items.map((notification: any) => (
+                                <div
+                                    key={notification._id}
+                                    onClick={() => handleNotificationClick(notification)}
+                                    className={`group relative overflow-hidden rounded-xl border transition-all duration-200 hover:shadow-md ${notification.isRead ? 'bg-white border-gray-100' : 'bg-blue-50/50 border-blue-100 shadow-sm ring-1 ring-blue-50'} ${notification.link ? 'cursor-pointer hover:border-blue-300' : ''}`}
+                                >
+                                    {!notification.isRead && (
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                                    )}
+                                    <div className="p-4 sm:p-5 flex gap-4">
+                                        <div className={`mt-1 h-10 w-10 shrink-0 rounded-full flex items-center justify-center ${notification.isRead ? 'bg-gray-100' : 'bg-white shadow-sm'}`}>
+                                            {getIcon(notification.type)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div>
+                                                    <h4 className={`text-base font-semibold ${notification.isRead ? 'text-gray-900' : 'text-blue-900'} flex items-center gap-2`}>
+                                                        {notification.title}
+                                                        {notification.link && <ExternalLink className="h-3 w-3 opacity-50" />}
+                                                    </h4>
+                                                    <p className={`mt-1 text-sm ${notification.isRead ? 'text-gray-500' : 'text-gray-700'}`}>
+                                                        {notification.message}
+                                                    </p>
+                                                    <p className="mt-2 text-xs text-gray-400 flex items-center gap-1">
+                                                        <Clock className="h-3 w-3" />
+                                                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {!notification.isRead && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => { e.stopPropagation(); onRead(notification._id); }}
+                                                    title="Mark as read"
+                                                    className="h-8 w-8 text-blue-600 hover:bg-blue-100 rounded-full"
+                                                >
+                                                    <div className="h-2 w-2 rounded-full bg-blue-600"></div>
+                                                </Button>
+                                            )}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={(e) => { e.stopPropagation(); onDelete(notification._id); }}
+                                                title="Delete"
+                                                className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )
+            ))}
+        </div>
+    )
+}
 import { toast } from "sonner"
 import { formatDistanceToNow, isToday, isYesterday } from "date-fns"
 
