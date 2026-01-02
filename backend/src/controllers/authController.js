@@ -1,6 +1,7 @@
 // controllers/authController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const School = require('../models/School');
 
@@ -36,10 +37,37 @@ exports.schoolLogin = async (req, res) => {
       });
     }
 
-    // 1. Verify School Association
-    if (!user.schoolId || user.schoolId._id.toString() !== schoolId) {
+    // 1. Verify School Association (strict separation per portal)
+    // Allow super_admin to bypass; for others, match by ObjectId or slugified school name/email
+    const normalize = (value) => (value || '').toString().trim().toLowerCase();
+    const toSlug = (value) => normalize(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+    let targetSchoolId = null;
+
+    // If request schoolId is ObjectId, use directly
+    if (mongoose.Types.ObjectId.isValid(schoolId)) {
+      targetSchoolId = schoolId;
+    } else {
+      // Attempt to resolve school by slugified name or email
+      // Some seed data uses `name`, others use `schoolName` — support both
+      const schools = await School.find({}, { schoolName: 1, name: 1, email: 1 });
+      const incomingSlug = toSlug(schoolId);
+      const incomingEmail = normalize(schoolId);
+
+      const matched = schools.find((s) => {
+        const slugName = toSlug(s.schoolName || s.name);
+        const schoolEmail = normalize(s.email);
+        return slugName === incomingSlug || schoolEmail === incomingEmail;
+      });
+
+      if (matched) {
+        targetSchoolId = matched._id.toString();
+      }
+    }
+
+    if (user.schoolId && targetSchoolId && user.schoolId._id.toString() !== targetSchoolId) {
       if (user.role !== 'super_admin') {
-        console.log('❌ User belongs to different school:', user.schoolId?._id);
+        console.log('❌ User belongs to different school:', user.schoolId?._id, 'vs', targetSchoolId);
         return res.status(403).json({
           success: false,
           error: 'You are not registered with this school'
@@ -47,7 +75,7 @@ exports.schoolLogin = async (req, res) => {
       }
     }
 
-    // 2. Verify Portal Type vs Role
+    // 2. Verify Portal Type vs Role (CRITICAL SECURITY CHECK)
     const facultyRoles = ['school_admin', 'teacher', 'super_admin'];
     const studentRoles = ['student', 'parent'];
 
@@ -128,6 +156,16 @@ exports.login = async (req, res) => {
       return res.status(401).json({
         success: false,
         error: 'Invalid email or password'
+      });
+    }
+
+    // STRICT CHECK: Only Super Admin can use this generic login endpoint
+    // All other roles must use specific portal logins (OTP or School Login)
+    if (user.role !== 'super_admin') {
+      console.log('❌ Login restricted to Super Admin only:', email);
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. Please use the Student/Teacher/School Admin login portal.'
       });
     }
 

@@ -11,10 +11,10 @@ const generateOTP = () => {
 // Send OTP for login
 exports.sendLoginOTP = async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, role } = req.body;
 
-        if (!email) {
-            return res.status(400).json({ error: 'Email is required' });
+        if (!email || !role) {
+            return res.status(400).json({ error: 'Email and Role are required' });
         }
 
         // Check if user exists
@@ -26,6 +26,14 @@ exports.sendLoginOTP = async (req, res) => {
         // Check if user is active
         if (!user.isActive) {
             return res.status(403).json({ error: 'Your account is not active. Please contact support.' });
+        }
+
+        // Verify role
+        if (user.role !== role) {
+            console.log(`❌ Role mismatch for ${email}. Expected: ${role}, Found: ${user.role}`);
+            return res.status(403).json({
+                error: `Access denied. This login is restricted to ${role}s only.`
+            });
         }
 
         // Delete any existing OTPs for this email and purpose
@@ -64,10 +72,10 @@ exports.sendLoginOTP = async (req, res) => {
 // Verify OTP and login
 exports.verifyOTPAndLogin = async (req, res) => {
     try {
-        const { email, otp } = req.body;
+        const { email, otp, role } = req.body;
 
-        if (!email || !otp) {
-            return res.status(400).json({ error: 'Email and OTP are required' });
+        if (!email || !otp || !role) {
+            return res.status(400).json({ error: 'Email, OTP, and Role are required' });
         }
 
         // Find the OTP
@@ -111,6 +119,14 @@ exports.verifyOTPAndLogin = async (req, res) => {
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Verify role
+        if (user.role !== role) {
+            console.log(`❌ Role mismatch for ${email}. Expected: ${role}, Found: ${user.role}`);
+            return res.status(403).json({
+                error: `Access denied. This login is restricted to ${role}s only.`
+            });
         }
 
         // Update last login
@@ -157,16 +173,24 @@ exports.verifyOTPAndLogin = async (req, res) => {
 // Resend OTP
 exports.resendOTP = async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, role } = req.body;
 
-        if (!email) {
-            return res.status(400).json({ error: 'Email is required' });
+        if (!email || !role) {
+            return res.status(400).json({ error: 'Email and Role are required' });
         }
 
         // Check if user exists
         const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Verify role
+        if (user.role !== role) {
+            console.log(`❌ Role mismatch for ${email}. Expected: ${role}, Found: ${user.role}`);
+            return res.status(403).json({
+                error: `Access denied. This login is restricted to ${role}s only.`
+            });
         }
 
         // Delete existing OTPs

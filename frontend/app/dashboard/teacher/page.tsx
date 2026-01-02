@@ -39,7 +39,17 @@ interface DashboardData {
     todaySchedule: string;
 }
 
+import { ProtectedRoute } from "@/components/protected-route"
+
 export default function TeacherDashboard() {
+    return (
+        <ProtectedRoute allowedRoles={['teacher', 'school_admin']}>
+            <TeacherDashboardContent />
+        </ProtectedRoute>
+    )
+}
+
+function TeacherDashboardContent() {
     const [data, setData] = useState<DashboardData | null>(null)
     const [loading, setLoading] = useState(true)
     const router = useRouter()
@@ -76,6 +86,9 @@ export default function TeacherDashboard() {
             </DashboardLayout>
         )
     }
+
+    // Strict Role Check handled by ProtectedRoute wrapper above
+
 
     return (
         <DashboardLayout title={`Welcome, ${data?.teacher.name || "Teacher"}`}>

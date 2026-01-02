@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const superAdminController = require('../controllers/superAdminController');
 const { authenticateToken } = require('../middleware/auth');
+const { requireSuperAdmin } = require('../middleware/roleAuth');
 
-// Apply JWT authentication to all routes
-router.use(authenticateToken);
+// Apply JWT authentication and super admin verification to all routes
+router.use(authenticateToken, requireSuperAdmin);
 
 // ==================== INVOICES ====================
 router.get('/invoices', superAdminController.getAllInvoices);

@@ -14,6 +14,8 @@ const {
   getStudentAttendance
 } = require('../controllers/studentController');
 
+const { verifyRole } = require('../middleware/roleAuth');
+
 // All routes require authentication
 router.use(authenticateToken);
 
@@ -23,11 +25,11 @@ router.post('/', requireSchoolAdmin, addStudent);
 router.put('/:id', requireSchoolAdmin, updateStudent);
 router.delete('/:id', requireSchoolAdmin, deleteStudent);
 
-// Routes accessible by school admin, teachers, and students (for their own data)
-router.get('/', getAllStudents);
-router.get('/:id', getStudentById);
-router.get('/:id/fees', getStudentFees);
-router.get('/:id/transport', getStudentTransport);
-router.get('/:id/attendance', getStudentAttendance);
+// Routes accessible by school admin and teachers (students use studentPortal routes)
+router.get('/', verifyRole(['school_admin', 'teacher', 'super_admin']), getAllStudents);
+router.get('/:id', verifyRole(['school_admin', 'teacher', 'super_admin']), getStudentById);
+router.get('/:id/fees', verifyRole(['school_admin', 'teacher', 'super_admin']), getStudentFees);
+router.get('/:id/transport', verifyRole(['school_admin', 'teacher', 'super_admin']), getStudentTransport);
+router.get('/:id/attendance', verifyRole(['school_admin', 'teacher', 'super_admin']), getStudentAttendance);
 
 module.exports = router;

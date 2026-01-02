@@ -10,6 +10,8 @@ const {
   getFeeSummaryByClass
 } = require('../controllers/feesController');
 
+const { verifyRole } = require('../middleware/roleAuth');
+
 router.use(authenticateToken);
 
 // School admin only routes
@@ -18,7 +20,7 @@ router.put('/:id', requireSchoolAdmin, updateFeeStatus);
 router.delete('/:id', requireSchoolAdmin, deleteFee);
 
 // Accessible by school admin and teachers
-router.get('/', getAllFees);
-router.get('/summary', getFeeSummaryByClass);
+router.get('/', verifyRole(['school_admin', 'teacher', 'super_admin']), getAllFees);
+router.get('/summary', verifyRole(['school_admin', 'teacher', 'super_admin']), getFeeSummaryByClass);
 
 module.exports = router;
